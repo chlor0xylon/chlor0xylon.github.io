@@ -1,6 +1,6 @@
 ---
 title: About
-description: A short introduction.
+description: A brief presentation.
 ---
 
 Hi! My name is Matthias, I'm a junior engineer. I like computer science, applied algorithms, operations research and representation learning.
