@@ -54,6 +54,8 @@ export interface SiteConfig {
 	lang: string;
 	ogLocale: string;
 	sortPostsByUpdatedDate: boolean;
+	/** Absolute public site URL; used for canonical URLs, feeds, sitemap, and social sharing. */
+	site: string;
 	title: string;
 	/** Personal info for About page, schema, byline. */
 	profile?: ProfileConfig;

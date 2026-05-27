@@ -56,8 +56,8 @@ Most personalisation happens in two files.
 optional. Leave any of `email`, `github`, `linkedin`, `employer`, `alumni`, or `avatar` undefined and the corresponding
 link is hidden site-wide. Same for `comments` and `analytics`: undefined means the script never loads.
 
-**`astro.config.ts`** is where you set `site` to your final domain (used for canonical URLs, sitemap, RSS, and OG image
-URLs). The base path is handled automatically — see [Deploying](#deploying); you normally don't touch it.
+**`src/site.config.ts`** also holds `site`, your final public domain. Astro uses it for canonical URLs, sitemap, RSS,
+and OG image URLs. The base path is handled automatically — see [Deploying](#deploying); you normally don't touch it.
 
 Replace these assets in `public/`:
 

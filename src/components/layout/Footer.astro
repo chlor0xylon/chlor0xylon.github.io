@@ -8,11 +8,6 @@ const year = new Date().getFullYear();
 <footer class="site-footer">
 	<div class="left">
 		<span>&copy; {year} {siteConfig.author}</span>
-		{!siteConfig.hideThemeCredit && (
-			<span class="theme-credit">
-				🚀 Powered by <a href="https://github.com/AnjayGoel/astro-sienna" rel="noopener">Astro Sienna</a>
-			</span>
-		)}
 	</div>
 	<div class="right">
 		<a href={withBase("/rss.xml")}>RSS</a>
@@ -38,18 +33,6 @@ const year = new Date().getFullYear();
 		gap: 18px;
 		align-items: center;
 		flex-wrap: wrap;
-	}
-	.site-footer .theme-credit {
-		font-size: 11.5px;
-		color: hsl(var(--theme-text) / 0.55);
-	}
-	.site-footer .theme-credit a {
-		color: inherit;
-		border-bottom: 1px dotted hsl(var(--theme-text) / 0.35);
-	}
-	.site-footer .theme-credit a:hover {
-		color: hsl(var(--theme-accent));
-		border-bottom-color: currentColor;
 	}
 	.site-footer a {
 		color: hsl(var(--theme-text-muted));
