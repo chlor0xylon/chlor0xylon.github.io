@@ -12,7 +12,7 @@ export const siteConfig: SiteConfig = {
 		},
 	},
 	description:
-		"A writing space featuring my experiments",
+		"Hi! My name is Matthias, I'm a junior engineer. I like applied computer science, algorithms, operations research and machine learning interpretability. You've landed on my new scratchpad, where I'll occasionally be writing about my side projects.",
 	lang: "en-US",
 	ogLocale: "en_US",
 	sortPostsByUpdatedDate: false,
