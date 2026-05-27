@@ -21,7 +21,7 @@ export const siteConfig: SiteConfig = {
 	hideThemeCredit: true,
 	profile: {
 		name: "Matthias Personnaz",
-		email: "mpz.contact@outlook.fr",
+		// email: "mpz.contact@outlook.fr",
 		github: "https://github.com/chlor0xylon/",
 		linkedin: "https://www.linkedin.com/in/matthias-personnaz-2287b11b9/",
 		jobTitle: "Machine Learning Engineer",
