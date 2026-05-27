@@ -16,6 +16,7 @@ export const siteConfig: SiteConfig = {
 	lang: "en-US",
 	ogLocale: "en_US",
 	sortPostsByUpdatedDate: false,
+	site: "https://chlor0xylon.github.io",
 	title: "Astro Sienna",
 	hideThemeCredit: true,
 	profile: {
