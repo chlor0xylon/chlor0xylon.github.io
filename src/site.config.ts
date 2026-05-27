@@ -17,7 +17,7 @@ export const siteConfig: SiteConfig = {
 	ogLocale: "en_US",
 	sortPostsByUpdatedDate: false,
 	site: "https://chlor0xylon.github.io",
-	title: "Astro Sienna",
+	title: "Matthias Personnaz",
 	hideThemeCredit: true,
 	profile: {
 		name: "Matthias Personnaz",
