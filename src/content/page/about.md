@@ -3,7 +3,7 @@ title: About
 description: A brief presentation.
 ---
 
-Hi! My name is Matthias, I'm a junior engineer. I like computer science, applied algorithms, operations research and representation learning.
+Hi! My name is Matthias, I'm a junior engineer. I like computer science, applied algorithms, operations research and interpretable machine learning.
 
 You've landed on my new scratchpad, where I'll occasionally be writing about side projects.
 
