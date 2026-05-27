@@ -12,7 +12,7 @@ export const siteConfig: SiteConfig = {
 		},
 	},
 	description:
-		"My personal writing space",
+		"A writing space featuring my experiments",
 	lang: "en-US",
 	ogLocale: "en_US",
 	sortPostsByUpdatedDate: false,
@@ -27,7 +27,7 @@ export const siteConfig: SiteConfig = {
 		jobTitle: "Machine Learning Engineer",
 		// employer: "Example Inc.",
 		// employerUrl: "https://example.com",
-		alumni: "École Centrale de Lyon",
+		alumni: "École Centrale de Lyon & Technische Universität Berlin",
 		avatar: "/avatar.png",
 	},
 	// Uncomment & fill in to enable Giscus comments on every post.
