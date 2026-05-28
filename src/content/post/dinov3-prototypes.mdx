@@ -31,21 +31,31 @@ $$
 \tilde{\mathbf{x}} = \arg\max_{\mathbf{x} \in \mathcal{X}} s(f(\mathbf{x}))
 $$
 
+which translates into ``finding an input that represents its class or target latent representation perfectly''.
+
 For example, $s$ can denote:
 - in a classification model, extracting logit of index $k$: $s(\mathbf{y}) = \mathbf{y} \cdot \mathbf{e}_k$
 - in a general feature extractor vision model (such as one of Meta's DINO models family, more on that later), the cosine of the angle between the output CLS token and a target vector $\mathbf{y}_0$ whose semantic meaning we're interested in: $s(\mathbf{y}) = \frac{\mathbf{y} \cdot \mathbf{y}_0}{\|\mathbf{y}\|\|\mathbf{y}_0\|}$
 
-In this setup, the optimized variable is the input to the frozen network, a.k.a. the data, as opposed to the training phase where the data was fixed, and drawn from a dataset, and the network's weights were the optimized variables.
+In this setup, the optimized variable is the input to the frozen network, a.k.a. the data, as opposed to the training phase where the data was fixed, and drawn from a dataset, and the network's weights were the optimized variables. 
 
 
-Such a mathematical problem is usually intractable for any neural network of more than, say, two layers and a handful of input variables, due to the deep and non-linear nature of neural networks. Thus, only approximated solutions are in order. To succeed, we resort to stochastic gradient ascent, leveraging the the network's mapping function $f$ being differentiable.
+For any neural network of more than, say, at least a few layers and a handful of input variables, such a mathematical problem is not remotely tractable due to the deep and non-linear nature of neural networks. Thus, only approximated solutions are in order. To compute one, we can resort to iterative gradient ascent back propagating the gradients through the network into the inputs, leveraging the the network's mapping function $f$ being differentiable. Only then can one hope to succeed.
 
-For computing prototypes, it is hypothesized that for any sufficiently well-behaved neural network, an approached solution to the above mathematically problem should yield an input that represents its class or target latent representation well enough: it is an archetypal **prototype**, or prototype for short.
 
 ## Trials and tribulations of computing prototypes
 
-Now a new problem arises. 
+The practical problem is that naively deriving a solution to the above mathematical problem (even an approached one) implicitely assumes that the driving model is sufficiently well-behaved to yield an input intelligible by humans. However, neural networks usually fall short of supporting that hypothesis.
+
+The root problem is that most neural networks were *never designed to work backward from their latent space*.[^3]
+
+[^3]: Except highly-specific architectures designed from the ground-up to work in reverse, like Variational Auto-Encoders.
+
+
+Even modern, SOTA vision models designed to generalize well, trained on billions of images end up with very noisy gradients.
 
 ## More recent work in deep computer vision interpretability
 
 The work in Distill's articles has pioneered or improved numerous techniques in interpretability I haven't been able to find some 
+
+
