@@ -1,6 +1,6 @@
 import type { AdmonitionType } from "@/types";
 import { type Properties, h as _h } from "hastscript";
-import type { Node, Paragraph as P, Parent, PhrasingContent, Root } from "mdast";
+import type { Node, Parent, PhrasingContent, Root, RootContent } from "mdast";
 import type { Directives, LeafDirective, TextDirective } from "mdast-util-directive";
 import { directiveToMarkdown } from "mdast-util-directive";
 import { toMarkdown } from "mdast-util-to-markdown";
@@ -42,15 +42,22 @@ function transformUnhandledDirective(
 	}
 }
 
-/** Builds an mdast HTML node for rehype to render (from Astro Starlight). */
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-function h(el: string, attrs: Properties = {}, children: any[] = []): P {
+type HastBackedNode = Parent & {
+	type: "admonition";
+	data: {
+		hName: string;
+		hProperties: Properties;
+	};
+};
+
+/** Builds an mdast node for rehype to render as a specific HTML element. */
+function h(el: string, attrs: Properties = {}, children: Node[] = []): RootContent {
 	const { properties, tagName } = _h(el, attrs);
 	return {
-		children,
+		children: children as RootContent[],
 		data: { hName: tagName, hProperties: properties },
-		type: "paragraph",
-	};
+		type: "admonition",
+	} as HastBackedNode as RootContent;
 }
 
 export const remarkAdmonitions: Plugin<[], Root> = () => (tree) => {
