@@ -9,10 +9,13 @@ A few years ago, as I was wandering the internet during my bachelor years, I cam
 
 One of Distill's foundational articles is called [Feature Visualization](https://distill.pub/2017/feature-visualization/), which describes how neural networks designed for computer vision tasks can be probed to reverse-engineer the learned patterns cristallized into the network's weights after the training phase[^1].
 
-[^1]: Even in 2017, visualizing features by creating images to maximize activations wasn't exactly new. The numerous papers cited in Distill's Feature Visualization is evidence of those previous attempts.
+[^1]: Even in 2017, visualizing features by creating images to maximize activations wasn't exactly new. The numerous papers cited in Distill's Feature Visualization is evidence of those previous attempts, some as early as 2009, even before [AlexNet](https://en.wikipedia.org/wiki/AlexNet)'s breakthrough.
 
-At the time, the [Transformers architecture](https://arxiv.org/abs/1706.03762) and the [attention](https://en.wikipedia.org/wiki/Attention_(machine_learning)) mechanism had just barely been conceptualized, and state-of-the-art vision models still used convolutional backbones, stemming from signal processing-inspired, learnable convolutional filters that bootstrapped modern computer vision. [Leveraging Transformers for vision tasks](https://arxiv.org/abs/2010.11929) wouldn't be formally introduced for another two years, until 2019.
+At the time, the [Transformers architecture](https://arxiv.org/abs/1706.03762) and the [attention](https://en.wikipedia.org/wiki/Attention_(machine_learning)) mechanism had just barely been conceptualized, and state-of-the-art vision models still used convolutional backbones, stemming from learnable, signal processing-inspired, convolutional filters that underpins modern computer vision. [Leveraging Transformers for vision tasks](https://arxiv.org/abs/2010.11929) wouldn't be formally introduced for another two years, until 2019.
 
 ## Reverse-engineering visual patterns
 
-For the uninitiated, to *visualize* features, in this context, means to create images by whatever means possible, comprising patterns that maximize some given activations or outputs of a neural network, in order to gain insights about what the model perceives and how it interprets inputs. It's about finding *prototypical* inputs that fire particular neurons in a certain way.
+For the uninitiated, to *visualize* features, in this context, means to create images by whatever means possible, comprising patterns that maximize some given activations or outputs of a neural network, in order to gain insights about what the model perceives and how it interprets the inputs. In other words it's about finding *prototypical* images that fire particular neurons in a certain way[^2].
+
+[^2]: Chosen ways might target a specific neuron, or a collection of neurons. Distill's paper [The Building Blocks of Interpretability](https://distill.pub/2018/building-blocks/) showcases some neuron grouping choices for activation maximization.
+
