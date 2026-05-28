@@ -25,3 +25,5 @@ pnpm-debug.log*
 .astro
 .idea
 temp/
+
+src/content/templates
