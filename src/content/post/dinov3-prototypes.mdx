@@ -7,12 +7,12 @@ tags: [ machine learning, interpretability ]
 
 A few years ago, as I was wandering the internet during my bachelor years, I came across the well-known machine learning blog [Distill.pub](https://distill.pub). This research blog stood at the forefront of research in computer vision interpretability, among other related topics. To some extent, it still does. I can't remember exactly how I stumbled upon it back then, but recently I recently discovered it again and it left me in awe, so I decided to skim through it anew and catch up with the research with the benefit of hindsight, having more time and knowledge to delve properly into the content.
 
-One of Distill's foundational articles is called [Feature Visualization](https://distill.pub/2017/feature-visualization/), which describes how neural networks designed for computer vision tasks can be probed to reverse-engineer the learnt patterns cristallized into the network's weights after the training phase. At the time, the [Transformers architecture](https://arxiv.org/abs/1706.03762) and the [attention](https://en.wikipedia.org/wiki/Attention_(machine_learning)) mechanism had just barely been conceptualized, and state-of-the-art vision models still used convolutional backbones, stemming from signal processing-inspired, learnable convolutional filters that bootstrapped modern computer vision. [Leveraging Transformers for vision tasks](https://arxiv.org/abs/2010.11929) wouldn't be formally introduced for another two years, until 2019.
+One of Distill's foundational articles is called [Feature Visualization](https://distill.pub/2017/feature-visualization/), which describes how neural networks designed for computer vision tasks can be probed to reverse-engineer the learned patterns cristallized into the network's weights after the training phase[^1].
+
+[^1]: Even in 2017, visualizing features by creating images to maximize activations wasn't exactly new. The numerous papers cited in Distill's Feature Visualization is evidence of those previous attempts.
+
+At the time, the [Transformers architecture](https://arxiv.org/abs/1706.03762) and the [attention](https://en.wikipedia.org/wiki/Attention_(machine_learning)) mechanism had just barely been conceptualized, and state-of-the-art vision models still used convolutional backbones, stemming from signal processing-inspired, learnable convolutional filters that bootstrapped modern computer vision. [Leveraging Transformers for vision tasks](https://arxiv.org/abs/2010.11929) wouldn't be formally introduced for another two years, until 2019.
 
 ## Reverse-engineering visual patterns
 
 For the uninitiated, to *visualize* features, in this context, means to create images by whatever means possible, comprising patterns that maximize some given activations or outputs of a neural network, in order to gain insights about what the model perceives and how it interprets inputs. It's about finding *prototypical* inputs that fire particular neurons in a certain way.
-
-:::note
-Even in 2017, visualizing features by creating images to maximize activations wasn't exactly new. The numerous papers cited in Distill's Feature Visualization is evidence of those previous attempts.
-:::
