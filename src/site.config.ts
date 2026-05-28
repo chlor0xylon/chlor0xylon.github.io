@@ -2,7 +2,7 @@ import type { SiteConfig } from "@/types";
 import type { AstroExpressiveCodeOptions } from "astro-expressive-code";
 
 export const siteConfig: SiteConfig = {
-	author: "Matthias Personnaz",
+	author: "Chlor0xylon",
 	date: {
 		locale: "en-US",
 		options: {
@@ -12,12 +12,12 @@ export const siteConfig: SiteConfig = {
 		},
 	},
 	description:
-		"Hi! My name is Matthias, I'm a junior engineer. I like applied computer science, algorithms, operations research and machine learning interpretability. You've landed on my new scratchpad, where I'll occasionally be writing about my side projects.",
+		"Hi! You've landed on my new scratchpad, where I'll occasionally be writing about my side projects.",
 	lang: "en-US",
 	ogLocale: "en_US",
 	sortPostsByUpdatedDate: false,
 	site: "https://chlor0xylon.github.io",
-	title: "Matthias Personnaz",
+	title: "Chlor0xylon's blog",
 	hideThemeCredit: true,
 	profile: {
 		name: "Matthias Personnaz",
