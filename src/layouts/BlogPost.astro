@@ -608,6 +608,54 @@ const giscusThemes = import.meta.env.PROD
 		font-size: 14px;
 	}
 
+	.post-article .footnotes {
+		max-width: var(--reading-width);
+		margin: 48px 0 0;
+		padding-top: 22px;
+		border-top: 1px solid var(--hairline);
+		color: hsl(var(--theme-text-muted));
+	}
+	.post-article .footnotes h2 {
+		margin: 0 0 16px;
+		font-family: var(--font-mono);
+		font-size: 11.5px;
+		font-style: normal;
+		font-weight: 600;
+		line-height: 1.4;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: hsl(var(--theme-text) / 0.72);
+	}
+	.post-article .footnotes ol {
+		list-style: decimal;
+		margin: 0;
+		padding-left: 28px;
+	}
+	.post-article .footnotes li {
+		display: list-item;
+		padding-left: 6px;
+		color: hsl(var(--theme-text-muted));
+		font-size: 15.5px;
+		line-height: 1.65;
+	}
+	.post-article .footnotes li::marker {
+		color: hsl(var(--theme-accent));
+		font-family: var(--font-mono);
+		font-size: 12.5px;
+	}
+	.post-article .footnotes li > p {
+		display: inline;
+	}
+	.post-article .footnotes p:first-of-type::first-letter {
+		all: unset;
+	}
+	.post-article .footnotes .data-footnote-backref,
+	.post-article .footnotes [data-footnote-backref] {
+		font-family: var(--font-mono);
+		font-size: 0.85em;
+		text-decoration: none;
+	}
+
 	.post-article li > p {
 		margin: 0;
 		display: inline;
