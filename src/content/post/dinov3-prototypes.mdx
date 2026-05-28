@@ -40,7 +40,7 @@ For example, $s$ can denote:
 In this setup, the optimized variable is the input to the frozen network, a.k.a. the data, as opposed to the training phase where the data was fixed, and drawn from a dataset, and the network's weights were the optimized variables. The point is then to use optimization techniques to synthesize input images that maximally activate specific neurons or layers.
 
 
-For any neural network of more than, say, at least a few layers and a handful of input variables, such a mathematical problem is not remotely tractable due to the deep and non-linear nature of neural networks. Thus, only approximated solutions are in order. To compute one, we can resort to iterative gradient ascent, backpropagating up the network to the inputs, leveraging the the network's mapping function $f$ being differentiable. One single step of the gradient ascent consists of doing the following:
+For any neural network of more than, say, at least a few layers and a handful of input variables, such a mathematical problem is not remotely tractable due to the deep and non-linear nature of neural networks. Thus, only approximated solutions are in order. To compute one, we can resort to iterative gradient ascent, backpropagating up the network to the inputs, leveraging the the network's mapping function $f$ being differentiable. One single step of the gradient ascent goes like this:
 
 $$
 \mathbf{x}^{(t+1)} \gets \mathbf{x}^{(t)} + \alpha \nabla_{\mathbf{x}} (s \circ f)(\mathbf{x}^{(t)})
@@ -48,17 +48,20 @@ $$
 
 ## Trials and tribulations of computing prototypes
 
-Naively deriving a solution to the above mathematical problem (even an approached solution thanks to gradient ascent) implicitely assumes that the model's driving gradients are sufficiently well-behaved to form images intelligible by humans. However, neural networks usually fall short of supporting that hypothesis.
+### The problem with raw gradients
+Naively deriving a solution to the above mathematical problem with gradient ascent implicitely assumes that the model's gradients driving the walk in input space are sufficiently well-behaved to stabilize around images intelligible by humans. However, neural networks usually fall short of supporting that hypothesis.
 
-Most vision neural networks were *never designed to work backward* from their latent space.[^3] Instead, they were trained to gradually build up the latent representations of the input data by aggregating patterns and compressing information into densely packed arrays of numbers in their output space, in order to robustly deliver stable representations in response to semantic-preserving changes in the input space (usually, the RGB color space). At least, that's the intended property they're expected to enforce.
+Vision neural networks are not designed to work backward from their latent space.[^3] Instead, they were trained to gradually build up the latent representations of the input data by aggregating patterns and compressing information into densely packed arrays of numbers in their output space, in order to robustly deliver stable representations in response to semantic-preserving changes in the input space (usually, the RGB color space). At least, that's the intended property they're expected to enforce.
 
 [^3]: Except highly-specific architectures designed from the ground-up to also be able to possibly process the data in reverse, like Variational Auto-Encoders.
 
-As a consequence, they tend to have *very* noisy gradients in the input space. Even modern, SOTA vision models trained to generalize well on billions of images end up with almost unusable gradients flowing backward. This seemingly minor technicality poses a serious problem to running gradient ascent algorithms, because iteratively updating the pixels of a randomly initialized source image invariably leads to high-frequency visual gibberish after a few steps.
+As a consequence, they tend to have very noisy gradients in the input space. Even modern, SOTA vision models trained to generalize well on billions of images end up with jittered gradients flowing backward, useless for reconstructing natural images. This seemingly minor technicality poses a serious problem to running gradient ascent algorithms, because iteratively updating the pixels of a randomly initialized source image invariably leads to high-frequency visual gibberish that completely ignores the reality of images taken from real-world physical scenes a.k.a. natural images.
 
-## Regularizing in model input space
+### Regularizing in model input space
 
-## More recent work in deep computer vision interpretability
+Fortunately, all is not lost.
+
+## Rrecent advancements in computer vision feature visualization
 
 The work carried out by Distill's authors has greatly expanded the use cases in computer vision interpretability that was pioneered along gradual developments in convolutional neural networks to explore ever more specialized feature visualization such as [curve detectors](https://distill.pub/2020/circuits/curve-detectors/) or [spacial frequency edge detectors](https://distill.pub/2020/circuits/frequency-edges/) and using [different parametrizations](https://distill.pub/2018/differentiable-parameterizations/).
 
