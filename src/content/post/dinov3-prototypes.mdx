@@ -47,11 +47,11 @@ For any neural network of more than, say, at least a few layers and a handful of
 
 The practical problem is that naively deriving a solution to the above mathematical problem (even an approached one) implicitely assumes that the driving model is sufficiently well-behaved to yield an input intelligible by humans. However, neural networks usually fall short of supporting that hypothesis.
 
-Most neural networks were *never designed to work backward* from their latent space.[^3] Instead, they were trained to gradually build up the latent representations of input data by aggregating patterns and compressing information into densely packed arays of numbers in output.
+Most vision neural networks were *never designed to work backward* from their latent space.[^3] Instead, they were trained to gradually build up the latent representations of input data by aggregating patterns and compressing information into densely packed arays of numbers in their output space, in order to be very robust to semantic-preserving changes in the RGB input space, in the forward direction. At least, that's the intended property they're expected to enforce.
 
 [^3]: Except highly-specific architectures designed from the ground-up to also be able to process the data in reverse, like Variational Auto-Encoders.
 
-As a consequence, they tend to have very noisy gradients. Even modern, SOTA vision models trained to generalize well on billions of images end up with very noisy gradients.
+As a consequence, they tend to have *very* noisy gradients in the backward direction. Even modern, SOTA vision models trained to generalize well on billions of images end up with almost unusable gradients.
 
 ## More recent work in deep computer vision interpretability
 
