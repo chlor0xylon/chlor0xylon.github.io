@@ -15,7 +15,9 @@ At the time, the [Transformers architecture](https://arxiv.org/abs/1706.03762) a
 
 ## Reverse-engineering visual patterns
 
-For the uninitiated, to *visualize* features, in this context, means to create images by whatever means possible, comprising patterns that maximize some given activations or outputs of a neural network, in order to gain insights about what the model perceives and how it interprets the inputs. In other words it's about finding *prototypical* images that fire particular neurons in a certain way[^2].
+For the uninitiated, to *visualize* features, in this context, means to create images by whatever means possible, comprising patterns that maximize some given activations or outputs of a neural network, in order to gain insights about what the model perceives and how it interprets the inputs. In other words it's about finding *prototypical* images that fire particular neurons in a certain way[^2].  
 
 [^2]: Chosen ways might target a specific neuron, or a collection of neurons. Distill's paper [The Building Blocks of Interpretability](https://distill.pub/2018/building-blocks/) showcases some neuron grouping choices for activation maximization.
+
+But one of the simplest ideas to compute *prototype images* is to treat the model as a (differentiable) black box processing its input space, and  the exposed outputs. For mid-2010s image classification models, that means the logits. For modern state-of-the-art ViT models, that means either image tokens, the CLS token or even [register tokens](https://arxiv.org/abs/2309.16588).
 
