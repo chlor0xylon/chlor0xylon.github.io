@@ -49,12 +49,16 @@ The practical problem is that naively deriving a solution to the above mathemati
 
 Most vision neural networks were *never designed to work backward* from their latent space.[^3] Instead, they were trained to gradually build up the latent representations of input data by aggregating patterns and compressing information into densely packed arays of numbers in their output space, in order to be very robust to semantic-preserving changes in the RGB input space, in the forward direction. At least, that's the intended property they're expected to enforce.
 
-[^3]: Except highly-specific architectures designed from the ground-up to also be able to process the data in reverse, like Variational Auto-Encoders.
+[^3]: Except highly-specific architectures designed from the ground-up to also be able to possibly process the data in reverse, like Variational Auto-Encoders.
 
-As a consequence, they tend to have *very* noisy gradients in the backward direction. Even modern, SOTA vision models trained to generalize well on billions of images end up with almost unusable gradients.
+As a consequence, they tend to have *very* noisy gradients working in backward. Even modern, SOTA vision models trained to generalize well on billions of images end up with almost unusable gradients.
+
+## Regularizing the input space
 
 ## More recent work in deep computer vision interpretability
 
-The work in Distill's articles has pioneered or improved numerous techniques in interpretability I haven't been able to find some 
+The work carried out by Distill's authors has greatly expanded the use cases in computer vision interpretability that was pioneered along gradual developments in convolutional neural networks to explore ever more specialized feature visualization such as [curve detectors](https://distill.pub/2020/circuits/curve-detectors/) or [spacial frequency edge detectors](https://distill.pub/2020/circuits/frequency-edges/) and using [different parametrizations](https://distill.pub/2018/differentiable-parameterizations/).
+
+But doing a quick literature review reveals not much has been done ever since ViTs have taken over convolutional models for vision tasks, whether supervized or unsupervized. I haven't been able to find any groundbreaking research, regarding computing prototypes of vision models. Most advances reside in a mix of better networks and better regularization or better prior modelling of the prototypes.
 
 
