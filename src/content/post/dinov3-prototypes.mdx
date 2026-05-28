@@ -7,7 +7,7 @@ tags: [ machine learning, interpretability ]
 
 A few years ago, as I was wandering the internet during my bachelor years, I once came across the famous machine learning blog [Distill.pub](https://distill.pub). This research blog stood at the forefront of research in computer vision interpretability, among other related topics.  I can't remember exactly how I stumbled upon it back then, and since I wasn't introduced to machine learning or even differentiable calculus at that time, I clearly remember the technicality of it all leaving me intrigued yet mostly confused at the sight of a few articles. What were those weird visuals supposed to mean? What exactly did they represent? I archived the URL nonetheless, convinced that it would become clearer later.
 
-And more recently, I discovered it again by accident upon doing a bit of literature review, so I decided to skim through it anew and catch up with the research with the benefit of hindsight, having more time and background knowledge to delve properly into the contents.
+And more recently, I discovered it again by accident in the process of doing a literature review, so I decided to skim through it anew and catch up with the research with the benefit of hindsight, having more time and background knowledge to delve properly into the contents.
 
 
 ## Feature visualization
@@ -19,11 +19,11 @@ At the time, the [Transformers architecture](https://arxiv.org/abs/1706.03762) a
 
 ## Reverse-engineering visual patterns
 
-For the uninitiated, to *visualize* features, in this context, means to create images by whatever means possible, comprising patterns that maximize some given activations or outputs of a neural network, in order to gain insights about what the model perceives and how it ``interprets'' the inputs. In other words it's about finding *prototypical* images that fire particular neurons in a certain way[^2].  
+For the uninitiated, to *visualize* features in this context means to create images by whichever means possible, comprising patterns that maximize some given activations or outputs of a neural network, in order to gain insights about what the model perceives and how it ``interprets'' the inputs. In other words it's about finding *prototypical* images that make particular neuron groups fire in a certain way[^2].  
 
-[^2]: Chosen ways might target a specific neuron, or a collection of neurons. Distill's paper [The Building Blocks of Interpretability](https://distill.pub/2018/building-blocks/) showcases some neuron grouping choices for activation maximization.
+[^2]: Said chosen groups can mean a specific neuron, or a collection of designated neurons. Distill's paper [The Building Blocks of Interpretability](https://distill.pub/2018/building-blocks/) showcases some neuron grouping choices for activation maximization.
 
-But one of the simplest ideas to compute *prototype images* is to treat the model as a (differentiable) black box processing its input space, and  the exposed outputs. For mid-2010s-era image classification models such as Microsoft's [ResNet](https://arxiv.org/abs/1512.03385), that means the logits. For modern state-of-the-art ViT models, that means either patch tokens, the CLS token,  [register tokens](https://arxiv.org/abs/2309.16588), or a mix of those.
+But one of the simplest ideas to compute *prototype images* is to treat the model as a (differentiable) black box processing its input space, and  the exposed outputs. For mid-2010's-era image classification models such as Microsoft's [ResNet](https://arxiv.org/abs/1512.03385), the model outputs are the logits. For modern state-of-the-art ViT models, that means either patch tokens, the CLS token,  [register tokens](https://arxiv.org/abs/2309.16588), or a mix of those.
 
 To put it plainly, let $f$ be a provided, trained, frozen neural network accepting images in (a subset of) $\mathcal{X} = \mathbb{R}^{C \times W \times H}$ in input, that returns output vectors $\mathcal{Y} \ni \mathbf{y} = f(\mathbf{x})$. To find a prototype $\tilde{\mathbf{x}}$ in input space for some objective function $s: \mathcal{Y} \rightarrow \mathbb{R}$ means to solve
 
@@ -37,28 +37,31 @@ For example, $s$ can denote:
 - in a classification model, extracting logit of index $k$: $s(\mathbf{y}) = \mathbf{y} \cdot \mathbf{e}_k$
 - in a general feature extractor vision model (such as one of Meta's DINO models family, more on that later), the cosine of the angle between the output CLS token and a target vector $\mathbf{y}_0$ whose semantic meaning we're interested in: $s(\mathbf{y}) = \frac{\mathbf{y} \cdot \mathbf{y}_0}{\|\mathbf{y}\|\|\mathbf{y}_0\|}$
 
-In this setup, the optimized variable is the input to the frozen network, a.k.a. the data, as opposed to the training phase where the data was fixed, and drawn from a dataset, and the network's weights were the optimized variables. 
+In this setup, the optimized variable is the input to the frozen network, a.k.a. the data, as opposed to the training phase where the data was fixed, and drawn from a dataset, and the network's weights were the optimized variables. The point is then to use optimization techniques to synthesize input images that maximally activate specific neurons or layers.
 
 
-For any neural network of more than, say, at least a few layers and a handful of input variables, such a mathematical problem is not remotely tractable due to the deep and non-linear nature of neural networks. Thus, only approximated solutions are in order. To compute one, we can resort to iterative gradient ascent back propagating the gradients through the network into the inputs, leveraging the the network's mapping function $f$ being differentiable. Only then can one hope to succeed.
+For any neural network of more than, say, at least a few layers and a handful of input variables, such a mathematical problem is not remotely tractable due to the deep and non-linear nature of neural networks. Thus, only approximated solutions are in order. To compute one, we can resort to iterative gradient ascent, backpropagating up the network to the inputs, leveraging the the network's mapping function $f$ being differentiable. One single step of the gradient ascent consists of doing the following:
 
+$$
+\mathbf{x}^{(t+1)} \gets \mathbf{x}^{(t)} + \alpha \nabla_{\mathbf{x}} (s \circ f)(\mathbf{x}^{(t)})
+$$
 
 ## Trials and tribulations of computing prototypes
 
-The practical problem is that naively deriving a solution to the above mathematical problem (even an approached one) implicitely assumes that the driving model is sufficiently well-behaved to yield an input intelligible by humans. However, neural networks usually fall short of supporting that hypothesis.
+Naively deriving a solution to the above mathematical problem (even an approached solution thanks to gradient ascent) implicitely assumes that the model's driving gradients are sufficiently well-behaved to form images intelligible by humans. However, neural networks usually fall short of supporting that hypothesis.
 
-Most vision neural networks were *never designed to work backward* from their latent space.[^3] Instead, they were trained to gradually build up the latent representations of input data by aggregating patterns and compressing information into densely packed arays of numbers in their output space, in order to be very robust to semantic-preserving changes in the RGB input space, in the forward direction. At least, that's the intended property they're expected to enforce.
+Most vision neural networks were *never designed to work backward* from their latent space.[^3] Instead, they were trained to gradually build up the latent representations of the input data by aggregating patterns and compressing information into densely packed arrays of numbers in their output space, in order to robustly deliver stable representations in response to semantic-preserving changes in the input space (usually, the RGB color space). At least, that's the intended property they're expected to enforce.
 
 [^3]: Except highly-specific architectures designed from the ground-up to also be able to possibly process the data in reverse, like Variational Auto-Encoders.
 
-As a consequence, they tend to have *very* noisy gradients working in backward. Even modern, SOTA vision models trained to generalize well on billions of images end up with almost unusable gradients.
+As a consequence, they tend to have *very* noisy gradients in the input space. Even modern, SOTA vision models trained to generalize well on billions of images end up with almost unusable gradients flowing backward. This seemingly minor technicality poses a serious problem to running gradient ascent algorithms, because iteratively updating the pixels of a randomly initialized source image invariably leads to high-frequency visual gibberish after a few steps.
 
-## Regularizing the input space
+## Regularizing in model input space
 
 ## More recent work in deep computer vision interpretability
 
 The work carried out by Distill's authors has greatly expanded the use cases in computer vision interpretability that was pioneered along gradual developments in convolutional neural networks to explore ever more specialized feature visualization such as [curve detectors](https://distill.pub/2020/circuits/curve-detectors/) or [spacial frequency edge detectors](https://distill.pub/2020/circuits/frequency-edges/) and using [different parametrizations](https://distill.pub/2018/differentiable-parameterizations/).
 
-But doing a quick literature review reveals not much has been done ever since ViTs have taken over convolutional models for vision tasks, whether supervized or unsupervized. I haven't been able to find any groundbreaking research, regarding computing prototypes of vision models. Most advances reside in a mix of better networks and better regularization or better prior modelling of the prototypes.
+But doing a quick literature review reveals not much has been done ever since ViTs have taken over convolutional models for vision tasks, whether supervized or unsupervized. I haven't been able to find any groundbreaking new advancements regarding computing prototypes of vision models. Most new results seem to havehappened in the late 2010's and consist in a mix of better neural networks or better regularization or improved prior modelling for the prototypes.
 
 
