@@ -25,7 +25,7 @@ For the uninitiated, to *visualize* features, in this context, means to create i
 
 But one of the simplest ideas to compute *prototype images* is to treat the model as a (differentiable) black box processing its input space, and  the exposed outputs. For mid-2010s-era image classification models such as Microsoft's [ResNet](https://arxiv.org/abs/1512.03385), that means the logits. For modern state-of-the-art ViT models, that means either patch tokens, the CLS token,  [register tokens](https://arxiv.org/abs/2309.16588), or a mix of those.
 
-To put it plainly, provided a neural network $f$ accepting images in $\mathcal{X} = \mathbb{R}^{C \times W \times H}$ in input, that yields some output vector $\mathcal{Y} \ni \mathbf{y} = f(\mathbf{x})$, to find a prototype in input space for some objective function $s: \mathcal{Y} \rightarrow \mathbb{R}$ means to find $\tilde{\mathbf{x}}$   such that
+To put it plainly, let $f$ be a provided, trained, frozen neural network accepting images in (a subset of) $\mathcal{X} = \mathbb{R}^{C \times W \times H}$ in input, that returns output vectors $\mathcal{Y} \ni \mathbf{y} = f(\mathbf{x})$. To find a prototype $\tilde{\mathbf{x}}$ in input space for some objective function $s: \mathcal{Y} \rightarrow \mathbb{R}$ means to solve
 
 $$
 \tilde{\mathbf{x}} = \arg\max_{\mathbf{x} \in \mathcal{X}} s(f(\mathbf{x}))
@@ -35,11 +35,17 @@ For example, $s$ can denote:
 - in a classification model, extracting logit of index $k$: $s(\mathbf{y}) = \mathbf{y} \cdot \mathbf{e}_k$
 - in a general feature extractor vision model (such as one of Meta's DINO models family, more on that later), the cosine of the angle between the output CLS token and a target vector $\mathbf{y}_0$ whose semantic meaning we're interested in: $s(\mathbf{y}) = \frac{\mathbf{y} \cdot \mathbf{y}_0}{\|\mathbf{y}\|\|\mathbf{y}_0\|}$
 
+In this setup, the optimized variable is the input to the frozen network, a.k.a. the data, as opposed to the training phase where the data was fixed, and drawn from a dataset, and the network's weights were the optimized variables.
+
+
+Such a mathematical problem is usually intractable for any neural network of more than, say, two layers and a handful of input variables, due to the deep and non-linear nature of neural networks. Thus, only approximated solutions are in order. To succeed, we resort to stochastic gradient ascent, leveraging the the network's mapping function $f$ being differentiable.
+
+For computing prototypes, it is hypothesized that for any sufficiently well-behaved neural network, an approached solution to the above mathematically problem should yield an input that represents its class or target latent representation well enough: it is an archetypal **prototype**, or prototype for short.
 
 ## Trials and tribulations of computing prototypes
 
-
+Now a new problem arises. 
 
 ## More recent work in deep computer vision interpretability
 
-To some extent, Distill's work is still at the forefront of vision interpretability. It revisited numerous pioneer works Prototypes I haven't been able to find some 
+The work in Distill's articles has pioneered or improved numerous techniques in interpretability I haven't been able to find some 
