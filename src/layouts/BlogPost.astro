@@ -846,6 +846,16 @@ const giscusThemes = import.meta.env.PROD
 		font-size: 15.5px;
 		font-family: var(--font-sans);
 	}
+	.post-article .katex {
+		white-space: nowrap;
+		word-break: normal;
+		overflow-wrap: normal;
+	}
+	.post-article .katex-display {
+		max-width: 100%;
+		overflow-x: auto;
+		overflow-y: hidden;
+	}
 	.post-article th,
 	.post-article td {
 		text-align: left;
