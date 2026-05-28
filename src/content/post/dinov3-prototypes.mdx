@@ -23,9 +23,9 @@ For the uninitiated, to *visualize* features, in this context, means to create i
 
 [^2]: Chosen ways might target a specific neuron, or a collection of neurons. Distill's paper [The Building Blocks of Interpretability](https://distill.pub/2018/building-blocks/) showcases some neuron grouping choices for activation maximization.
 
-But one of the simplest ideas to compute *prototype images* is to treat the model as a (differentiable) black box processing its input space, and  the exposed outputs. For mid-2010s-era image classification models such as Microsoft's [ResNet](https://arxiv.org/abs/1512.03385), that means the logits. For modern state-of-the-art ViT models, that means either image tokens, the CLS token,  [register tokens](https://arxiv.org/abs/2309.16588), or a mix of those.
+But one of the simplest ideas to compute *prototype images* is to treat the model as a (differentiable) black box processing its input space, and  the exposed outputs. For mid-2010s-era image classification models such as Microsoft's [ResNet](https://arxiv.org/abs/1512.03385), that means the logits. For modern state-of-the-art ViT models, that means either patch tokens, the CLS token,  [register tokens](https://arxiv.org/abs/2309.16588), or a mix of those.
 
-To put it plainly, if $f$ denotes a neural network accepting images in $\mathcal{X} = \mathbb{R}^{C \times W \times H}$ in input, and yields some output vector $\mathcal{Y} \ni \mathbf{y} = f(\mathbf{x})$, to find a prototype in input space for some objective function $s: \mathcal{Y} \rightarrow \mathbb{R}$ means to find $\tilde{\mathbf{x}}$   such that
+To put it plainly, provided a neural network $f$ accepting images in $\mathcal{X} = \mathbb{R}^{C \times W \times H}$ in input, that yields some output vector $\mathcal{Y} \ni \mathbf{y} = f(\mathbf{x})$, to find a prototype in input space for some objective function $s: \mathcal{Y} \rightarrow \mathbb{R}$ means to find $\tilde{\mathbf{x}}$   such that
 
 $$
 \tilde{\mathbf{x}} = \arg\max_{\mathbf{x} \in \mathcal{X}} s(f(\mathbf{x}))
@@ -33,7 +33,7 @@ $$
 
 For example, $s$ can denote:
 - in a classification model, extracting logit of index $k$: $s(\mathbf{y}) = \mathbf{y} \cdot \mathbf{e}_k$
-- in a general vision feature extractor model (such as one of Meta's DINO models family, more on that later), the cosine of the angle between an objective vector $\mathbf{y}_0$ whose semantic meaning we're interested in and the output CLS token: $s(\mathbf{y}) = \mathbf{y} \cdot \mathbf{y}_0$
+- in a general feature extractor vision model (such as one of Meta's DINO models family, more on that later), the cosine of the angle between the output CLS token and a target vector $\mathbf{y}_0$ whose semantic meaning we're interested in: $s(\mathbf{y}) = \frac{\mathbf{y} \cdot \mathbf{y}_0}{\|\mathbf{y}\|\|\mathbf{y}_0\|}$
 
 
 ## Trials and tribulations of computing prototypes
