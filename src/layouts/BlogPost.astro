@@ -656,6 +656,39 @@ const giscusThemes = import.meta.env.PROD
 		text-decoration: none;
 	}
 
+	.post-article #refs,
+	.post-article .references {
+		max-width: var(--reading-width);
+		margin: 0 0 36px;
+		color: hsl(var(--theme-text-muted));
+		counter-reset: citation;
+	}
+	.post-article .csl-entry {
+		position: relative;
+		margin: 0 0 16px;
+		padding-left: 30px;
+		font-size: 15.5px;
+		line-height: 1.65;
+		overflow-wrap: anywhere;
+		counter-increment: citation;
+	}
+	.post-article .csl-entry::before {
+		content: counter(citation) ".";
+		position: absolute;
+		left: 0;
+		top: 0.08em;
+		min-width: 20px;
+		font-family: var(--font-mono);
+		font-size: 12.5px;
+		line-height: 1.7;
+		color: hsl(var(--theme-accent));
+		text-align: right;
+	}
+	.post-article .csl-entry a {
+		color: hsl(var(--theme-accent));
+		text-decoration-color: hsl(var(--theme-accent) / 0.45);
+	}
+
 	.post-article li > p {
 		margin: 0;
 		display: inline;
