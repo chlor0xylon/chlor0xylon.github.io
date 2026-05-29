@@ -2,28 +2,28 @@
 title: "Peering into DINOv3"
 publishDate: 2026-05-28
 description: "Reproducing some recent advancements in computer vision interpretability"
-tags: [ machine learning, interpretability ]
+tags: [machine learning, interpretability]
 ---
 
-A few years ago, as I was wandering the internet during my bachelor years, I once came across the famous machine learning blog [Distill.pub](https://distill.pub). This research blog stood at the forefront of research in computer vision interpretability, among other related topics.  I can't remember exactly how I stumbled upon it back then, and since I wasn't introduced to machine learning or even differentiable calculus at that time, I clearly remember the technicality of it all leaving me intrigued yet mostly confused at the sight of a few articles. What were those weird visuals supposed to mean? What exactly did they represent? I archived the URL nonetheless, convinced that it would become clearer later.
+A few years ago, as I was wandering the internet during my bachelor years, I once came across the famous machine learning blog [Distill.pub](https://distill.pub). This research blog stood at the forefront of research in computer vision interpretability, among other related topics. I can't remember exactly how I stumbled upon it back then, and since I wasn't introduced to machine learning or even differentiable calculus at that time, I clearly remember the technicality of it all leaving me intrigued yet mostly confused at the sight of a few articles. What were those weird visuals supposed to mean? What exactly did they represent? I archived the URL nonetheless, convinced that it would become clearer later.
 
 And more recently, I discovered it again by accident in the process of doing a literature review, so I decided to skim through it anew and catch up with the research with the benefit of hindsight, having more time and background knowledge to delve properly into the contents.
 
-
 ## Feature visualization
-One of Distill's foundational articles is called [Feature Visualization](https://distill.pub/2017/feature-visualization/), which describes how neural networks designed for computer vision tasks can be probed to reverse-engineer the learned patterns cristallized into their weights after the training phase[^note-older-feature-viz].
+
+One of Distill's foundational articles is called [Feature Visualization](https://distill.pub/2017/feature-visualization/) [@olah2017featureVisualization], which describes how neural networks designed for computer vision tasks can be probed to reverse-engineer the learned patterns cristallized into their weights after the training phase[^note-older-feature-viz].
 
 [^note-older-feature-viz]: Even in 2017, visualizing features by creating images to maximize activations wasn't exactly new. The numerous papers cited in Distill's Feature Visualization is evidence of those previous attempts, some as early as 2009, even before [AlexNet](https://en.wikipedia.org/wiki/AlexNet)'s breakthrough.
 
-At the time, the [Transformers architecture](https://arxiv.org/abs/1706.03762) and the [attention](https://en.wikipedia.org/wiki/Attention_(machine_learning)) mechanism had just barely been conceptualized, and state-of-the-art vision models still used convolutional backbones, stemming from learnable, signal processing-inspired, convolutional filters that underpins modern computer vision. [Leveraging Transformers for vision tasks](https://arxiv.org/abs/2010.11929) wouldn't be formally introduced for another two years, until 2019.
+At the time, the [Transformers architecture](https://arxiv.org/abs/1706.03762) and the [attention](<https://en.wikipedia.org/wiki/Attention_(machine_learning)>) mechanism had just barely been conceptualized [@vaswani2017attention], and state-of-the-art vision models still used convolutional backbones, stemming from learnable, signal processing-inspired, convolutional filters that underpins modern computer vision. [Leveraging Transformers for vision tasks](https://arxiv.org/abs/2010.11929) wouldn't be formally introduced for another two years, until 2019 [@dosovitskiy2021vit].
 
 ## Reverse-engineering visual patterns
 
-For the uninitiated, to *visualize* features in this context means to create images by whichever means possible, comprising patterns that maximize some given activations or outputs of a neural network, in order to gain insights about what the model perceives and how it ``interprets'' the inputs. In other words it's about finding *prototypical* images that make particular neuron groups fire in a certain way[^note-on-fire-modes].  
+For the uninitiated, to _visualize_ features in this context means to create images by whichever means possible, comprising patterns that maximize some given activations or outputs of a neural network, in order to gain insights about what the model perceives and how it ``interprets'' the inputs. In other words it's about finding _prototypical_ images that make particular neuron groups fire in a certain way[^note-on-fire-modes].
 
-[^note-on-fire-modes]: Said chosen groups can mean a specific neuron, or a collection of designated neurons. Distill's paper [The Building Blocks of Interpretability](https://distill.pub/2018/building-blocks/) showcases some neuron grouping choices for activation maximization.
+[^note-on-fire-modes]: Said chosen groups can mean a specific neuron, or a collection of designated neurons. Distill's article [The Building Blocks of Interpretability](https://distill.pub/2018/building-blocks/) [@olah2018buildingBlocks] showcases some neuron grouping choices for activation maximization.
 
-But one of the simplest ideas to compute *prototype images* is to treat the model as a (differentiable) black box processing its input space, and  the exposed outputs. For mid-2010's-era image classification models such as Microsoft's [ResNet](https://arxiv.org/abs/1512.03385), the model outputs are the logits. For modern state-of-the-art ViT models, that means either patch tokens, the CLS token,  [register tokens](https://arxiv.org/abs/2309.16588), or a mix of those.
+But one of the simplest ideas to compute _prototype images_ is to treat the model as a (differentiable) black box processing its input space, and the exposed outputs. For mid-2010's-era image classification models such as Microsoft's [ResNet](https://arxiv.org/abs/1512.03385) [@he2016deepResidualLearning], the model outputs are the logits. For modern state-of-the-art ViT models, that means either patch tokens, the CLS token, [register tokens](https://arxiv.org/abs/2309.16588) [@darcet2024visionTransformersNeedRegisters], or a mix of those.
 
 To put it plainly, let $f$ be a provided, trained, frozen neural network accepting images in (a subset of) $\mathcal{X} = \mathbb{R}^{C \times W \times H}$ in input, that returns output vectors $\mathcal{Y} \ni \mathbf{y} = f(\mathbf{x})$. To find a prototype $\tilde{\mathbf{x}}$ in input space for some objective function $s: \mathcal{Y} \rightarrow \mathbb{R}$ means to solve
 
@@ -34,13 +34,13 @@ $$
 which translates into ``finding an input that represents its class or target latent representation perfectly''.
 
 For example, $s$ can denote:
+
 - in a classification model, extracting logit of index $k$: $s(\mathbf{y}) = \mathbf{y} \cdot \mathbf{e}_k$
 - in a general feature extractor vision model (such as one of Meta's DINO models family, more on that later), the cosine of the angle between the output CLS token and a target vector $\mathbf{y}_0$ whose semantic meaning we're interested in: $s(\mathbf{y}) = \frac{\mathbf{y} \cdot \mathbf{y}_0}{\|\mathbf{y}\|\|\mathbf{y}_0\|}$
 
 In this setup, the optimized variable is the input to the frozen network, a.k.a. the data, as opposed to the training phase where the data was fixed, and drawn from a dataset, and the network's weights were the optimized variables. The point is then to use optimization techniques to synthesize input images that maximally activate specific neurons or layers.
 
-
-For any neural network of more than, say, at least a few layers and a handful of input variables, such a mathematical problem is not remotely tractable due to the deep and non-linear nature of neural networks. Thus, only approximated solutions are in order. To compute one, we can resort to iterative gradient ascent, backpropagating up the network to the inputs, leveraging the the network's mapping function $f$ being differentiable. One single step of the gradient ascent goes like this:
+For any neural network of more than, say, at least a few layers and a handful of input variables, such a mathematical problem is not remotely tractable due to the deep and non-linear nature of neural networks. Thus, only approximated solutions are in order. To compute one, we can resort to iterative gradient ascent, backpropagating up the network to the inputs, leveraging the the network's mapping function $f$ being differentiable. One single step of the gradient ascent process goes like this:
 
 $$
 \mathbf{x}^{(t+1)} \gets \mathbf{x}^{(t)} + \alpha \nabla_{\mathbf{x}} (s \circ f)(\mathbf{x}^{(t)})
@@ -49,19 +49,19 @@ $$
 ## The trials and tribulations of computing prototypes
 
 ### The problem with raw gradients
-Naively deriving a solution to the above mathematical problem with gradient ascent implicitely assumes that the model's gradients driving the walk in its input space are sufficiently well-behaved to stabilize around images intelligible by humans. However, neural networks usually fall short of supporting that hypothesis.
+
+Naively deriving a solution to the above mathematical problem using the above update rule implicitely assumes that the model's gradients driving the walk in its input space are sufficiently well-behaved to stabilize around images intelligible by humans. However, neural networks usually fall short of supporting that hypothesis.
+
+Conventional discriminative vision-based neural networks are _not_ designed to derive images back from the latent space or preserve an invertible encoding of the original inputs[^note-highly-specific-reversible-nn].
+
+[^note-similarity-transformers-hash]: The crucial difference is that Transformers seek to preserve and reorganize information so that it is stable to local noise in the continuous variables, whereas cryptographic hashes irreversibly destroy evidence of similarity and reshuffle discrete inputs. 
 
 
-Classical discriminative vision neural networks are *not* designed to derive images back from the latent space or preserve an invertible encoding of the original inputs.[^note-highly-specific-reversible-nn] Instead, they are primarily optimized to gradually aggregate visual cues and compress information from the inputs into progressively more abstract and invariant latent representations of densely packed arrays of numbers useful for downstream prediction tasks. At least, that's an intended property they're usually expected to enforce.
-
-
-Common operations in conventional convolutional networks, such as pooling layers, allows them to deliver mostly invariant representations in response to semantic-preserving changes in the input space (usually, the RGB color space). In that sense, convolutional neural networks are very reminiscent of an elaborate interferometry system that detects alignments of visual patterns to build up its latent representations.
-
-On the other hand, visual Transformers networks leverage a completely different approach by processing images into small square chunks, known as patches. The attention mechanism allows to compare every patch with one another before projecting the resulting attention values onto learned values and adding them back to the residual stream. This happens from the first Transformer block onward, effectively making the receptive field a lot more elaborate, and makes the overall Transformers architecture very reminiscent to how bits are processed, scrambled and added back into constant-sized buffers in some cryptographic hash algorithms.
+Instead, they are optimized to aggregate visual cues and compress information from the inputs into progressively more abstract latent representations of densely packed arrays of numbers that are supposed to be more or less invariant to semantic-preserving changes in the input space. These latents are useful for downstream prediction tasks. To me, legacy convolutional models aggregation strategy resembles an elaborate interferometry system detecting edges and alignments of visual patterns, whereas Transformer-based models' aggregation strategy of gradually refining the residual stream latents is more reminiscent of internal state buffers in cryptographic hash algorithms such as AES[^note-similarity-transformers-hash].
 
 [^note-highly-specific-reversible-nn]: Except highly-specific architectures designed from the ground-up to also be able to possibly process the data in reverse, like Variational Auto-Encoders.
 
-As a consequence, they tend to have very noisy gradients in the input space. Even modern, SOTA vision models trained to generalize well on billions of images end up with jittered gradients flowing backward, useless for reconstructing natural images. This seemingly minor technicality poses a serious problem to running gradient ascent algorithms, because iteratively updating the pixels of a randomly initialized source image invariably leads to high-frequency visual gibberish that completely ignores the reality of images taken from real-world physical scenes a.k.a. natural images.
+Anyway, vision models tend to have very noisy gradients in the input space. Even modern, SOTA vision models trained to generalize well on billions of images end up with jittered gradients flowing backward, useless for reconstructing natural images. This seemingly minor technicality poses a serious problem to running gradient ascent algorithms, because iteratively updating the pixels of a randomly initialized source image invariably leads to high-frequency visual gibberish that completely ignores the reality of images taken from real-world physical scenes a.k.a. natural images.
 
 ### Regularizing in model input space
 
@@ -69,8 +69,10 @@ Fortunately, all is not lost.
 
 ## Recent advancements in computer vision feature visualization
 
-The work carried out by Distill's authors has greatly expanded the use cases in computer vision interpretability that was pioneered along gradual developments in convolutional neural networks to explore ever more specialized feature visualization such as [curve detectors](https://distill.pub/2020/circuits/curve-detectors/) or [spacial frequency edge detectors](https://distill.pub/2020/circuits/frequency-edges/) and using [different parametrizations](https://distill.pub/2018/differentiable-parameterizations/).
+The work carried out by Distill's authors has greatly expanded the use cases in computer vision interpretability that was pioneered along gradual developments in convolutional neural networks to explore ever more specialized feature visualization such as [curve detectors](https://distill.pub/2020/circuits/curve-detectors/) [@cammarata2020curveDetectors] or [spacial frequency edge detectors](https://distill.pub/2020/circuits/frequency-edges/) [@schubert2021highLowFrequencyDetectors] and using [different parametrizations](https://distill.pub/2018/differentiable-parameterizations/) [@mordvintsev2018differentiableParameterizations].
 
 But doing a quick literature review reveals not much has been done ever since ViTs have taken over convolutional models for vision tasks, whether supervized or unsupervized. I haven't been able to find any groundbreaking new advancements regarding computing prototypes of vision models. Most new results seem to havehappened in the late 2010's and consist in a mix of better neural networks or better regularization or improved prior modelling for the prototypes.
 
+## References
 
+[^ref]
