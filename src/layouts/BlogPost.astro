@@ -853,6 +853,29 @@ const giscusThemes = import.meta.env.PROD
 	.post-article figure img {
 		width: 100%;
 	}
+	.post-article .figure-grid {
+		width: 100%;
+		max-width: 100%;
+	}
+	.post-article .figure-grid-images {
+		display: grid;
+		width: 100%;
+		gap: 10px;
+		align-items: start;
+	}
+	.post-article .figure-grid-four .figure-grid-images {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
+	.post-article .figure-grid-three .figure-grid-images {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+	.post-article .figure-grid-images img {
+		aspect-ratio: 1 / 1;
+		object-fit: contain;
+	}
+	.post-article .figure-grid figcaption {
+		max-width: var(--reading-width);
+	}
 	.post-article figcaption {
 		font-family: var(--font-serif);
 		font-style: italic;
@@ -931,6 +954,8 @@ const giscusThemes = import.meta.env.PROD
 		.post-article ul { padding-left: 0; }
 		.post-article ul li { padding-left: 18px; }
 		.post-article blockquote { padding-left: 16px; font-size: 16.5px; }
+		.post-article .figure-grid-three .figure-grid-images { grid-template-columns: 1fr; }
+		.post-article .figure-grid-four .figure-grid-images { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 		.post-article figcaption { font-size: 13.5px; }
 	}
 
