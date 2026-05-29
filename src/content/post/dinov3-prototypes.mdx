@@ -11,17 +11,17 @@ And more recently, I discovered it again by accident in the process of doing a l
 
 
 ## Feature visualization
-One of Distill's foundational articles is called [Feature Visualization](https://distill.pub/2017/feature-visualization/), which describes how neural networks designed for computer vision tasks can be probed to reverse-engineer the learned patterns cristallized into their weights after the training phase[^1].
+One of Distill's foundational articles is called [Feature Visualization](https://distill.pub/2017/feature-visualization/), which describes how neural networks designed for computer vision tasks can be probed to reverse-engineer the learned patterns cristallized into their weights after the training phase[^note-older-feature-viz].
 
-[^1]: Even in 2017, visualizing features by creating images to maximize activations wasn't exactly new. The numerous papers cited in Distill's Feature Visualization is evidence of those previous attempts, some as early as 2009, even before [AlexNet](https://en.wikipedia.org/wiki/AlexNet)'s breakthrough.
+[^note-older-feature-viz]: Even in 2017, visualizing features by creating images to maximize activations wasn't exactly new. The numerous papers cited in Distill's Feature Visualization is evidence of those previous attempts, some as early as 2009, even before [AlexNet](https://en.wikipedia.org/wiki/AlexNet)'s breakthrough.
 
 At the time, the [Transformers architecture](https://arxiv.org/abs/1706.03762) and the [attention](https://en.wikipedia.org/wiki/Attention_(machine_learning)) mechanism had just barely been conceptualized, and state-of-the-art vision models still used convolutional backbones, stemming from learnable, signal processing-inspired, convolutional filters that underpins modern computer vision. [Leveraging Transformers for vision tasks](https://arxiv.org/abs/2010.11929) wouldn't be formally introduced for another two years, until 2019.
 
 ## Reverse-engineering visual patterns
 
-For the uninitiated, to *visualize* features in this context means to create images by whichever means possible, comprising patterns that maximize some given activations or outputs of a neural network, in order to gain insights about what the model perceives and how it ``interprets'' the inputs. In other words it's about finding *prototypical* images that make particular neuron groups fire in a certain way[^2].  
+For the uninitiated, to *visualize* features in this context means to create images by whichever means possible, comprising patterns that maximize some given activations or outputs of a neural network, in order to gain insights about what the model perceives and how it ``interprets'' the inputs. In other words it's about finding *prototypical* images that make particular neuron groups fire in a certain way[^note-on-fire-modes].  
 
-[^2]: Said chosen groups can mean a specific neuron, or a collection of designated neurons. Distill's paper [The Building Blocks of Interpretability](https://distill.pub/2018/building-blocks/) showcases some neuron grouping choices for activation maximization.
+[^note-on-fire-modes]: Said chosen groups can mean a specific neuron, or a collection of designated neurons. Distill's paper [The Building Blocks of Interpretability](https://distill.pub/2018/building-blocks/) showcases some neuron grouping choices for activation maximization.
 
 But one of the simplest ideas to compute *prototype images* is to treat the model as a (differentiable) black box processing its input space, and  the exposed outputs. For mid-2010's-era image classification models such as Microsoft's [ResNet](https://arxiv.org/abs/1512.03385), the model outputs are the logits. For modern state-of-the-art ViT models, that means either patch tokens, the CLS token,  [register tokens](https://arxiv.org/abs/2309.16588), or a mix of those.
 
@@ -52,14 +52,14 @@ $$
 Naively deriving a solution to the above mathematical problem with gradient ascent implicitely assumes that the model's gradients driving the walk in its input space are sufficiently well-behaved to stabilize around images intelligible by humans. However, neural networks usually fall short of supporting that hypothesis.
 
 
-Classical discriminative vision neural networks are *not* designed to derive images back from the latent space or preserve an invertible encoding of the original inputs.[^3] Instead, they are primarily optimized to gradually aggregate visual cues and compress information from the inputs into progressively more abstract and invariant latent representations of densely packed arrays of numbers useful for downstream prediction tasks. At least, that's an intended property they're usually expected to enforce.
+Classical discriminative vision neural networks are *not* designed to derive images back from the latent space or preserve an invertible encoding of the original inputs.[^note-highly-specific-reversible-nn] Instead, they are primarily optimized to gradually aggregate visual cues and compress information from the inputs into progressively more abstract and invariant latent representations of densely packed arrays of numbers useful for downstream prediction tasks. At least, that's an intended property they're usually expected to enforce.
 
 
 Common operations in conventional convolutional networks, such as pooling layers, allows them to deliver mostly invariant representations in response to semantic-preserving changes in the input space (usually, the RGB color space). In that sense, convolutional neural networks are very reminiscent of an elaborate interferometry system that detects alignments of visual patterns to build up its latent representations.
 
 On the other hand, visual Transformers networks leverage a completely different approach by processing images into small square chunks, known as patches. The attention mechanism allows to compare every patch with one another before projecting the resulting attention values onto learned values and adding them back to the residual stream. This happens from the first Transformer block onward, effectively making the receptive field a lot more elaborate, and makes the overall Transformers architecture very reminiscent to how bits are processed, scrambled and added back into constant-sized buffers in some cryptographic hash algorithms.
 
-[^3]: Except highly-specific architectures designed from the ground-up to also be able to possibly process the data in reverse, like Variational Auto-Encoders.
+[^note-highly-specific-reversible-nn]: Except highly-specific architectures designed from the ground-up to also be able to possibly process the data in reverse, like Variational Auto-Encoders.
 
 As a consequence, they tend to have very noisy gradients in the input space. Even modern, SOTA vision models trained to generalize well on billions of images end up with jittered gradients flowing backward, useless for reconstructing natural images. This seemingly minor technicality poses a serious problem to running gradient ascent algorithms, because iteratively updating the pixels of a randomly initialized source image invariably leads to high-frequency visual gibberish that completely ignores the reality of images taken from real-world physical scenes a.k.a. natural images.
 
