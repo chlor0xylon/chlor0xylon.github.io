@@ -54,8 +54,7 @@ Naively deriving a solution to the above mathematical problem using the above up
 
 Conventional discriminative vision-based neural networks are _not_ designed to derive images back from the latent space or preserve an invertible encoding of the original inputs[^note-highly-specific-reversible-nn].
 
-[^note-similarity-transformers-hash]: The crucial difference is that Transformers seek to preserve and reorganize information so that it is stable to local noise in the continuous variables, whereas cryptographic hashes irreversibly destroy evidence of similarity and reshuffle discrete inputs. 
-
+[^note-similarity-transformers-hash]: The crucial difference is that Transformers seek to preserve and reorganize information so that it is stable to local noise in the continuous variables, whereas cryptographic hashes irreversibly destroy evidence of similarity and reshuffle discrete inputs.
 
 Instead, they are optimized to aggregate visual cues and compress information from the inputs into progressively more abstract latent representations of densely packed arrays of numbers that are supposed to be more or less invariant to semantic-preserving changes in the input space. These latents are useful for downstream prediction tasks. To me, legacy convolutional models aggregation strategy resembles an elaborate interferometry system detecting edges and alignments of visual patterns [@zeiler2014visualizingCNNs], whereas Transformer-based models' aggregation strategy of gradually refining the residual stream latents is more reminiscent of internal state buffers in cryptographic hash algorithms such as AES[^note-similarity-transformers-hash].
 
