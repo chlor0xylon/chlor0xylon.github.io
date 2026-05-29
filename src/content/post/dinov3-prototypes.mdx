@@ -88,7 +88,7 @@ To me, legacy convolutional models aggregation strategy resembles an elaborate i
 
 [^note-highly-specific-reversible-nn]: Except highly-specific architectures designed from the ground-up to also be able to possibly process the data in reverse, like Variational Auto-Encoders.
 
-Anyway, vision models tend to have very noisy gradients backpropagated in the input space, making them almost useless for reconstructing natural images. The nature itself of individual filters is not a proof that vision models invariably favor noisy images, but it is probably strongly hints at it.
+Anyway, as a matter of fact, vision models tend to backpropagate very noisy gradients in the input space, making them almost useless for reconstructing natural images. The presence of high-frequency noise in individual filters is not a proof that vision models invariably favor noisy images, but it strongly hints at it. Since CNN and ViT alike mostly rely on local feature examination, nothing prevents activation maximization from falling into local optima of high frequencies, hijacking the total amount of ``energy'' that the model can mobilize into adversarial instances.  
 
 This poses a serious problem to gradient ascent approaches, because iteratively updating the pixels of a randomly initialized source image leads to high-frequency visual gibberish that completely ignores the reality of images taken from real-world physical scenes a.k.a. _natural images_.
 
