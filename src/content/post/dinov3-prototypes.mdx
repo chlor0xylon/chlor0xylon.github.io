@@ -5,21 +5,27 @@ description: "Reproducing some recent advancements in computer vision interpreta
 tags: [machine learning, interpretability]
 ---
 
+import filtersConvNextTiny from "./filters_dinov3-convnext-tiny.png";
+import filtersVitSmall from "./filters_dinov3-vit-small.png";
+import filtersResnet18 from "./filters_resnet18.png";
+
 A few years ago, as I was wandering the internet during my bachelor years, I once came across the famous machine learning blog [Distill.pub](https://distill.pub). This research blog stood at the forefront of research in computer vision interpretability, among other related topics. I can't remember exactly how I stumbled upon it back then, and since I wasn't introduced to machine learning or even differentiable calculus at that time, I clearly remember the technicality of it all leaving me intrigued yet mostly confused at the sight of a few articles. What were those weird visuals supposed to mean? What exactly did they represent? I archived the URL nonetheless, convinced that it would become clearer later.
 
 And more recently, I discovered it again by accident in the process of doing a literature review, so I decided to skim through it anew and catch up with the research with the benefit of hindsight, having more time and background knowledge to delve properly into the contents.
 
 ## Feature visualization
 
-One of Distill's foundational articles is called _Feature Visualization_ [@olah2017featureVisualization], which describes how neural networks designed for computer vision tasks can be probed to reverse-engineer the learned patterns cristallized into their weights after the training phase[^note-older-feature-viz].
+One of Distill's foundational articles is called _Feature Visualization_ [@olah2017featureVisualization]. It describes how neural networks designed for computer vision tasks can be probed to reverse-engineer the learned patterns cristallized into their weights after the training phase[^note-older-feature-viz].
 
 [^note-older-feature-viz]: Even in 2017, visualizing features by creating images to maximize activations wasn't exactly new. The numerous papers cited in Distill's _Feature Visualization_ is evidence of those previous attempts, some as early as 2009, even before [AlexNet](https://en.wikipedia.org/wiki/AlexNet)'s breakthrough.
 
+:::note
 At the time, the Transformers architecture [@vaswani2017attention] and the [attention](<https://en.wikipedia.org/wiki/Attention_(machine_learning)>) mechanism had just barely been conceptualized, and state-of-the-art vision models still used convolutional backbones, stemming from learnable, signal processing-inspired, convolutional filters that underpins modern computer vision. Leveraging Transformers for vision tasks wouldn't be formally introduced for another two years, until 2019 [@dosovitskiy2021vit].
+:::
 
 ## Reverse-engineering visual patterns
 
-For the uninitiated, to _visualize_ features in this context means to create images by whichever means possible, comprising patterns that maximize some given activations or outputs of a neural network, in order to gain insights about what the model perceives and how it ``interprets'' the inputs. In other words it's about finding _prototypical_ images that make particular neuron groups fire in a certain way[^note-on-fire-modes].
+To _visualize_ features in this context means to synthesize images by whichever means possible, comprising patterns that maximize some given activations or outputs of a neural network, in order to gain insights about what the model perceives and how it ``interprets'' the inputs. In other words it's about finding _prototypical_ images that make particular neuron groups fire in a certain way[^note-on-fire-modes].
 
 [^note-on-fire-modes]: Said chosen groups can mean a specific neuron, or a collection of designated neurons. Distill's article _The Building Blocks of Interpretability_ [@olah2018buildingBlocks] showcases some neuron grouping choices for activation maximization.
 
@@ -31,12 +37,13 @@ $$
 \tilde{\mathbf{x}} = \arg\max_{\mathbf{x} \in \mathcal{X}} s(f(\mathbf{x}))
 $$
 
-which translates into ``finding an input that represents its class or target latent representation perfectly''.
+which translates into ``finding an input that represents its class or target latent representation perfectly according to measure $s$''.
 
 For example, $s$ can denote:
 
-- in a classification model, extracting logit of index $k$: $s(\mathbf{y}) = \mathbf{y} \cdot \mathbf{e}_k$
-- in a general feature extractor vision model (such as one of Meta's DINO models family, more on that later), the cosine of the angle between the output CLS token and a target vector $\mathbf{y}_0$ whose semantic meaning we're interested in: $s(\mathbf{y}) = \frac{\mathbf{y} \cdot \mathbf{y}_0}{\|\mathbf{y}\|\|\mathbf{y}_0\|}$
+- the logit of index $k$: $s(\mathbf{y}) = \mathbf{y} \cdot \mathbf{e}_k$  in a classification model
+- the cosine of the angle between the output CLS token and a target vector $\mathbf{y}_0$ whose semantic meaning we're interested in: $s(\mathbf{y}) = \frac{\mathbf{y} \cdot \mathbf{y}_0}{\|\mathbf{y}\|\|\mathbf{y}_0\|}$, in a general feature extractor vision model
+- the activation of a specific internal neuron
 
 In this setup, the optimized variable is the input to the frozen network, a.k.a. the data, as opposed to the training phase where the data was fixed, and drawn from a dataset, and the network's weights were the optimized variables. The point is then to use optimization techniques to synthesize input images that maximally activate specific neurons or layers.
 
@@ -56,11 +63,37 @@ Conventional discriminative vision-based neural networks are _not_ designed to d
 
 [^note-similarity-transformers-hash]: The crucial difference is that Transformers seek to preserve and reorganize information so that it is stable to local noise in the continuous variables, whereas cryptographic hashes irreversibly destroy evidence of similarity and reshuffle discrete inputs.
 
-Instead, they are optimized to aggregate visual cues and compress information from the inputs into progressively more abstract latent representations of densely packed arrays of numbers that are supposed to be more or less invariant to semantic-preserving changes in the input space. These latents are useful for downstream prediction tasks. Forefront convolutional kernels in CNNs and Transformers patch embedding kernels usually look like Gabor filters or random noise patches [@alexnet2012; @dosovitskiy2021vit]. To me, legacy convolutional models aggregation strategy resembles an elaborate interferometry system detecting edges and alignments of visual patterns [@zeiler2014visualizingCNNs], whereas Transformer-based models' aggregation strategy of gradually refining the residual stream latents is more reminiscent of internal state buffers in cryptographic hash algorithms such as AES[^note-similarity-transformers-hash].
+Rather, they are optimized to aggregate visual cues and compress information from the inputs into progressively more abstract latent representations of densely packed arrays of numbers that are supposed to be more or less invariant to semantic-preserving changes in the input space. These latents are useful for downstream prediction tasks. Forefront convolutional kernels in CNNs and Transformers patch embedding kernels usually look like Gabor filters or random noise patches [@alexnet2012; @dosovitskiy2021vit].
+
+<a href="#fig-first-layer-filters">Figure 1</a> shows RGB visualizations of front-end filters in Microsoft's 2015 smallest Resnet classification model trained on ImageNet; and the two smallest variants of Meta's 2025 DINOv3 ConvNeXt and ViT backend unsupervised models. The latter state-of-the-art models' filters capture very noisy patterns by human standards.
+
+
+
+<figure id="fig-first-layer-filters" class="figure-grid figure-grid-three">
+  <div class="figure-grid-images">
+    <img src={filtersResnet18.src} width={filtersResnet18.width} height={filtersResnet18.height} alt="First-layer filter visualization for ResNet-18." loading="lazy" />
+    <img src={filtersConvNextTiny.src} width={filtersConvNextTiny.width} height={filtersConvNextTiny.height} alt="First-layer filter visualization for DINOv3 ConvNeXt Tiny." loading="lazy" />
+    <img src={filtersVitSmall.src} width={filtersVitSmall.width} height={filtersVitSmall.height} alt="Patch embedding filter visualization for DINOv3 ViT Small." loading="lazy" />
+  </div>
+  <figcaption>
+    <span class="label">Figure 1.</span>
+    Front-end first 46 input filters for ResNet-18, DINOv3 ConvNeXt Tiny, and DINOv3 ViT Small, shown from left to right.
+  </figcaption>
+</figure>
+
+
+
+
+To me, legacy convolutional models aggregation strategy resembles an elaborate interferometry system detecting edges and alignments of visual patterns [@zeiler2014visualizingCNNs], whereas Transformer-based models' aggregation strategy of gradually refining the residual stream latents is more reminiscent of internal state buffers in cryptographic hash algorithms such as AES[^note-similarity-transformers-hash].
 
 [^note-highly-specific-reversible-nn]: Except highly-specific architectures designed from the ground-up to also be able to possibly process the data in reverse, like Variational Auto-Encoders.
 
-Anyway, vision models tend to have very noisy gradients in the input space. Even modern, SOTA vision models trained to generalize well on billions of images end up with jittered gradients flowing backward, useless for reconstructing natural images. This seemingly minor technicality poses a serious problem to running gradient ascent algorithms, because iteratively updating the pixels of a randomly initialized source image invariably leads to high-frequency visual gibberish that completely ignores the reality of images taken from real-world physical scenes a.k.a. natural images.
+Anyway, vision models tend to have very noisy gradients backpropagated in the input space, making them almost useless for reconstructing natural images. The nature itself of individual filters is not a proof that vision models invariably favor noisy images, but it is probably strongly hints at it.
+
+This poses a serious problem to gradient ascent approaches, because iteratively updating the pixels of a randomly initialized source image leads to high-frequency visual gibberish that completely ignores the reality of images taken from real-world physical scenes a.k.a. _natural images_.
+
+
+
 
 ### Regularizing in model input space
 
