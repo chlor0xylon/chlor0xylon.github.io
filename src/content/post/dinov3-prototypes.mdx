@@ -8,6 +8,7 @@ tags: [machine learning, interpretability]
 import filtersConvNextTiny from "./filters_dinov3-convnext-tiny.png";
 import filtersVitSmall from "./filters_dinov3-vit-small.png";
 import filtersResnet18 from "./filters_resnet18.png";
+import adversarialResnet18 from "./adversarial_resnet-18.png";
 
 A few years ago, as I was wandering the internet during my bachelor years, I once came across the famous machine learning blog [Distill.pub](https://distill.pub). This research blog stood at the forefront of research in computer vision interpretability, among other related topics. I can't remember exactly how I stumbled upon it back then, and since I wasn't introduced to machine learning or even differentiable calculus at that time, I clearly remember the technicality of it all leaving me intrigued yet mostly confused at the sight of a few articles. What were those weird visuals supposed to mean? What exactly did they represent? I archived the URL nonetheless, convinced that it would become clearer later.
 
@@ -82,6 +83,7 @@ $14\times 14$-pixel patches with a stride of 14, whereas the ConvNeXt-backbone v
 
 
 
+
 <figure id="fig-first-layer-filters" class="figure-grid figure-grid-three">
 	<div class="figure-grid-images">
 		<img
@@ -114,6 +116,23 @@ $14\times 14$-pixel patches with a stride of 14, whereas the ConvNeXt-backbone v
 </figure>
 
 Anyway, as a matter of fact, vision models tend to backpropagate very noisy gradients in the input space, making them almost useless for reconstructing natural images. The presence of high-frequency noise in individual filters is not a proof that vision models invariably favor noisy images (because even high frequency patterns can arguably cancel out into lower frequency results) but at least it strongly hints at it. Since CNN and ViT alike seem to rely mostly on locally jittered patterns to capture the semantics of images, nothing really prevents activation maximization from falling into similarly jittered local optima, completely overriding the prototype buffer with unnaturally high frequency noise. In the field of computer vision, these images are referred to as _adversarial images_.
+
+<a href="#fig-adversarial-gradient-ascent">Figure 2</a>
+
+<figure id="fig-adversarial-gradient-ascent" class="figure-narrow">
+	<img
+		src={adversarialResnet18.src}
+		width={adversarialResnet18.width}
+		height={adversarialResnet18.height}
+		alt="Adversarial image produced by gradient ascent on ResNet-18."
+		loading="lazy"
+	/>
+	<figcaption>
+		<span class="label">Figure 2.</span>
+		An adversarial prototypes produced by gradient ascent on
+		ResNet-18 for a randomly generated, sparse, positive latent vector with cosine alignment objective. Out comes utter visual gibberish.
+	</figcaption>
+</figure>
 
 This poses a serious problem to gradient ascent approaches, because iteratively updating the pixels of a randomly initialized source image leads to high-frequency visual gibberish that completely ignores the reality of images taken from real-world physical scenes a.k.a. _natural images_.
 
