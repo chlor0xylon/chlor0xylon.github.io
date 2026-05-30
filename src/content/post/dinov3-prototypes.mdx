@@ -117,7 +117,7 @@ $14\times 14$-pixel patches with a stride of 14, whereas the ConvNeXt-backbone v
 
 Anyway, as a matter of fact, vision models tend to backpropagate very noisy gradients in the input space, making them almost useless for reconstructing natural images. The presence of high-frequency noise in individual filters is not a proof that vision models invariably favor noisy images (because even high frequency patterns can arguably cancel out into lower frequency results) but at least it strongly hints at it. Since CNN and ViT alike seem to rely mostly on locally jittered patterns to capture the semantics of images, nothing really prevents activation maximization from falling into similarly jittered local optima, completely overriding the prototype buffer with unnaturally high frequency noise. In the field of computer vision, these images are referred to as _adversarial images_.
 
-<a href="#fig-adversarial-gradient-ascent">Figure 2</a>
+<a href="#fig-adversarial-gradient-ascent">Figure 2</a> shows an example of adversarial prototype I have generated with the smallest ResNet model, probing for a random direction in its pre-logits latent space $\mathbb{R}^{512}$.
 
 <figure id="fig-adversarial-gradient-ascent" class="figure-narrow">
 	<img
