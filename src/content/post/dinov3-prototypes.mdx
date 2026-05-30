@@ -72,7 +72,7 @@ To me, legacy convolutional models aggregation strategy resembles an elaborate i
 
 [^note-highly-specific-reversible-nn]: Except highly-specific architectures designed from the ground-up to also be able to possibly process the data in reverse, like Variational Auto-Encoders.
 
-<a href="#fig-first-layer-filters">Figure 1</a> shows RGB visualizations of front-end filters in Microsoft's 2015 smallest Resnet classification model trained on ImageNet and the two smallest variants of Meta's 2025 DINOv3 ConvNeXt and ViT backend unsupervised models.
+<a data-figure-ref="fig-first-layer-filters"></a> shows RGB visualizations of front-end filters in Microsoft's 2015 smallest Resnet classification model trained on ImageNet and the two smallest variants of Meta's 2025 DINOv3 ConvNeXt and ViT backend unsupervised models.
 The latter features significantly smoother kernels resembling [Gabor filters](https://en.wikipedia.org/wiki/Gabor_filter). The latter state-of-the-art model filters capture very noisy patterns, judging by human perception
 standards.
 
@@ -109,7 +109,7 @@ $14\times 14$-pixel patches with a stride of 14, whereas the ConvNeXt-backbone v
 		/>
 	</div>
 	<figcaption>
-		<span class="label">Figure 1.</span>
+		<span class="label"></span>
 		Front-end first 36 input filters for ResNet-18 & DINOv3 ConvNeXt Tiny
 		convolutions, and DINOv3 ViT Small patch embeddings (from left to right).
 	</figcaption>
@@ -117,7 +117,7 @@ $14\times 14$-pixel patches with a stride of 14, whereas the ConvNeXt-backbone v
 
 Anyway, as a matter of fact, vision models tend to backpropagate very noisy gradients in the input space, making them almost useless for reconstructing natural images. The presence of high-frequency noise in individual filters is not a proof that vision models invariably favor noisy images (because even high frequency patterns can arguably cancel out into lower frequency results) but at least it strongly hints at it. Since CNN and ViT alike seem to rely mostly on locally jittered patterns to capture the semantics of images, nothing really prevents activation maximization from falling into similarly jittered local optima, completely overriding the prototype buffer with unnaturally high frequency noise. In the field of computer vision, these images are referred to as _adversarial images_.
 
-<a href="#fig-adversarial-gradient-ascent">Figure 2</a> shows an example of adversarial prototype I have generated with the smallest ResNet model, probing for a random direction in its pre-logits latent space $\mathbb{R}^{512}$.
+<a data-figure-ref="fig-adversarial-gradient-ascent"></a> shows an example of adversarial prototype I have generated with the smallest ResNet model, probing for a random direction in its pre-logits latent space $\mathbb{R}^{512}$.
 
 <figure id="fig-adversarial-gradient-ascent" class="figure-narrow">
 	<img
@@ -128,7 +128,7 @@ Anyway, as a matter of fact, vision models tend to backpropagate very noisy grad
 		loading="lazy"
 	/>
 	<figcaption>
-		<span class="label">Figure 2.</span>
+		<span class="label"></span>
 		An adversarial prototypes produced by gradient ascent on
 		ResNet-18 for a randomly generated, sparse, positive latent vector with cosine alignment objective. Out comes utter visual gibberish.
 	</figcaption>

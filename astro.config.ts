@@ -16,6 +16,7 @@ import remarkMath from "remark-math";
 import { rehypeBasePath } from "./src/plugins/rehype-base-path";
 import { rehypeLinkCitationUrls } from "./src/plugins/rehype-link-citation-urls";
 import { remarkAdmonitions } from "./src/plugins/remark-admonitions";
+import { remarkFigureReferences } from "./src/plugins/remark-figure-references";
 import { remarkReadingTime } from "./src/plugins/remark-reading-time";
 
 import rehypeExternalLinks from "rehype-external-links";
@@ -115,7 +116,13 @@ export default defineConfig({
 				},
 			],
 		],
-		remarkPlugins: [remarkReadingTime, remarkDirective, remarkAdmonitions, remarkMath],
+		remarkPlugins: [
+			remarkReadingTime,
+			remarkDirective,
+			remarkAdmonitions,
+			remarkMath,
+			remarkFigureReferences,
+		],
 		remarkRehype: {
 			footnoteLabelProperties: {
 				className: [""],
