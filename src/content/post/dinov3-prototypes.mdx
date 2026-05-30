@@ -43,7 +43,7 @@ which translates into ``finding an input that represents its class or target lat
 
 For example, $s$ can denote:
 
-- the logit at index $k$: $s(\mathbf{y}) = \mathbf{y} \cdot \mathbf{e}_k$  in a classification model
+- the logit at index $k$: $s(\mathbf{y}) = \mathbf{y} \cdot \mathbf{e}_k$ in a classification model
 - the cosine of the angle between the output CLS token and a target vector $\mathbf{y}_0$ whose semantic meaning we're interested in: $s(\mathbf{y}) = \frac{\mathbf{y} \cdot \mathbf{y}_0}{\|\mathbf{y}\|\|\mathbf{y}_0\|}$, in a general feature extractor vision model
 - the activation of a specific internal neuron
 
@@ -67,47 +67,57 @@ Conventional discriminative vision-based neural networks are _not_ designed to d
 
 Rather, they are optimized to aggregate visual cues and compress information from the inputs into progressively more abstract latent representations of densely packed arrays of numbers that are supposed to be more or less invariant to semantic-preserving changes in the input space. These latents are useful for downstream prediction tasks. Forefront convolutional kernels in CNNs and Transformers patch embedding kernels usually look like Gabor filters or random noise patches [@alexnet2012; @dosovitskiy2021vit].
 
-
 To me, legacy convolutional models aggregation strategy resembles an elaborate interferometry system detecting edges and alignments of visual patterns [@zeiler2014visualizingCNNs], whereas Transformer-based models' aggregation strategy of gradually refining the residual stream latents is more reminiscent of internal state buffers in cryptographic hash algorithms such as AES[^note-similarity-transformers-hash].
 
 [^note-highly-specific-reversible-nn]: Except highly-specific architectures designed from the ground-up to also be able to possibly process the data in reverse, like Variational Auto-Encoders.
 
-
-<a href="#fig-first-layer-filters">Figure 1</a> shows RGB visualizations of front-end filters in Microsoft's 2015 smallest Resnet classification model trained on ImageNet; and the two smallest variants of Meta's 2025 DINOv3 ConvNeXt and ViT backend unsupervised models. The latter state-of-the-art models' filters capture very noisy patterns, judged by human perception standards.
-
-
+<a href="#fig-first-layer-filters">Figure 1</a> shows RGB visualizations of
+front-end filters in Microsoft's 2015 smallest Resnet classification model
+trained on ImageNet; and the two smallest variants of Meta's 2025 DINOv3
+ConvNeXt and ViT backend unsupervised models. The latter state-of-the-art
+models' filters capture very noisy patterns, judged by human perception
+standards.
 
 <figure id="fig-first-layer-filters" class="figure-grid figure-grid-three">
-  <div class="figure-grid-images">
-    <img src={filtersResnet18.src} width={filtersResnet18.width} height={filtersResnet18.height} alt="First-layer filter visualization for ResNet-18." loading="lazy" />
-    <img src={filtersConvNextTiny.src} width={filtersConvNextTiny.width} height={filtersConvNextTiny.height} alt="First-layer filter visualization for DINOv3 ConvNeXt Tiny." loading="lazy" />
-    <img src={filtersVitSmall.src} width={filtersVitSmall.width} height={filtersVitSmall.height} alt="Patch embedding filter visualization for DINOv3 ViT Small." loading="lazy" />
-  </div>
-  <figcaption>
-    <span class="label">Figure 1.</span>
-    Front-end first 36 input filters for ResNet-18, DINOv3 ConvNeXt Tiny, and DINOv3 ViT Small (from left to right).
-  </figcaption>
+	<div class="figure-grid-images">
+		<img
+			src={filtersResnet18.src}
+			width={filtersResnet18.width}
+			height={filtersResnet18.height}
+			alt="First-layer filter visualization for ResNet-18."
+			loading="lazy"
+		/>
+		<img
+			src={filtersConvNextTiny.src}
+			width={filtersConvNextTiny.width}
+			height={filtersConvNextTiny.height}
+			alt="First-layer filter visualization for DINOv3 ConvNeXt Tiny."
+			loading="lazy"
+		/>
+		<img
+			src={filtersVitSmall.src}
+			width={filtersVitSmall.width}
+			height={filtersVitSmall.height}
+			alt="Patch embedding filter visualization for DINOv3 ViT Small."
+			loading="lazy"
+		/>
+	</div>
+	<figcaption>
+		<span class="label">Figure 1.</span>
+		Front-end first 36 input filters for ResNet-18, DINOv3 ConvNeXt Tiny, and
+		DINOv3 ViT Small (from left to right).
+	</figcaption>
 </figure>
 
-
-
-
-
-
-Anyway, as a matter of fact, vision models tend to backpropagate very noisy gradients in the input space, making them almost useless for reconstructing natural images. The presence of high-frequency noise in individual filters is not a proof that vision models invariably favor noisy images (because even high frequency patterns can arguably cancel out into lower frequency results) but at least it strongly hints at it. Since CNN and ViT alike seem to rely mostly on locally jittered patterns to capture the semantics of images, nothing really prevents activation maximization from falling into similarly jittered local optima, completely overriding the prototype buffer with unnaturally high frequency noise. In the field of computer vision, these images are referred to as _adversarial images_.  
+Anyway, as a matter of fact, vision models tend to backpropagate very noisy gradients in the input space, making them almost useless for reconstructing natural images. The presence of high-frequency noise in individual filters is not a proof that vision models invariably favor noisy images (because even high frequency patterns can arguably cancel out into lower frequency results) but at least it strongly hints at it. Since CNN and ViT alike seem to rely mostly on locally jittered patterns to capture the semantics of images, nothing really prevents activation maximization from falling into similarly jittered local optima, completely overriding the prototype buffer with unnaturally high frequency noise. In the field of computer vision, these images are referred to as _adversarial images_.
 
 This poses a serious problem to gradient ascent approaches, because iteratively updating the pixels of a randomly initialized source image leads to high-frequency visual gibberish that completely ignores the reality of images taken from real-world physical scenes a.k.a. _natural images_.
-
-
-
 
 ### Regularizing in model input space
 
 Fortunately, all is not lost.
 
 ## Recent advancements in computer vision feature visualization
-
-
 
 But doing a quick literature review reveals not much has been done ever since ViTs have taken over convolutional models for vision tasks, whether supervized or unsupervized. I haven't been able to find any groundbreaking new advancements regarding computing prototypes of vision models. Most new results seem to havehappened in the late 2010's and consist in a mix of better neural networks or better regularization or improved prior modelling for the prototypes.
 
