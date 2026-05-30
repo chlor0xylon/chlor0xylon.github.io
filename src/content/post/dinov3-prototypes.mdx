@@ -119,7 +119,7 @@ Anyway, as a matter of fact, vision models tend to backpropagate very noisy grad
 
 [^note-not-llm]: Despite the intentional dashes, this sentence is not from an LLM. I put them there myself.
 
-<a data-figure-ref="fig-adversarial-gradient-ascent"></a> shows an example of adversarial prototype I have generated with the smallest ResNet model, probing for a random direction in its pre-logits latent space $\mathbb{R}^{512}$.
+<a data-figure-ref="fig-adversarial-gradient-ascent"></a> shows an example of adversarial prototype I have generated with the smallest ResNet model, probing for a random direction in its pre-logits latent space $\mathbb{R}^{512}$. Similar results arise on DINOv3 models, too, regardless of image buffer initialization (random or zeros).
 
 <figure id="fig-adversarial-gradient-ascent" class="figure-narrow">
 	<img
@@ -140,7 +140,7 @@ This poses a serious problem to gradient ascent approaches, because iteratively 
 
 ### Regularizing in model input space
 
-Fortunately, all is not lost.
+Fortunately, all is not lost. I will not go into the already plentiful literature reviews of the various foundational pre-2020 strategies allowing to circumvent adversarial images. For the sake of clarity, let's only reiterate that they all involve some form of regularization in the model input space. Most of them aim to curb parasitic high frequencies, with various implementation variants (for example in the gradients, or in the buffers directly, or indirectly via intermediary image transforms interleaved with gradient steps).
 
 ## Recent advancements in computer vision feature visualization
 
