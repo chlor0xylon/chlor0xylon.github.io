@@ -71,12 +71,16 @@ To me, legacy convolutional models aggregation strategy resembles an elaborate i
 
 [^note-highly-specific-reversible-nn]: Except highly-specific architectures designed from the ground-up to also be able to possibly process the data in reverse, like Variational Auto-Encoders.
 
-<a href="#fig-first-layer-filters">Figure 1</a> shows RGB visualizations of
-front-end filters in Microsoft's 2015 smallest Resnet classification model
-trained on ImageNet; and the two smallest variants of Meta's 2025 DINOv3
-ConvNeXt and ViT backend unsupervised models. The latter state-of-the-art
-models' filters capture very noisy patterns, judged by human perception
+<a href="#fig-first-layer-filters">Figure 1</a> shows RGB visualizations of front-end filters in Microsoft's 2015 smallest Resnet classification model trained on ImageNet and the two smallest variants of Meta's 2025 DINOv3 ConvNeXt and ViT backend unsupervised models.
+The latter features significantly smoother kernels resembling [Gabor filters](https://en.wikipedia.org/wiki/Gabor_filter). The latter state-of-the-art model filters capture very noisy patterns, judging by human perception
 standards.
+
+:::note
+The DINOv3 ViT-backbone uses
+$14\times 14$-pixel patches with a stride of 14, whereas the ConvNeXt-backbone variant uses $4\times 4$-pixel patches with a stride of 4, similarly to a ViT, making the comparison meaningful. On the other hand the legacy ResNet architecture uses conventional $7\times 7$ kernels with a stride of 2, thereby actually scanning the input image.
+:::
+
+
 
 <figure id="fig-first-layer-filters" class="figure-grid figure-grid-three">
 	<div class="figure-grid-images">
@@ -104,8 +108,8 @@ standards.
 	</div>
 	<figcaption>
 		<span class="label">Figure 1.</span>
-		Front-end first 36 input filters for ResNet-18, DINOv3 ConvNeXt Tiny, and
-		DINOv3 ViT Small (from left to right).
+		Front-end first 36 input filters for ResNet-18 & DINOv3 ConvNeXt Tiny
+		convolutions, and DINOv3 ViT Small patch embeddings (from left to right).
 	</figcaption>
 </figure>
 
