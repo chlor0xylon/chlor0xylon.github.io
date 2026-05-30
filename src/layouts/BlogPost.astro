@@ -889,7 +889,12 @@ const giscusThemes = import.meta.env.PROD
 		margin-top: 12px;
 		line-height: 1.5;
 	}
+	.post-article figcaption p {
+		display: inline;
+		margin: 0;
+	}
 	.post-article figcaption .label {
+		display: inline;
 		font-family: var(--font-mono);
 		font-style: normal;
 		font-size: 11px;
@@ -897,6 +902,7 @@ const giscusThemes = import.meta.env.PROD
 		text-transform: uppercase;
 		color: hsl(var(--theme-text-muted));
 		margin-right: 8px;
+		white-space: nowrap;
 	}
 
 	.post-article table {

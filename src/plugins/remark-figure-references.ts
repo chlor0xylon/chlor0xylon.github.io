@@ -58,6 +58,20 @@ function setChildrenText(node: MdxElement, value: string) {
 	node.children = [{ type: "text", value }];
 }
 
+function normalizeTextAfterCaptionLabel(caption: MdxElement, labelNode: MdxElement) {
+	const labelIndex = caption.children?.indexOf(labelNode) ?? -1;
+	if (labelIndex === -1 || !caption.children) return;
+
+	for (let index = labelIndex + 1; index < caption.children.length; index += 1) {
+		const child = caption.children[index];
+		if (isMdxElement(child)) return;
+		if (child.type !== "text" || typeof child.value !== "string") continue;
+
+		child.value = ` ${child.value.trimStart()}`;
+		return;
+	}
+}
+
 function ensureCaptionLabel(figure: MdxElement, label: string) {
 	const caption = findChildElement(figure, (child) => child.name === "figcaption");
 	if (!caption) return;
@@ -65,6 +79,7 @@ function ensureCaptionLabel(figure: MdxElement, label: string) {
 	const existingLabel = findChildElement(caption, (child) => hasClass(child, "label"));
 	if (existingLabel) {
 		setChildrenText(existingLabel, `${label}.`);
+		normalizeTextAfterCaptionLabel(caption, existingLabel);
 		return;
 	}
 
