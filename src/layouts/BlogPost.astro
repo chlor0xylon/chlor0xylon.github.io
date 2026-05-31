@@ -549,6 +549,44 @@ const giscusThemes = import.meta.env.PROD
 		margin: 28px 0;
 	}
 
+	.post-article table {
+		width: 100%;
+		max-width: var(--reading-width);
+		margin: 0 0 28px;
+		border-collapse: collapse;
+		table-layout: fixed;
+		font-size: 15.5px;
+		line-height: 1.6;
+		color: hsl(var(--theme-text));
+	}
+	.post-article th,
+	.post-article td {
+		padding: 10px 12px;
+		border-top: 1px solid var(--hairline);
+		vertical-align: top;
+		text-align: left;
+		overflow-wrap: anywhere;
+		word-break: break-word;
+	}
+	.post-article thead th {
+		border-top: 0;
+		border-bottom: 1px solid var(--hairline);
+		font-family: var(--font-mono);
+		font-size: 12px;
+		font-weight: 600;
+		line-height: 1.45;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: hsl(var(--theme-text) / 0.72);
+	}
+	.post-article tbody tr:last-child td {
+		border-bottom: 1px solid var(--hairline);
+	}
+	.post-article td > code,
+	.post-article th > code {
+		white-space: break-spaces;
+	}
+
 	.post-article ul {
 		margin: 0 0 28px;
 		padding: 0;
