@@ -152,7 +152,7 @@ This poses a serious problem to gradient ascent approaches, because iteratively 
 
 ### Regularizing in model input space
 
-Fortunately, all is not lost. I will not go into the already plentiful literature reviews of the various foundational pre-2020 strategies allowing to circumvent adversarial images [@Nguyen2019UnderstandingVisualizing; @olah2017featureVisualization]. For the sake of clarity, let's only reiterate that they all involve some form of regularization in the model input space. Most of them aim to curb parasitic high frequencies, with various implementation variants (for example in the gradients, or in the buffers directly, or indirectly via intermediary image transforms interleaved with gradient steps).
+Fortunately, all is not lost. Numerous Pre-2020 research results tackle prototype generation for convolutional networks. I will not reiterate here the already plentiful literature reviews of the various strategies they came up with to circumvent adversarial images [@Nguyen2019UnderstandingVisualizing; @olah2017featureVisualization]. But let's only state that they all involve some form of regularization in the model input space. Most of them aim to curb parasitic high frequencies, with various implementations techniques (for example directly in the gradients, or in the buffers; or indirectly via intermediary image transforms interleaved with gradient steps).
 
 ## Recent advancements in computer vision feature visualization
 
