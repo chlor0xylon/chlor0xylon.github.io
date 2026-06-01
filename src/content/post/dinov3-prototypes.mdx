@@ -10,7 +10,7 @@ import filtersVitSmall from "./filters_dinov3-vit-small.png";
 import filtersResnet18 from "./filters_resnet18.png";
 import adversarialResnet18 from "./adversarial_resnet-18.png";
 
-Almost ten years ago, as I was wandering the internet during my bachelor years, I once came across the famous machine learning blog [Distill.pub](https://distill.pub). At the time, this research blog stood at the forefront of research in computer vision interpretability, among other related topics. To some extent it still does in 2026. I can't remember exactly how I stumbled upon it back then, but I wasn't introduced to computer vision or even machine learning basics at that time, and I clearly remember the technicality of it all leaving me intrigued yet mostly confused at the sight of it. I thought to myself: *What are those funny visuals supposed to mean? What exactly do they represent? Mildly interesting, but weird.* Not realizing the implications of the showcased results, I archived the URL nonetheless for future reference, convinced that it would become clear one day.
+Almost ten years ago, as I was wandering the internet during my bachelor years, I once came across the famous machine learning blog [Distill.pub](https://distill.pub). At the time, this research blog stood at the forefront of research in computer vision interpretability, among other related topics. To some extent it still does in 2026. I can't remember exactly how I stumbled upon it back then, but I wasn't introduced to computer vision or even machine learning basics at that time, and I clearly remember the technicality of it all leaving me intrigued yet mostly confused at the sight of it. I thought to myself: *What are those funny visuals supposed to mean? What exactly do they represent? Mildly interesting, but weird.* Not grasping the significance of this work, I archived the URL nonetheless for future reference.
 
 Lately, I discovered it again by accident in the process of doing a literature review, so I decided to skim through it anew and catch up with the research with the benefit of hindsight, having more time and background knowledge to delve properly into the contents.
 
@@ -127,7 +127,7 @@ Anyway, as a matter of fact, vision models tend to backpropagate very noisy grad
 [^note-not-llm]: Despite the intentional dashes, this sentence is not from an LLM. I wrote this myself, like this whole post, by the way.
 
 <a data-figure-ref="fig-adversarial-gradient-ascent"></a> shows an example of
-adversarial prototype I have generated with the smallest ResNet model, probing
+adversarial prototype I have generated with the smallest ResNet-18 model, probing
 for a random direction in its pre-logits latent space $\mathbb{R}^{512}$.
 Similar results arise on DINOv3 models, too, regardless of image buffer
 initialization (random or zeros).
@@ -152,7 +152,7 @@ This poses a serious problem to gradient ascent approaches, because iteratively 
 
 ### Regularizing in model input space
 
-Fortunately, all is not lost. Numerous Pre-2020 research results tackle prototype generation for convolutional networks. I will not reiterate here the already plentiful literature reviews of the various strategies they came up with to circumvent adversarial images [@Nguyen2019UnderstandingVisualizing; @olah2017featureVisualization]. But let's only state that they all involve some form of regularization in the model input space. Most of them aim to curb parasitic high frequencies, with various implementations techniques (for example directly in the gradients, or in the buffers; or indirectly via intermediary image transforms interleaved with gradient steps).
+Fortunately, all is not lost. Numerous Pre-2020 research results tackle prototype generation for convolutional networks. I will not reiterate here the already plentiful literature reviews of the various strategies they came up with to circumvent adversarial images. Both @Nguyen2019UnderstandingVisualizing and @olah2017featureVisualization provide one. But let's only state that they all involve some form of regularization in the model input space. Most of them aim to curb parasitic high frequencies, with various implementations techniques (for example directly in the gradients, or in the buffers; or indirectly via intermediary image transforms interleaved with gradient steps).
 
 ## Recent advancements in computer vision feature visualization
 
