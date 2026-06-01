@@ -44,7 +44,7 @@ which translates into ``finding an input that represents its class or target lat
 
 For example, $s$ can denote:
 
-- the logit at index $k$: $s(\mathbf{y}) = \mathbf{y} \cdot \mathbf{e}_k$ in a classification model
+- the logit at index $k$: $s(\mathbf{y}) = \mathbf{y} \cdot \mathbf{e}_k$ (pre-softmax) in a classification model
 - the cosine of the angle between the output CLS token and a target vector $\mathbf{y}_0$ whose semantic meaning we're interested in: $s(\mathbf{y}) = \frac{\mathbf{y} \cdot \mathbf{y}_0}{\|\mathbf{y}\|\|\mathbf{y}_0\|}$, in a general feature extractor vision model
 - the activation of a specific internal neuron
 
@@ -78,14 +78,14 @@ trained on ImageNet and the two smallest variants of Meta's 2025 DINOv3 ConvNeXt
 and ViT backend unsupervised models. For reference, the weights addresses of the
 HuggingFace models object hierarchy are specified in the below table.
 
-| Model  | Front-end weights |
+The former features significantly smoother kernels resembling [Gabor filters](https://en.wikipedia.org/wiki/Gabor_filter), as expected (the same kind of Gabor-like kernels appeared in AlexNet as well, the first convolutional neural network successfully trained at scale on a large and diverse collection of natural images). And the latter state-of-the-art DINOv3 filters capture very noisy patterns, judging by human perception standards. I guess that's expected as well, because unlike convolution kernels, patch embedding kernels have to capture details including near the patch borders, whereas convolutions tend to focus the relevant energy of kernels to the center, and convoluting does the rest. 
+
+| Model  | Front-end weights path |
 | ------ | ------ |
 | Resnet | `.resnet.embedder.embedder.convolution.weightmodel.resnet.embedder.embedder.convolution.weight` |
 | DINOv3 ConvNeXt | `.embeddings.patch_embeddings.weight` |
 | DINOv3 ViT | `.model.stages.get_submodule('0').downsample_layers.get_submodule('0').weight` |
 
-The latter features significantly smoother kernels resembling [Gabor filters](https://en.wikipedia.org/wiki/Gabor_filter). The latter state-of-the-art model filters capture very noisy patterns, judging by human perception
-standards.
 
 :::note
 The DINOv3 ViT-backbone uses $14\times 14$-pixel patches with a stride of 14, whereas the ConvNeXt-backbone variant uses $4\times 4$-pixel patches with a stride of 4, similarly to a ViT, making the comparison meaningful. On the other hand the legacy ResNet architecture uses conventional $7\times 7$ kernels with a stride of 2, thereby actually scanning the input image.
@@ -122,9 +122,9 @@ The DINOv3 ViT-backbone uses $14\times 14$-pixel patches with a stride of 14, wh
 	</figcaption>
 </figure>
 
-Anyway, as a matter of fact, vision models tend to backpropagate very noisy gradients in the input space, making them almost useless for reconstructing natural images. The presence itself of high-frequency noise in individual filters is not a proof that vision models invariably favor noisy images--because even high frequency patterns can arguably cancel out into lower frequency results--but at least it strongly hints at it[^note-not-llm]. Since CNN and ViT alike seem to rely mostly on locally jittered patterns to capture the semantics of images, nothing really prevents activation maximization from falling into similarly jittered local optima, completely overriding the prototype buffer with unnaturally high frequency noise. In the field of computer vision, these images are referred to as _adversarial images_.
+Anyway, as a matter of fact, vision models tend to backpropagate very noisy gradients in the input space, making them almost useless for reconstructing natural images. The presence itself of high-frequency noise in individual filters is not a proof that vision models invariably favor noisy images--because even high frequency patterns can arguably cancel out into lower frequency results--but at least it strongly hints at it[^note-not-llm]. Since CNN and ViT alike seem to rely mostly on locally jittered patterns to capture the semantics of images, nothing really prevents activation maximization from falling into equally jittered local optima, completely overriding the prototype buffer with unnaturally high frequency noise. In the field of computer vision, these images are referred to as _adversarial images_.
 
-[^note-not-llm]: Despite the intentional dashes, this sentence is not from an LLM. I put them there myself.
+[^note-not-llm]: Despite the intentional dashes, this sentence is not from an LLM. I wrote this myself, like this whole post, by the way.
 
 <a data-figure-ref="fig-adversarial-gradient-ascent"></a> shows an example of
 adversarial prototype I have generated with the smallest ResNet model, probing
