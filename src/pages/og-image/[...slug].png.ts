@@ -65,9 +65,7 @@ export async function GET(context: APIContext) {
 	const { pubDate, title, tags, readingTime } = context.props as Props;
 
 	const date = new Date(pubDate);
-	const authorName = siteConfig.profile?.name ?? siteConfig.author;
 	const bylineParts = [
-		authorName ? `By ${authorName}` : null,
 		formatBylineDate(date),
 		readingTime,
 	].filter(Boolean) as string[];

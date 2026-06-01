@@ -4,7 +4,7 @@ import { Image } from "astro:assets";
 
 // import ShareButtons from "@/components/blog/ShareButtons.astro";
 import WebMentions from "@/components/blog/webmentions/index.astro";
-import { getAllPosts, getPostSortDate, sortMDByDate } from "@/data/post";
+import { getAllPosts, sortMDByDate } from "@/data/post";
 import { siteConfig } from "@/site-config";
 import { formatBylineDate, formatEyebrowDate } from "@/utils/date";
 import { absoluteUrl, withBase } from "@/utils/path";
@@ -82,7 +82,7 @@ const giscusThemes = import.meta.env.PROD
 				{draft && <span class="draft-flag">(Draft)</span>}
 				<h1 class="post-title">{title}</h1>
 				<p class="byline">
-					{authorName && <>By {authorName}<span class="sep">·</span></>}{bylineDate}{readingTime && (
+					{bylineDate}{readingTime && (
 						<>
 							<span class="sep">·</span>{readingTime}
 						</>
