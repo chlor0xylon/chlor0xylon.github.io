@@ -68,7 +68,7 @@ Conventional discriminative vision-based neural networks are _not_ designed to d
 
 Rather, they are optimized to aggregate visual cues and compress information from the inputs into progressively more abstract latent representations of densely packed arrays of numbers that are supposed to be more or less invariant to semantic-preserving changes in the input space. These latents are useful for downstream prediction tasks. Forefront convolutional kernels in CNNs and Transformers patch embedding kernels usually look like Gabor filters or random noise patches [@alexnet2012; @dosovitskiy2021vit].
 
-To me, legacy convolutional models aggregation strategy resembles an elaborate interferometry system detecting edges and alignments of visual patterns [@zeiler2014visualizingCNNs], whereas Transformer-based models' aggregation strategy of gradually refining the residual stream latents is more reminiscent of internal state buffers in cryptographic hash algorithms such as AES[^note-similarity-transformers-hash].
+To me, legacy convolutional models aggregation strategy resembles an elaborate interferometry system detecting edges and alignments of visual patterns [@zeiler2014visualizingCNNs], whereas the Transformer-based models aggregation strategy consisting in gradually refining the residual stream latents is more reminiscent of internal state buffers in cryptographic hash algorithms such as AES[^note-similarity-transformers-hash].
 
 [^note-highly-specific-reversible-nn]: Except highly-specific architectures designed from the ground-up to also be able to possibly process the data in reverse, like Variational Auto-Encoders.
 
@@ -130,7 +130,7 @@ Anyway, as a matter of fact, vision models tend to backpropagate very noisy grad
 adversarial prototype I have generated with the smallest ResNet-18 model, probing
 for a random direction in its pre-logits latent space $\mathbb{R}^{512}$.
 Similar results arise on DINOv3 models, too, regardless of image buffer
-initialization (random or zeros).
+initialization (random or zeros). Other prompted directions corresponding to individual logits look the same as well.
 
 <figure id="fig-adversarial-gradient-ascent" class="figure-narrow">
 	<img
