@@ -188,7 +188,7 @@ The relative robustness of late frontier convolutional networks only came from s
 
 [^note-number-images-dino-training]: The LVD-1689M dataset, used to train DINOv3 models, is comprised of 1.7 billion images scrawled from the web. 
 
-[^note-dimensions-models]: ResNets models have 512 dimensions (pre-logits). DINOv3 models range from 384 to 4096, but the comparison holds between equivalently-sized `microsoft/resnet-18` and `facebook/dinov3-convnext-tiny-pretrain-lvd1689m` or `facebook/dinov3-convnext-small-pretrain-lvd1689m` (HuggingFace model identifiers). Unlike classifiers models, with no need for grouping latents into 1000 regions of space
+[^note-dimensions-models]: ResNets models have 512 dimensions (pre-logits). DINOv3 latent spaces range from 384 to 4096 depending on the variant and size, but the comparison holds between equivalently-sized `microsoft/resnet-18` and `facebook/dinov3-convnext-tiny-pretrain-lvd1689m` or `facebook/dinov3-convnext-small-pretrain-lvd1689m` (HuggingFace model identifiers). Unlike classifiers models, with no need for grouping latents into 1000 regions of space
 
 ### The incentive to compute prototypes on the newest frontier models
 Despite the aforementioned developments in self-supervised learning, not many groundbreaking achievements have happened since the late-2010's when it comes to generating image prototypes of vision models. As stated above, that area of research seems to have fallen out of use. 
