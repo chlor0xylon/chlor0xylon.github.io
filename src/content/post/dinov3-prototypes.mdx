@@ -72,11 +72,7 @@ To me, legacy convolutional models aggregation strategy resembles an elaborate i
 
 [^note-highly-specific-reversible-nn]: Except highly-specific architectures designed from the ground-up to also be able to possibly process the data in reverse, like Variational Auto-Encoders.
 
-<a data-figure-ref="fig-first-layer-filters"></a> shows RGB visualizations of
-front-end filters in Microsoft's 2015 smallest Resnet classification model
-trained on ImageNet and the two smallest variants of Meta's 2025 DINOv3 ConvNeXt
-and ViT backend unsupervised models. For reference, the weights addresses of the
-HuggingFace models object hierarchy are specified in the below table.
+<a data-figure-ref="fig-first-layer-filters"></a> shows RGB visualizations of front-end filters in Microsoft's 2015 smallest Resnet classification model trained on ImageNet and the two smallest variants of Meta's 2025 DINOv3 ConvNeXt and ViT backend unsupervised models. For reference, the weights addresses of the HuggingFace models object hierarchy are specified in the below table.
 
 The former features significantly smoother kernels resembling [Gabor filters](https://en.wikipedia.org/wiki/Gabor_filter), as expected (the same kind of Gabor-like kernels appeared in AlexNet as well, the first convolutional neural network successfully trained at scale on a large and diverse collection of natural images). And the latter state-of-the-art DINOv3 filters capture very noisy patterns, judging by human perception standards. I guess that's expected as well, because unlike convolution kernels, patch embedding kernels have to capture details including near the patch borders, whereas convolutions tend to focus the relevant energy of kernels to the center, and convoluting does the rest. 
 
