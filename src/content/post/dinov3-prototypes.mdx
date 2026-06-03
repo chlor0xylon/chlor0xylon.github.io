@@ -72,7 +72,7 @@ To me, legacy convolutional models aggregation strategy resembles an elaborate i
 
 [^note-highly-specific-reversible-nn]: Except highly-specific architectures designed from the ground-up to also be able to possibly process the data in reverse, like Variational Auto-Encoders.
 
-<a data-figure-ref="fig-first-layer-filters"></a> shows RGB visualizations of front-end filters in Microsoft's 2015 smallest Resnet classification model [@he2016deepResidualLearning] trained on ImageNet [@imagenet1k2012] and the two smallest variants of Meta's 2025 DINOv3 [@simeoni2025dinov3] ConvNeXt-backend and ViT-backend unsupervised models. For reference, the weights addresses of the HuggingFace models object hierarchy are specified in the below table.
+<a data-figure-ref="fig-first-layer-filters"></a> shows RGB visualizations of front-end filters in Microsoft's 2015 smallest Resnet classification model [@he2016deepResidualLearning] trained on ImageNet [@imagenet1k2012; @imagenet2009] and the two smallest variants of Meta's 2025 DINOv3 [@simeoni2025dinov3] ConvNeXt-backend and ViT-backend unsupervised models. For reference, the weights addresses of the HuggingFace models object hierarchy are specified in the below table.
 
 The former features significantly smoother kernels resembling [Gabor filters](https://en.wikipedia.org/wiki/Gabor_filter), as expected (the same kind of Gabor-like kernels appeared in AlexNet as well, the first convolutional neural network successfully trained at scale on a large and diverse collection of natural images). And the latter state-of-the-art DINOv3 filters capture very noisy patterns, judging by human perception standards. I guess that's expected as well, because unlike convolution kernels, patch embedding kernels have to capture details including near the patch borders, whereas convolutions tend to focus the relevant energy of kernels to the center, and convoluting does the rest. 
 
@@ -150,40 +150,55 @@ This poses a serious problem to gradient ascent approaches, because iteratively 
 
 Fortunately, all is not lost. Numerous Pre-2020 research results tackle prototype generation for convolutional networks. I will not reiterate here the already plentiful literature reviews of the various strategies they came up with to circumvent adversarial images. Both @Nguyen2019UnderstandingVisualizing and @olah2017featureVisualization provide one. But let's only state that they all involve some form of regularization in the model input space. Most of them aim to curb parasitic high frequencies, with various implementations techniques (for example directly in the gradients, or in the buffers; or indirectly via intermediary image transforms interleaved with gradient steps).
 
-## A brief aside: a short and incomplete summary of recent advancements in image computer vision
 
 
-### The current state of feature visualization
+## The current state of feature visualization
 
-How did we get from Imagenet-trained [@imagenet2009] neural networks in 2015 to DINOv3 in 2025 exactly?
+### An incomplete outline of the paradigm shift in image computer vision and its implications
+
+How did we get from discriminative image neural networks in 2015 to DINOv3 in 2025 exactly?
 
 In the course of a global acceleration in machine learning research, the advent of Transformers [@vaswani2017attention] has completely overhauled the field of computer vision the same way NLP was revolutionized by Transformers a few years prior, coming from cumbersome recurrent neural networks. 
 
 Since the publication of the the first articles about feature visualization on Distill, ViTs have largely taken over convolutional models for vision tasks. Convolutional neural networks have now somewhat fallen into disfavor, and for a good reason: Transformers are more versatile, perform better and and allow to combine tokens of virtually any modality, text and images alike. This major architectural modernization--from ResNet [@2016resnet], to ConvNext [@2023convnext] to ViT [@dosovitskiy2021vit]--unlocked drastically better generalization power between models from the mid-2010's and models from the mid-2020's.
 
-My impression is that computer vision as a domain now elicits far less curiosity about the models' inner working principles and interpretability than it used to do when convolutions were the norm, and it has gotten dragged by fast-paced developments driven by a skyrocketing interest in the field of natural language processing.
+Over the course of the last five years or so, the quality of image latent representations in frontier vision models has improved a lot due to scaling up both the neural networks and the datasets in use, and improved training methods. Transitioning from discriminative supervised learning to soft self-supervised _knowledge distillation_ learning certainly has a lot to do with improvements in state-of-the-art models indeed.
+
+:::note
+A very nice review of the iterative research about transcending supervision and leveraging better data augmentation techniques in computer vision can be found on [Lil'log](https://lilianweng.github.io/) [@weng2021contrastive; @weng2019selfsup]. I find that it's a very informative overview of the main contrastive learning techniques that heralded novel, more implicit, task-agnostic, better regularized, abstracted-away learning paradigms such as DINO's teacher-student system for robust image representations [@emerging2021dinov1].
+:::
+
+My personal impression is that computer vision as a domain now elicits far less curiosity about the models' inner working principles and interpretability than it used to do when convolutions were the norm, and it has gotten dragged by fast-paced developments driven by a skyrocketing interest in the field of natural language processing.
 
 I think an indicative example of that trend is the renowned [Transformer Circuits Thread](https://transformer-circuits.pub/), which has shifted from computer vision to NLP since its inception. It seems that vision models have now become a commodity taken for granted, that gets incorporated in all major new image-text model released out there, while the new _El Dorado_ of language processing took control of the AI race monopolizing all the attention[^pun-attention]. Prototypes are the remnants of a forgotten experiment. Mechanistic interpretability now focuses on other means of breaking down neural networks.
 
 [^pun-attention]: Get it? ;\)
 
-The fact remains that over the course of the last five years or so, the quality of image latent representations in frontier vision models has still improved a lot due to scaling up both the neural networks and the datasets in use, and improved training methods. Transitioning from discriminative supervised learning to soft self-supervised _knowledge distillation_ learning certainly has a lot to do with improvements in state-of-the-art models indeed. A very nice review of the iterative research about transcending supervision and leveraging better data augmentation techniques in computer vision can be found on [Lil'log](https://lilianweng.github.io/) [@weng2021contrastive; @weng2019selfsup]. I find that it's a very informative overview of the main contrastive learning techniques that heralded novel, more implicit, task-agnostic, better regularized, abstracted-away learning paradigms such as DINO's teacher-student system for robust image representations [@emerging2021dinov1].
 
 
-###
-I hypothesize that with more robust representations, proper regularization, increased generalization and denser datasets compacted into the latent space, comes better model calibration, and possibly smoother gradients to backpropagate. This is a hunch I get from reading @sensitivity2018 performing a sensitivity analysis on the MNIST dataset. They show that gradients of the last layers of the network are smoother and less noisy near training points. MNIST is particular in that it's a tiny, minuscule dataset with a handful of extremely repetitive patterns. But cramming 1.7 billion diverse images into with proper data curation like it's the case for DINO models should yield at least a more uniformly distributed latent spaces across the range of possible values. This is probably a massive oversimplification. Another way of phrasing it would be the following: formerly, classification-trained discriminative models had the possibility to take massive shortcuts in order to cut through the visual patterns and return the correct label. Their limited robustness only came from the sheer amount of different classes. The ImageNet-1K dataset [@imagenet1k2012], for example, is comprised of merely 1.4 million images split up into 1000 categories. Nowadays, models of DINO's caliber, trained with 1.7 billion images, forced to capture subtle internal pieces of visual context through the student-teacher setup, into a latent space of roughly the same number of dimensions[^note-dimensions-models] (with no need for grouping latents into 1000 regions of space) should be able to spread images more regularly. If true, that intuition should mean it's less tricky to produce prototypes from those modern models. I have no proof of it, though.
+
+### A hypothesis on representation quality and optimization
+I hypothesize that with more robust representations, proper regularization, increased generalization and denser datasets compacted into the latent space, come better model calibration and smoother gradients to backpropagate, possibly. This is a hunch I get from reading @sensitivity2018 performing a sensitivity analysis on the MNIST dataset. They show that gradients of the last layers of the network are smoother and less noisy near training points. MNIST is particular in that it's a tiny, minuscule dataset with a handful of extremely repetitive patterns. But cramming 1.7 billion diverse images into with proper data curation like it's the case for DINO models should yield latent spaces covering the manifold of natural images more densely and smoothly. I have no proof of it, though. This is probably a massive oversimplification.
+
+Another sensible way of phrasing that hunch would be the following: formerly, classification-trained discriminative models had the possibility to take hacky shortcuts in order to cut through the visual patterns and return the correct label. For example, early convolutional neural networks are typically known to rely overly on texture information, which isn't a bad proxy, but limits the so-called ``global understanding'' of a scene (which Transformers excel at by comparing each patch with one another).
+
+The relative robustness of late frontier convolutional networks only came from scaling the sheer amount of different classes[^note-number-classes-imagenet] to force them to refine their understanding. By contrast, nowadays, models of DINO's caliber, which are trained on datasets three orders of magnitude larger[^note-number-images-dino-training] and forced to capture subtle internal pieces of visual context in an unsupervized learning setup, should be able to encode images more finely and regularly in a latent space with roughly the same number of dimensions[^note-dimensions-models]. If true, that intuition should mean it should be less tricky to produce prototypes from those modern models because they compress visual information less aggressively.
+
+[^note-number-classes-imagenet]: The ImageNet-1K dataset [@imagenet1k2012], used to train ResNets, is comprised of merely 1.4 million images split up into 1000 categories.
+
+[^note-number-images-dino-training]: The LVD-1689M dataset, used to train DINOv3 models, is comprised of 1.7 billion images scrawled from the web. 
+
+[^note-dimensions-models]: ResNets models have 512 dimensions (pre-logits). DINOv3 models range from 384 to 4096, but the comparison holds between equivalently-sized `microsoft/resnet-18` and `facebook/dinov3-convnext-tiny-pretrain-lvd1689m` or `facebook/dinov3-convnext-small-pretrain-lvd1689m` (HuggingFace model identifiers). Unlike classifiers models, with no need for grouping latents into 1000 regions of space
+
+### The incentive to compute prototypes on the newest frontier models
+Despite the aforementioned developments in self-supervised learning, not many groundbreaking achievements have happened since the late-2010's when it comes to generating image prototypes of vision models. As stated above, that area of research seems to have fallen out of use. 
+
+There _is_ a series of recent experiments and papers that are worth seeing, though. A 2023 paper @fel2023unlocking by ML interpretability researcher Thomas Fel revisited prototype optimization on DINOv2 [@oquab2024dinov2]. The resulting showcased prototypes are visually quite compelling, by means of contraining the image spectrum's magnitude prior of the prototypes. The method's name was coined MACO, which stands for MAgnitude-COnstrained optimization. Overall, his [personal website](https://thomasfel.fr/) is really well done, and his papers are fascinating to read.
+
+That, and the will to test whether my above hypothesis is true, is what made me want to try to reproduce it on DINOv3.
 
 
-[^note-dimensions-models]: ResNets models have 512 dimensions (pre-logits). DINOv3 models range from 384 to 4096, but the comparison holds between equivalently-sized `microsoft/resnet-18` and `facebook/dinov3-convnext-tiny-pretrain-lvd1689m` or `facebook/dinov3-convnext-small-pretrain-lvd1689m` (HuggingFace model identifiers).
 
-### The incentive
-Yet, not many groundbreaking achievements have happened since the late-2010's developments when it comes to generating image prototypes of vision models. As stated above, that area of research seems to have fallen out of use. 
-
-
-There _is_ a series of recent experiments and papers that are worth seeing, though. The [research showcase](https://thomasfel.fr/) of a researcher reproduced and improved prototypes on DINOv2 [@oquab2024dinov2] with very compelling results. how well-presented and valuable his research is.
-
-
-That, and the will to test whether my hypothesis is true, is what made me want to try to reproduce it on DINOv3.
 
 ## References
 
