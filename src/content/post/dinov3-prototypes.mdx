@@ -14,25 +14,35 @@ Almost ten years ago, as I was wandering the internet during my bachelor years, 
 
 Lately, I discovered it again by accident in the process of doing a literature review, so I decided to skim through it anew and catch up with the research with the benefit of hindsight, having more time and background knowledge to delve properly into the contents.
 
+:::note
+Throughout this post, I will mainly mention a few generations of famous vision models (depending on the viewpoint): Microsoft's ResNet [@he2016deepResidualLearning], a representative convolutional classifier from the mid-2010s; Google's GoogLeNet [@googlenet], Meta's more recent SOTA DINO variants from v1 to v3 [@emerging2021dinov1; @oquab2024dinov2; @simeoni2025dinov3], spanning about a decade of R&D in computer vision. Although they differ substantially in architecture, training objectives, and scale, they provide a useful cross-section of how visual representations have evolved over the last decade.
+
+In the mid-2010s, the renowned Transformers architecture [@vaswani2017attention] and the [attention](<https://en.wikipedia.org/wiki/Attention_(machine_learning)>) mechanism, that nowadays underpins modern neural image processing, had not been conceptualized; and state-of-the-art vision models still used convolutional backbones, stemming from learnable, signal processing-inspired convolutional filters. Leveraging Transformers for vision tasks wouldn't be formally introduced for another two years, until 2019 [@dosovitskiy2021vit].
+:::
+
+
 ## Feature visualization
 
 One of Distill's foundational articles is called _Feature Visualization_ [@olah2017featureVisualization]. It describes how neural networks designed for computer vision tasks can be probed to reverse-engineer the learned patterns cristallized into their weights after the training phase[^note-older-feature-viz].
 
 [^note-older-feature-viz]: Even in 2017, visualizing features by creating images to maximize activations wasn't exactly new. The numerous papers cited in Distill's _Feature Visualization_ is evidence of those previous attempts, some as early as 2009, even before [AlexNet](https://en.wikipedia.org/wiki/AlexNet)'s breakthrough.
 
-{/* The work carried out by Distill's authors has greatly expanded the use cases in computer vision interpretability that was pioneered along gradual developments in convolutional neural networks to explore ever more specialized feature visualization such as curve detectors [@cammarata2020curveDetectors] or spacial frequency edge detectors [@schubert2021highLowFrequencyDetectors] and using different parametrizations [@mordvintsev2018differentiableParameterizations]. */}
+It's safe to say the work carried out by Distill's authors has inspired many computer vision interpretability endeavors in mechanistic interpretability following the developments in convolutional neural networks. Other interesting work worth looking at on Distill include exploring ever more specialized vision mechanisms such as curve detectors [@cammarata2020curveDetectors] or spacial frequency edge detectors [@schubert2021highLowFrequencyDetectors] and differentiable image parametrizations [@mordvintsev2018differentiableParameterizations].
 
-:::note
-At the time, the Transformers architecture [@vaswani2017attention] and the [attention](<https://en.wikipedia.org/wiki/Attention_(machine_learning)>) mechanism had just barely been conceptualized, and state-of-the-art vision models still used convolutional backbones, stemming from learnable, signal processing-inspired, convolutional filters that underpins modern computer vision. Leveraging Transformers for vision tasks wouldn't be formally introduced for another two years, until 2019 [@dosovitskiy2021vit].
-:::
+
 
 ## Reverse-engineering visual patterns
 
-To _visualize_ features in this context means to synthesize images by whichever means possible, comprising patterns that maximize some given activations or outputs of a neural network, in order to gain insights about what the model perceives and how it ``interprets'' the inputs. In other words it's about finding _prototypical_ images that make particular neuron groups fire in a certain way[^note-on-fire-modes]. The proper mathematical term is _preimage_, but it has nothing to do with actual images made of pixels, so to avoid that ambiguity I will henceforth refer to such artificial images simply as _prototypes_ in the remaining of this post.
+To _visualize_ features in this context means to synthesize images by whichever means possible, comprising patterns that maximize some given activations or outputs of a neural network, in order to gain insights about what the model perceives and how it ``interprets'' the inputs. In other words it's about finding _prototypical_ images that make particular neuron groups fire in a certain way[^note-on-fire-modes]. The proper mathematical term is _preimage_, but it has nothing to do with actual images made of pixels in the general sense, so to avoid that ambiguity I will henceforth refer to such artificial images simply as _prototypes_ in the remaining of this post, to stick to the literature's coined terminology.
 
 [^note-on-fire-modes]: Said chosen groups can mean a specific neuron, or a collection of designated neurons. Distill's article _The Building Blocks of Interpretability_ [@olah2018buildingBlocks] showcases some neuron grouping choices for activation maximization.
 
-But one of the simplest ideas to compute _prototype images_ is to treat the model as a (differentiable) black box processing its input space, and the exposed outputs. For mid-2010's-era image classification models such as Microsoft's ResNet [@he2016deepResidualLearning], the model outputs are the logits. For modern state-of-the-art ViT models, that means either patch tokens, the CLS token, register tokens [@darcet2024visionTransformersNeedRegisters], or a mix of those.
+One of the simplest ideas to compute _prototype images_ is to treat the model as a (differentiable) black box processing its input space, and the exposed outputs.
+
+:::note
+The output space of a neural network is closely linked to its training setup. Mid-2010's-era frontier image models such as Microsoft's ResNet were trained from the start to perform supervised image classification, so the main outputs are the logits, even though they also expose _pooled outputs_, i.e. a pre-logits layer outputting arguably more general learned features. Current state-of-the-art ViT models are often pre-trained in an unsupervized fashion, to learn useful representations that can be leveraged for more specialized downstream tasks. Those models usually expose image patch tokens, as well as a CLS token in their pooled outputs, and sometimes register tokens [@darcet2024visionTransformersNeedRegisters] if included in their architecture.
+:::
+
 
 To put it plainly, let $f$ be a provided, trained, frozen neural network accepting images in (a subset of) $\mathcal{X} = \mathbb{R}^{C \times W \times H}$ in input, that returns output vectors $\mathcal{Y} \ni \mathbf{y} = f(\mathbf{x})$. To find a prototype $\tilde{\mathbf{x}}$ in input space for some objective function $s: \mathcal{Y} \rightarrow \mathbb{R}$ means to solve
 
@@ -72,9 +82,9 @@ To me, legacy convolutional models aggregation strategy resembles an elaborate i
 
 [^note-highly-specific-reversible-nn]: Except highly-specific architectures designed from the ground-up to also be able to possibly process the data in reverse, like Variational Auto-Encoders.
 
-<a data-figure-ref="fig-first-layer-filters"></a> shows RGB visualizations of front-end filters in Microsoft's 2015 smallest Resnet classification model [@he2016deepResidualLearning] trained on ImageNet [@imagenet1k2012; @imagenet2009] and the two smallest variants of Meta's 2025 DINOv3 [@simeoni2025dinov3] ConvNeXt-backend and ViT-backend unsupervised models. For reference, the weights addresses of the HuggingFace models object hierarchy are specified in the below table.
+<a data-figure-ref="fig-first-layer-filters"></a> shows RGB visualizations of front-end filters in Microsoft's 2015 smallest Resnet classification model [@he2016deepResidualLearning] trained on ImageNet [@imagenet1k2012; @imagenet2009] and the two smallest variants of Meta's 2025 DINOv3 ConvNeXt-backend and ViT-backend unsupervised models. For reference, the weights addresses of the HuggingFace models object hierarchy are specified in the below table.
 
-The former features significantly smoother kernels resembling [Gabor filters](https://en.wikipedia.org/wiki/Gabor_filter), as expected (the same kind of Gabor-like kernels appeared in AlexNet as well, the first convolutional neural network successfully trained at scale on a large and diverse collection of natural images). And the latter state-of-the-art DINOv3 filters capture very noisy patterns, judging by human perception standards. I guess that's expected as well, because unlike convolution kernels, patch embedding kernels have to capture details including near the patch borders, whereas convolutions tend to focus the relevant energy of kernels to the center, and convoluting does the rest. 
+ResNet-18's weights have significantly smoother kernels resembling [Gabor filters](https://en.wikipedia.org/wiki/Gabor_filter), as expected (the same kind of Gabor-like kernels appeared in AlexNet as well, the first convolutional neural network successfully trained at scale on a large and diverse collection of natural images). Meanwhile, state-of-the-art DINOv3 filters seem to capture very noisy patterns, judging by human perception standards. I guess that's expected as well, because unlike convolution kernels, patch embedding kernels have to capture details at the edge of patch borders, whereas convolution filters tend to focus most of their energy in the center, and convoluting does the rest. 
 
 | Model  | Front-end weights path |
 | ------ | ------ |
@@ -150,13 +160,14 @@ This poses a serious problem to gradient ascent approaches, because iteratively 
 
 Fortunately, all is not lost. Numerous Pre-2020 research results tackle prototype generation for convolutional networks. I will not reiterate here the already plentiful literature reviews of the various strategies they came up with to circumvent adversarial images. Both @Nguyen2019UnderstandingVisualizing and @olah2017featureVisualization provide one. But let's only state that they all involve some form of regularization in the model input space. Most of them aim to curb parasitic high frequencies, with various implementations techniques (for example directly in the gradients, or in the buffers; or indirectly via intermediary image transforms interleaved with gradient steps).
 
-
+### TODO: Mettre les tentatives avec ResNet
+Figure goes here
 
 ## The current state of feature visualization
 
-### An incomplete outline of the paradigm shift in image computer vision and its implications
+### A paradigm shift in image computer vision and its implications
 
-How did we get from discriminative image neural networks in 2015 to DINOv3 in 2025 exactly?
+How did we get from discriminative image neural networks in 2015 categories to task-agnostic models yielding universal image embeddings in 2025?
 
 In the course of a global acceleration in machine learning research, the advent of Transformers [@vaswani2017attention] has completely overhauled the field of computer vision the same way NLP was revolutionized by Transformers a few years prior, coming from cumbersome recurrent neural networks. 
 
@@ -193,7 +204,7 @@ The relative robustness of late frontier convolutional networks only came from s
 ### The incentive to compute prototypes on the newest frontier models
 Despite the aforementioned developments in self-supervised learning, not many groundbreaking achievements have happened since the late-2010's when it comes to generating image prototypes of vision models. As stated above, that area of research seems to have fallen out of use. 
 
-There _is_ a series of recent experiments and papers that are worth seeing, however. A 2023 paper @fel2023unlocking by ML interpretability researcher Thomas Fel revisited prototype optimization on DINOv2 [@oquab2024dinov2]. The resulting showcased prototypes are visually quite compelling, by means of contraining the image spectrum's magnitude prior of the prototypes. The method's name was coined MACO, which stands for _magnitude-constrained_ optimization. Overall, his [personal website](https://thomasfel.fr/) is really well done, and his papers are fascinating to read.
+There _is_ a series of recent experiments and papers that are worth seeing, however. A 2023 paper @fel2023unlocking by ML interpretability researcher Thomas Fel revisited prototype optimization on DINOv2. The resulting showcased prototypes are visually quite compelling, by means of contraining the image spectrum's magnitude prior of the prototypes. The method's name was coined MACO, which stands for _magnitude-constrained_ optimization. Overall, his [personal website](https://thomasfel.fr/) is really well done, and his papers are fascinating to read.
 
 That, and the will to test whether my above hypothesis is true, is what made me want to try to reproduce it on DINOv3.
 
