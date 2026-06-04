@@ -181,12 +181,7 @@ A very nice review of the iterative research about transcending supervision and 
 
 My personal impression is that computer vision as a domain now elicits far less curiosity about the models' inner working principles and interpretability than it used to do when convolutions were the norm, and it has gotten dragged by fast-paced developments driven by a skyrocketing interest in the field of natural language processing.
 
-I think an indicative example of that trend is the renowned [Transformer Circuits Thread](https://transformer-circuits.pub/), which has shifted from computer vision to NLP since its inception. It seems that vision models have now become a commodity taken for granted, that gets incorporated in all major new image-text model released out there, while the new _El Dorado_ of language processing took control of the AI race monopolizing all the attention[^pun-attention]. Prototypes are the remnants of a forgotten experiment. Mechanistic interpretability now focuses on other means of breaking down neural networks.
-
-[^pun-attention]: Get it? ;\)
-
-
-
+I think an indicative example of that trend is the renowned [Transformer Circuits Thread](https://transformer-circuits.pub/), which has shifted from computer vision to NLP since its inception. It seems that vision models have now become a commodity taken for granted, that gets incorporated in all major new image-text model released out there, while the new _El Dorado_ of language processing took control of the AI race monopolizing all the attention (pun intended). Prototypes are the remnants of a forgotten experiment. Mechanistic interpretability now focuses on other means of breaking down neural networks.
 
 ### A hypothesis on representation quality and optimization
 I hypothesize that with more robust representations, proper regularization, increased generalization and denser datasets compacted into the latent space, come better model calibration and smoother gradients to backpropagate, possibly. This is a hunch I get from reading @sensitivity2018 performing a sensitivity analysis on the MNIST dataset. They show that gradients of the last layers of the network are smoother and less noisy near training points. MNIST is particular in that it's a tiny, minuscule dataset with a handful of extremely repetitive patterns. But cramming representations for billions of diverse images into a few hundred dimensions with proper data curation ensuring balance and representativeness like it's the case for current SOTA models like DINO should yield latent spaces covering the manifold of natural images more densely and smoothly. I have no proof of it, though. This is probably a massive oversimplification.
