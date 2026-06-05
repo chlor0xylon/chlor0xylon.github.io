@@ -814,6 +814,62 @@ const giscusThemes = import.meta.env.PROD
 		margin-bottom: 12px;
 	}
 
+	.post-article .inline-box {
+		--inline-box-color: hsl(var(--theme-accent));
+		--inline-box-border: var(--hairline);
+		margin: 34px auto;
+		padding: 18px 22px 20px;
+		max-width: min(100%, 42rem);
+		border: 1px solid var(--inline-box-border);
+		border-radius: 6px;
+		background: var(--paper);
+		color: hsl(var(--theme-text));
+		box-shadow: 0 0 0 1px hsl(var(--theme-bg) / 0.35) inset;
+	}
+	.post-article .inline-box > :first-child {
+		margin-top: 0;
+	}
+	.post-article .inline-box > :last-child {
+		margin-bottom: 0;
+	}
+	.post-article .inline-box > p:first-of-type {
+		margin: 0 0 12px;
+		font-family: var(--font-mono);
+		font-size: 13px;
+		font-weight: 600;
+		line-height: 1.45;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		text-align: center;
+		color: var(--inline-box-color);
+	}
+	.post-article .inline-box pre,
+	.post-article .inline-box ul,
+	.post-article .inline-box ol,
+	.post-article .inline-box table {
+		margin: 0 0 12px;
+		max-width: none;
+	}
+	.post-article .inline-box pre {
+		padding: 0;
+		border: 0;
+		background: transparent;
+		font-size: 13px;
+		line-height: 1.58;
+		white-space: pre-wrap;
+		word-break: normal;
+	}
+	.post-article .inline-box code {
+		font-family: var(--font-mono);
+		font-size: inherit;
+	}
+	.post-article .inline-box p:not(:first-of-type) {
+		font-family: var(--font-serif);
+		font-size: 15px;
+		line-height: 1.6;
+		text-align: left;
+	}
+
 	/* Predictable sizing prevents CLS */
 	.post-article figure {
 		margin: 36px 0;
