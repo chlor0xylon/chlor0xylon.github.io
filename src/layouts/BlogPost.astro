@@ -891,6 +891,7 @@ const giscusThemes = import.meta.env.PROD
 		border-radius: 6px;
 		background: var(--paper);
 		box-shadow: 0 0 0 1px hsl(var(--theme-bg) / 0.35) inset;
+		font-size: 14px;
 	}
 	.post-article .algorithm-line {
 		display: flex;
@@ -899,7 +900,7 @@ const giscusThemes = import.meta.env.PROD
 		padding-left: calc(var(--algorithm-depth, 0) * 1.5rem);
 		margin: 0 0 8px;
 		font-family: var(--font-mono);
-		font-size: 13px;
+		font-size: inherit;
 		line-height: 1.55;
 	}
 	.post-article .algorithm-line:last-child {
@@ -917,6 +918,9 @@ const giscusThemes = import.meta.env.PROD
 	}
 	.post-article .algorithm-blank {
 		height: 0.4rem;
+	}
+	.post-article .algorithm-body :global(.katex) {
+		font-size: 1em;
 	}
 
 	/* Predictable sizing prevents CLS */
