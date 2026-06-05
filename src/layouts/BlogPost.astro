@@ -870,6 +870,55 @@ const giscusThemes = import.meta.env.PROD
 		text-align: left;
 	}
 
+	.post-article .algorithm-box {
+		margin: 34px auto;
+		max-width: min(100%, 42rem);
+	}
+	.post-article .algorithm-caption {
+		display: block;
+		margin: 0 0 10px;
+		font-family: var(--font-serif);
+		font-style: italic;
+		font-size: 15px;
+		line-height: 1.45;
+		text-align: center;
+		color: hsl(var(--theme-text));
+	}
+	.post-article .algorithm-body {
+		margin: 0;
+		padding: 18px 22px 20px;
+		border: 1px solid var(--hairline);
+		border-radius: 6px;
+		background: var(--paper);
+		box-shadow: 0 0 0 1px hsl(var(--theme-bg) / 0.35) inset;
+	}
+	.post-article .algorithm-line {
+		display: flex;
+		gap: 12px;
+		align-items: flex-start;
+		padding-left: calc(var(--algorithm-depth, 0) * 1.5rem);
+		margin: 0 0 8px;
+		font-family: var(--font-mono);
+		font-size: 13px;
+		line-height: 1.55;
+	}
+	.post-article .algorithm-line:last-child {
+		margin-bottom: 0;
+	}
+	.post-article .algorithm-keyword {
+		font-weight: 700;
+		color: hsl(var(--theme-text));
+		flex: 0 0 auto;
+		min-width: 6ch;
+	}
+	.post-article .algorithm-comment {
+		color: hsl(var(--theme-text-muted));
+		font-style: italic;
+	}
+	.post-article .algorithm-blank {
+		height: 0.4rem;
+	}
+
 	/* Predictable sizing prevents CLS */
 	.post-article figure {
 		margin: 36px 0;
