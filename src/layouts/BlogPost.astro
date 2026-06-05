@@ -685,6 +685,73 @@ const giscusThemes = import.meta.env.PROD
 		margin: 28px 0;
 	}
 
+	.post-article .code-collapsible {
+		margin: 28px 0;
+		border-radius: 4px;
+	}
+
+	.post-article .code-collapsible > summary {
+		display: flex;
+		align-items: center;
+		width: 100%;
+		height: 28px;
+		padding: 0 10px;
+		border: 1px solid var(--hairline);
+		border-radius: 4px;
+		background: var(--paper);
+		color: hsl(var(--theme-text) / 0.62);
+		cursor: pointer;
+		list-style: none;
+		transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+	}
+
+	.post-article .code-collapsible[open] > summary {
+		border-bottom-color: transparent;
+		border-radius: 4px 4px 0 0;
+	}
+
+	.post-article .code-collapsible > summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.post-article .code-collapsible > summary::before {
+		content: "";
+		width: 7px;
+		height: 7px;
+		border-right: 1.5px solid currentColor;
+		border-bottom: 1.5px solid currentColor;
+		margin-left: 2px;
+		transform: translateY(-1px) rotate(45deg);
+		transition: transform 0.2s ease;
+	}
+
+	.post-article .code-collapsible[open] > summary::before {
+		transform: translateY(1px) rotate(225deg);
+	}
+
+	.post-article .code-collapsible > summary:hover,
+	.post-article .code-collapsible > summary:focus-visible {
+		border-color: hsl(var(--theme-accent) / 0.45);
+		background: color-mix(in srgb, var(--paper) 94%, hsl(var(--theme-accent)));
+		color: hsl(var(--theme-accent));
+	}
+
+	.post-article .code-collapsible > summary:focus-visible {
+		outline: 2px solid hsl(var(--theme-accent) / 0.28);
+		outline-offset: 2px;
+	}
+
+	.post-article .code-collapsible > .code-collapsible-body > .expressive-code,
+	.post-article .code-collapsible > .code-collapsible-body > pre {
+		margin: 0;
+	}
+
+	.post-article .code-collapsible[open] > .code-collapsible-body > .expressive-code,
+	.post-article .code-collapsible[open] > .code-collapsible-body > pre {
+		border-top-left-radius: 0;
+		border-top-right-radius: 0;
+	}
+
 	.post-article table {
 		width: 100%;
 		max-width: var(--reading-width);
@@ -1396,4 +1463,37 @@ const giscusThemes = import.meta.env.PROD
 			});
 			h.prepend(btn);
 		});
+
+	const codeLineThreshold = 24;
+	const countCodeLines = (block: HTMLElement, pre: HTMLPreElement) => {
+		const renderedLineCount = block.querySelectorAll(".ec-line").length;
+		if (renderedLineCount > 0) return renderedLineCount;
+
+		const source = pre.querySelector("code")?.textContent ?? pre.textContent ?? "";
+		return source.trimEnd().split("\n").length;
+	};
+
+	document.querySelectorAll<HTMLElement>(".post-article .expressive-code, .post-article pre").forEach((block) => {
+		if (block.matches("pre") && block.closest(".expressive-code")) return;
+		if (block.closest(".code-collapsible")) return;
+
+		const pre = block.matches("pre") ? (block as HTMLPreElement) : block.querySelector<HTMLPreElement>("pre");
+		if (!pre) return;
+
+		const lineCount = countCodeLines(block, pre);
+		if (lineCount < codeLineThreshold) return;
+
+		const details = document.createElement("details");
+		details.className = "code-collapsible";
+
+		const summary = document.createElement("summary");
+		summary.setAttribute("aria-label", "Toggle code block");
+
+		const body = document.createElement("div");
+		body.className = "code-collapsible-body";
+
+		block.parentNode?.insertBefore(details, block);
+		body.append(block);
+		details.append(summary, body);
+	});
 </script>
