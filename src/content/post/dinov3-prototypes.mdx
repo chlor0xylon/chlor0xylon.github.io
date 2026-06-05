@@ -220,15 +220,42 @@ where $\mathbf{W}$ is the _dictionary of concepts_ onto which the dataset is pro
 
 Note that $\mathbf{U}$ and $\mathbf{W}$ are required to belong to the positive orthant of matrices with **non-negative values**. That constraint is a deliberate modeling choice. Note that the solution space is convex, but the search is made arduous because positivity prevents the use of off-the-shelf linear algebra results. This formulated problem  is known as the **Non-Negative Least Squares problem** (NNLS), and I first encountered during my Master's Thesis in the context of beamforming in transmission-related problems.
 
-The procedure to solve the above mathematical problem can be approached in at least a few different manners. In Fel's PhD thesis manuscript [@fel2025sparksexplainabilityrecentadvancements], in section C.1.3 wlong with the implementation details of CRAFT, they explain that they used a method called alternating direction method of multipliers (ADMM), which I also encountered during my Master's Thesis, because it arises a lot in the literature about applied mathematical optimization problems with cumbersome constraints such as non-negativity. The drawback of this algorithm in our present use is that it requires storing the values in memory during the iterative solving process, and even duplicating variables to account for the separation of optimization and constraint enforcement, as per the ADMM framework. And it does not scale particularly well, given the dataset can be huge. For example, the full ImageNet dataset comprised of 1.3 million images, coded over 384 dimensions of 32-bit floating point numbers would take up about 2GB in memory. Fully manageable even on most modern laptops even in the VRAM, but we're at the limit of scaling it up. 
 
-Yet, in hindsight, we are only really interested in the final dictionary $\mathbf{W}$ solution, _not_ the full decompositions $\mathbf{U}$ of our dataset, which can be recomputed at will once $\mathbf{W}$ is set. So a streaming algorithm would be great to avoid storing the decompositions, though possibly at the expense of convergence speed, exactness or correctness. So I began looking for such an algorithm. That in itself, was a small experiment to try. And so I found a promising paper about exactly that [@onlinelearning2009] exposing a procedure for online dictionary learning, only their contex set constraint is different, as they use the unit ball for the $\|\cdot\|_{2,\infty}$ column-wise norm in lieu of the orthant of poitwise non-negative elements. In a later republished journal version of the paper [@JMLRv11mairal10a], the authors mention the non-negative matrix factorization problem proposed in the framework of dictionary coding in 2001 by another referenced work, and one particular sentence has drawn my attention: _``A simple modification of our algorithm (...) allows us to handle these [non-negativity] constraints, while guaranteeing to find a stationary point of the optimization problem.''_
+### Solving procedure
+Solving the above mathematical problem can be approached in at least a few different manners. In Fel's PhD thesis manuscript [@fel2025sparksexplainabilityrecentadvancements], in section C.1.3 wlong with the implementation details of CRAFT, they explain that they used a method called alternating direction method of multipliers (ADMM for short), which I also encountered during my Master's Thesis, because it arises a lot in the literature about applied mathematical optimization problems with cumbersome constraints such as non-negativity. The drawback of this algorithm in our present use is that it requires storing the values in memory during the iterative solving process, and even duplicating variables to account for the separation of optimization and constraint enforcement, as per the ADMM framework. And it does not scale particularly well, given the dataset can be huge. For example, the full ImageNet dataset comprised of 1.3 million images, coded over 384 dimensions of 32-bit floating point numbers would take up about 2GB in memory. Fully manageable even on most modern laptops even in the VRAM, but we're nearly on the edge. Any $\times 5$ scaling of dataset and memory IO would probably becomes a noticeable limiting factor.
 
-The problem is separable indeed, by virtue of the following identify:
+Yet, in hindsight, we are only really interested in the final dictionary $\mathbf{W}$ solution, _not_ the full decompositions $\mathbf{U}$ of our dataset, which can be recomputed at will once $\mathbf{W}$ is set. The problem is indeed separable, thanks to the following identify:
 
 $$
 \|\mathbf{X} - \mathbf{UW}^\top \|_F^2 = \sum_{i=1}^{n} \| \mathbf{X}_{[i,:]} - \mathbf{U}_{[i,:]} \mathbf{W}\|_2^2
 $$
+which goes to show that $\mathbf{W}$ could be conceptually updated by only considering a subset of the dataset elements at a time indexed in $\llbracket 1, n \rrbracket$, akin to how neural networks update their weights by considering an objective computed on small parts of the dataset at a time.
+
+I don't like having the mental pressure of accounting for my 32GB of RAM limitation (let alone VRAM culminating at a quarter of that), or having to rent a VPS if I ever want to scale up my experiment past ImageNet in the future, so a streaming algorithm would be in order to avoid storing the decompositions. Possibly at the expense of convergence speed, exactness or correctness. So I began looking for such an algorithm. That in itself, was a small experiment to try.
+
+And so I found a promising paper about exactly that [@onlinelearning2009] exposing a procedure for online dictionary learning. By the way, Julien Mairal is also a credited author of the three DINO papers. They address the following problem:
+
+$$
+\arg\min_{\mathbf{D} \in \mathbb{R}^{m\times k}, \alpha \in \mathbb{R}^{k\times n}} \|\mathbf{X} - \mathbf{D} \alpha \|_F^2 + \lambda \|\alpha\|_{1,1} \quad \text{s.t.} \quad \mathbf{D} \in \mathcal{C}
+$$
+where $\mathcal{C}$ is the convex set of matrices whose column vectors belong to the unit ball for the $L_2$ Euclidian norm.
+
+:::note
+For the sake of simplicity I copied their notations, but here are equivalences between their conventions and the ones above:
+
+- $k \longleftrightarrow r$ is the rank (or dictionary size)
+- $m \longleftrightarrow p$ is the data dimensionality
+- $n \longleftrightarrow n$ is the dataset size
+- $\mathbf{D} \in \mathbb{R}^{m \times k} \longleftrightarrow \mathbf{W} \in \mathbb{R}^{p \times r}$ is the dictionary
+- $\alpha \in \mathbb{R}^{k \times n} \longleftrightarrow \mathbf{U}^\top \in \mathbb{R}^{r \times n} $ are the assignments
+- $\mathbf{X} \in \mathbb{R}^{m \times n} \longleftrightarrow \mathbf{X} \in \mathbb{R}^{n \times p}$
+:::
+
+The main two differences are that the search space and the regularization term. They use the unit ball for the $\|\cdot\|_{2,\infty}$ column-wise norm in lieu of the orthant of poitwise non-negative elements, and they regularize the assignments $\alpha$ with the $L_1$ norm to favor sparse solutions.
+
+In a later republished journal version of the paper [@JMLRv11mairal10a], the authors also tackle the non-negative matrix factorization problem that taken from another referenced line of research[^note-nmf], and one particular sentence is particularly interesting for the problem at hand: _``A simple modification of our algorithm (...) allows us to handle these [non-negativity] constraints, while guaranteeing to find a stationary point of the optimization problem.''_ Wonderful, I thought.
+
+[^note-nmf]: That's where we can learn, among other things, that non-negative matrix factorization for sparse coding seems to date back as early as 2001.
 
 ## References
 
