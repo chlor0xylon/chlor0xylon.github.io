@@ -210,7 +210,7 @@ Before visualizing concepts as images, we need to compute them in the DINOv3's l
 ### Dictionary learning
 I will rely on @holistic2023fel, a paper which unifies the concept extraction variants attempts in the literature and compares them. One of the methods presented was coined CRAFT, standing for _Concept Recursive Activation FacTorization for Explainability_, from the preceding paper @craft2023fel, which adds the constraint of positivity for the learned priors, in order to only consider positive activations as meaningful. They also propose an attribution method for visualizing the concept activations in images. Here I'm only interested in the first part, about learning the dictionary.
 
-The setup goes like this: let $\mathbf{X} \in \mathbb{R}^{n\times p}$ be a set of $n$ captured activations in dimension $p$ from the latents from a vision model taken from a provided collection of images. Let $r$ be a positive integer, denoted as the rank of the decomposition. The positive dictionary learning approach consists in solving the following problem:
+The setup goes like this: let $\mathbf{X} \in \mathbb{R}^{n\times p}$ be a set of $n$ captured activations in dimension $p$ from the latents from a vision model taken from a provided collection of images. Let $r$ be a positive integer, denoted as the rank of the decomposition. The positive dictionary learning approach consists in solving the following neighbouring problem:
 
 $$
 \arg\min_{\mathbf{U}\in \mathbb{R}^{n\times r}, \, \mathbf{W}\in \mathbb{R}^{p\times r}} \|\mathbf{X} - \mathbf{UW}^\top \|_F^2 \quad \text{s.t.} \quad \mathbf{W}, \mathbf{U} \ge 0
@@ -238,36 +238,22 @@ And so I found a promising paper about exactly that [@onlinelearning2009] exposi
 $$
 \arg\min_{\mathbf{D} \in \mathbb{R}^{m\times k}, \alpha \in \mathbb{R}^{k\times n}} \|\mathbf{X} - \mathbf{D} \alpha \|_F^2 + \lambda \|\alpha\|_{1,1} \quad \text{s.t.} \quad \mathbf{D} \in \mathcal{C}
 $$
-where $\mathcal{C}$ is the convex set of matrices whose column vectors belong to the unit ball for the $L_2$ Euclidian norm.
+where $\mathcal{C}$ is the convex set of matrices whose column vectors belong to the unit ball for the $L_2$ Euclidian norm: $\mathcal{C} = \{\mathbf{D}\in \mathbb{R}^{m\times k}, \forall j \in \llbracket 1, k \rrbracket, \mathbf{d}_j^\top \mathbf{d}_j \le 1\}$.
 
 :::note
-For the sake of simplicity I copied their notations, but here are equivalences between their conventions and the ones above:
+For the sake of clarity, I adopted their notations, but here are equivalences between their conventions and the ones above:
 
 - $k \longleftrightarrow r$ is the rank (or dictionary size)
 - $m \longleftrightarrow p$ is the data dimensionality
 - $n \longleftrightarrow n$ is the dataset size
 - $\mathbf{D} \in \mathbb{R}^{m \times k} \longleftrightarrow \mathbf{W} \in \mathbb{R}^{p \times r}$ is the dictionary
-- $\alpha \in \mathbb{R}^{k \times n} \longleftrightarrow \mathbf{U}^\top \in \mathbb{R}^{r \times n} $ are the assignments
+- $\alpha \in \mathbb{R}^{k \times n} \longleftrightarrow \mathbf{U}^\top \in \mathbb{R}^{r \times n} $ are the assignments (or codes)
 - $\mathbf{X} \in \mathbb{R}^{m \times n} \longleftrightarrow \mathbf{X} \in \mathbb{R}^{n \times p}$
 :::
 
-The main two differences are that the search space and the regularization term. They use the unit ball for the $\|\cdot\|_{2,\infty}$ column-wise norm in lieu of the orthant of poitwise non-negative elements, and they regularize the assignments $\alpha$ with the $L_1$ norm to favor sparse solutions.
+The main two differences are that the search space and the regularization term. They use the unit ball for the $\|\cdot\|_{2,\infty}$ column-wise norm in lieu of the orthant of poitwise non-negative elements, and they regularize the assignments $\alpha$ with the $L_1$ norm to favor sparse solutions. Regularizing the weights also avoids degeneracy in the solutions due to the degree of freedom of rescaling recoprocally $\alpha$ and $\mathbf{W}$.
 
-In a later extended journal version of the paper [@JMLRv11mairal10a], section 5.3, the authors also tackle the non-negative matrix factorization problem (NMF for short) taken from another referenced line of research[^note-nmf].
-
-$$
-\arg\min_{\mathbf{D} \in \mathbb{R}^{m\times k}, \alpha \in \mathbb{R}^{k\times n}} \|\mathbf{X} - \mathbf{D} \alpha \|_F^2 + \lambda \|\alpha\|_{1,1} \quad \text{s.t.} \quad \mathbf{D}, \alpha \ge 0
-$$
-
-
-and one particular comment is particularly interesting: 
- 
- > ``The only difference with the dictionary learning
-problem is that non-negativity constraints are imposed on $\mathbf{D}$ and the vectors $\alpha_i$. A simple modification of our algorithm (...) allows us to handle these constraints, while guaranteeing to find a stationary point of the optimization problem.''
-
-Wonderful, I thought. This is exactly the setup I was looking for. The algorithm in question has been reproduced below:
-
-[^note-nmf]: That's where we can learn, among other things, that non-negative matrix factorization for sparse coding seems to date back as early as 2001.
+They come up with an algorithm with proven convergence for solving that problem. The algorithm in question has been reproduced below:
 
 
 ```algorithm
@@ -282,7 +268,7 @@ For $t = 1$ to $T$
     $$
   $\mathbf{A}_t \gets \mathbf{A}_{t-1} + \alpha_t \alpha_t^T$
   $\mathbf{B}_t \gets \mathbf{B}_{t-1} + \mathbf{x}_t \alpha_t^T$
-  State Compute $\mathbf{D}_t$ using Algorithm 2, with $\mathbf{D}_{t-1}$ as a warm restart
+  State Update dictionary $\mathbf{D}_t$, with $\mathbf{D}_{t-1}$ as a warm restart
     $$
     \mathbf{D}_t \triangleq \arg\min_{\mathbf{D} \in \mathcal{C}} \frac{1}{t}\sum_{i=1}^t \left(\frac{1}{2}\|\mathbf{x}_i - \mathbf{D}\alpha_i\|_2^2 + \lambda \|\alpha_i\|_1\right) \\
 	= \arg\min_{\mathbf{D} \in \mathcal{C}} \frac{1}{t} \left( \frac{1}{2} \mathrm{Tr}(\mathbf{D}^\top \mathbf{DA}_t - \mathrm{Tr}(\mathbf{DB}_t) \right)
@@ -306,7 +292,30 @@ Until convergence
 Return $\mathbf{D}$ (updated dictionary)
 ```
 
+So, looking into the procedure reveals that the optimization performs a step in three stages given a batch:
 
+- first, compute the codes, or assignments, of the elements in the batch
+- then update some buffers aggregating statistics about the codes
+- finally, update the dictionary state by solving
+
+
+
+
+In a later extended journal version of the paper [@JMLRv11mairal10a], in sections 5.2 & 5.3, the authors also tackle regularization variants, notably the non-negative matrix factorization problem (NMF for short) taken from another referenced line of research[^note-nmf], as part of the broader framework of different constraint sets for the dictionary and the codes.
+
+[^note-nmf]: That's where we can learn, among other things, that non-negative matrix factorization for sparse coding seems to date back as early as 2001.
+
+$$
+\arg\min_{\mathbf{D} \in \mathbb{R}^{m\times k}, \alpha \in \mathbb{R}^{k\times n}} \|\mathbf{X} - \mathbf{D} \alpha \|_F^2 + \lambda \|\alpha\|_{1,1} \quad \text{s.t.} \quad \mathbf{D}, \alpha \ge 0
+$$
+
+
+and one particular comment is particularly interesting: 
+ 
+ > ``When $\lambda = 0$, this formulation is equivalent to NMF. The only difference with the dictionary learning
+problem is that non-negativity constraints are imposed on $\mathbf{D}$ and the vectors $\alpha_i$. A simple modification of our algorithm (...) allows us to handle these constraints, while guaranteeing to find a stationary point of the optimization problem.''
+
+Wonderful, I thought. This is exactly the setup we're looking for. The implications here only affect steps 1 & 3 of the overall procedure, namely the initial sparse coding solve step (by constraining additionally $\alpha$ to remain non-negative), and the projections in the dictionary update routine (by projecting $\mathbf{D}$ onto the set of non-negatively valued matrices).
 
 
 
