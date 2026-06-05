@@ -69,6 +69,12 @@ function parseCaption(text: string) {
 	return title ? `${prefix}: ${title}` : prefix;
 }
 
+function renderCaption(text: string) {
+	return [
+		h("p", { class: "algorithm-caption-text" }, splitTextWithMath(text)),
+	];
+}
+
 function parseMathBlock(source: string): Array<Line | MathBlock> {
 	const lines = source.replace(/\t/g, "  ").split(/\r?\n/);
 	const out: Array<Line | MathBlock> = [];
@@ -209,7 +215,7 @@ export const remarkAlgorithm: Plugin<[], Root> = () => (tree) => {
 
 		const children: RootContent[] = [];
 		if (caption) {
-			children.push(h("figcaption", { class: "algorithm-caption" }, [{ type: "text", value: caption } as RootContent]));
+			children.push(h("figcaption", { class: "algorithm-caption" }, renderCaption(caption)));
 		}
 		children.push(
 			h(
