@@ -51,6 +51,17 @@ function parseLines(source: string): Line[] {
 	return out;
 }
 
+function parseCaption(text: string) {
+	const match = text.match(/^(algorithm|alg\.?|procedure|function)\s*(?:(\d+)\s*)?[:.-]?\s*(.+)?$/i);
+	if (!match) return "";
+	const name = match[1].toLowerCase();
+	const number = match[2]?.trim();
+	const title = match[3]?.trim() ?? "";
+	const displayName = name.startsWith("alg") ? "Algorithm" : name[0].toUpperCase() + name.slice(1);
+	const prefix = number ? `${displayName} ${number}` : displayName;
+	return title ? `${prefix}: ${title}` : prefix;
+}
+
 function commandLabel(text: string) {
 	const head = text.split(/\s+/)[0] ?? "";
 	const lower = head.toLowerCase();
@@ -126,7 +137,7 @@ export const remarkAlgorithm: Plugin<[], Root> = () => (tree) => {
 		const body: Line[] = [];
 		for (const line of lines) {
 			if (!caption && line.kind === "caption") {
-				caption = line.text;
+				caption = parseCaption(line.text) || line.text;
 				continue;
 			}
 			body.push(line);
