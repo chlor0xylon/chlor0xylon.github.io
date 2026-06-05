@@ -247,7 +247,7 @@ For the sake of clarity, I adopted their notations, but here are equivalences be
 - $k \longleftrightarrow r$ is the rank (or dictionary size)
 - $m \longleftrightarrow p$ is the data dimensionality
 - $n \longleftrightarrow n$ is the dataset size
-- $\mathbf{D} \in \mathbb{R}^{m \times k} \longleftrightarrow \mathbf{W} \in \mathbb{R}^{p \times r}$ is the dictionary
+- $\mathbf{D} \in \mathbb{R}^{m \times k} \longleftrightarrow \mathbf{W} \in \mathbb{R}^{p \times r}$ is the dictionary (or learned weights of interest)
 - $\alpha \in \mathbb{R}^{k \times n} \longleftrightarrow \mathbf{U}^\top \in \mathbb{R}^{r \times n} $ are the assignments (or codes)
 - $\mathbf{X} \in \mathbb{R}^{m \times n} \longleftrightarrow \mathbf{X} \in \mathbb{R}^{n \times p}$
 :::
@@ -293,12 +293,10 @@ Until convergence
 Return $\mathbf{D}$ (updated dictionary)
 ```
 
-So, looking into the procedure reveals that the optimization performs a step in three stages given a batch:
+So, looking into the procedure reveals that the optimization performs a step in two stages given a batch:
 
 - first, compute the codes, or assignments, of the elements in the batch
-- then update some buffers aggregating statistics about the codes
-- finally, update the dictionary state by solving
-
+- then aggregate statistics about the codes into two buffers and update the dictionary state by solving
 
 
 
@@ -316,8 +314,101 @@ and one particular comment is particularly interesting:
  > ``When $\lambda = 0$, this formulation is equivalent to NMF. The only difference with the dictionary learning
 problem is that non-negativity constraints are imposed on $\mathbf{D}$ and the vectors $\alpha_i$. A simple modification of our algorithm (...) allows us to handle these constraints, while guaranteeing to find a stationary point of the optimization problem.''
 
-Wonderful, I thought. This is exactly the setup we're looking for. The implications here only affect steps 1 & 3 of the overall procedure, namely the initial sparse coding solve step (by constraining additionally $\alpha$ to remain non-negative), and the projections in the dictionary update routine (by projecting $\mathbf{D}$ onto the set of non-negatively valued matrices).
+Wonderful, I thought. This is exactly the setup we're looking for. The implications here affect both steps of the overall procedure, namely the initial sparse coding solve step (by constraining additionally $\alpha$ to remain non-negative), and the projections in the dictionary update routine (by projecting $\mathbf{D}$ onto the set of non-negatively valued matrices).
 
+
+
+
+### Implementation
+
+In order to online compute the dictionary according to the approach proposed by @holistic2023fel retaining concepts of positive activations only, I wrote a Python script that given a huggingface model and a dataloader wrapping a PyTorch datasest, evaluates the model on the provided images and saves the latents in binary files with Numpy. Then, another PyTorch dataset wrapper allows to stream the latent representations.
+
+Such numerical computations with lots of vectorized operations are natural fit for [Jax](https://docs.jax.dev/en/latest/). Unlike PyTorch, `jax` fuses operations by default because it compiles the computation graph and it allows looped computations to happen faster by avoiding python interruptions between operations. This is especially handy for iterative algorithms to solve linear algebra problems. Before this project I was familiar with PyTorch but I had never used Jax so it was a good use case to learn.
+
+In the code, I kept the original notations with $\mathbf{W} \in \mathbb{R}^{p \times r}$ and $\mathbf{U} \in \mathbb{R}^{n \times r}$. However, since $\mathbf{U}$ is conceptually reserved for the full dataset codes, and is never materialized in memory, so I named its batched counterpart $\mathbf{H} \in \mathbb{R}^{b\times r}$ where $b$ is the batch size with obviously $b < n$. At any step, we draw $\mathbf{X} \in \mathbb{R}^{b\times n}$ and apply the above algorithm.
+
+Thus the main training loop looks like this:
+
+```python
+def train_step(
+    W: jnp.ndarray,   # (DATA_DIM, DICT_SIZE)
+    A: jnp.ndarray,   # (DICT_SIZE, DICT_SIZE)
+    B: jnp.ndarray,   # (DATA_DIM, DICT_SIZE)
+    X: jnp.ndarray,   # (BATCH_SIZE, DATA_DIM)
+    H0: jnp.ndarray,  # (BATCH_SIZE, DICT_SIZE)
+    T: int,           # global step counter
+    lam: float,
+):
+    W_prev = W
+    H = nonnegative_lasso_fista(W=W, X=X, lam=lam, H0=H0)
+    W, A, B = update_dictionary(W=W, H=H, X=X, A=A, B=B, T=T)
+    return W, A, B
+```
+
+### Non-negative LASSO sparse coding step
+The modified sparse positive coding step to compute $\alpha_t = \arg\min_{\alpha \in \mathbb{R}^k} \frac{1}{2}\|\mathbf{x}_t - \mathbf{D}_{t-1}\alpha\|_2^2 + \lambda \|\alpha\|_1$ is a procedure in its own. Thanks to the magic of LLMs nowadays, I got to know that there exists a respectable algorithm that maps well to non-negative LASSO, called Fast Iterative Shrinkage-Thresholding Algorithm (a.k.a. FISTA in the literature) [@teboulle09fista]. To be honest, I wasn't particularly interested in the details of this minor technicality in the grand scheme of dictionary learning, so I gladly let Codex do the research and work out the Jax function for it. The only relevant practicality to be aware of is that it involves an iterative procedure of its own, so fine-tuning the tolerance and/or an iteration cap is a thing to look out for. Below is the code for reference.
+
+```python
+def nonnegative_lasso_fista(
+    W: jnp.ndarray, X: jnp.ndarray, lam: float, H0: jnp.ndarray
+) -> jnp.ndarray:
+    tol = 1e-4
+    eps = 1e-8
+    max_iter = 30
+    # Solve for nonnegative codes H with W held fixed:
+    #     min_{H >= 0} 0.5 * ||X - H W^T||_F^2 + lam * ||H||_1
+    #
+    # Row-major convention:
+    # X has shape (num_samples, data_dim),
+    # W has shape (data_dim, size_dict),
+    # H has shape (num_samples, size_dict),
+    # so X ~= H @ W.T.
+    #
+    # The scalar `lam` controls the L1 penalty on optimized H.
+    G = W.T @ W
+    B = X @ W
+
+    # Precompute the Gram matrix W^T W and the data term X W.
+    # The gradient of 0.5 * ||X - H W^T||_F^2 is H (W^T W) - X W.
+    L = jnp.linalg.norm(G, 2)
+    step = 1.0 / L
+
+    H = H0
+    Y = H0
+    t = 1.0
+
+    def cond_fn(state):
+        _, _, _, iter_idx, rel_change = state
+        return jnp.logical_and(iter_idx < max_iter, rel_change > tol)
+
+    def body_fn(state):
+        H, Y, t, iter_idx, _ = state
+
+        grad = Y @ G - B
+        # Because we also impose H >= 0, the proximal map of the L1 term
+        # becomes a positive soft-thresholding step:
+        # prox(z) = max(0, z - step * lam).
+        H_next = jnp.maximum(0.0, Y - step * (grad + lam))
+
+        # Standard FISTA momentum update.
+        t_next = 0.5 * (1.0 + jnp.sqrt(1.0 + 4.0 * t * t))
+        Y_next = H_next + ((t - 1.0) / t_next) * (H_next - H)
+
+        diff_norm = jnp.linalg.norm(H_next - H, ord="fro")
+        base_norm = jnp.maximum(jnp.linalg.norm(H, ord="fro"), eps)
+        rel_change = diff_norm / base_norm
+
+        return H_next, Y_next, t_next, iter_idx + 1, rel_change
+
+    H, _, _, _, _ = jax.lax.while_loop(cond_fn, body_fn, (H, Y, t, 0, jnp.inf))
+    return H
+```
+
+### Dictionary update step
+
+
+
+## Visualizing the latent concepts with prototype images
 
 
 ## References
