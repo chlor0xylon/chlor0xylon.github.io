@@ -4,7 +4,7 @@ import { Image } from "astro:assets";
 
 // import ShareButtons from "@/components/blog/ShareButtons.astro";
 import WebMentions from "@/components/blog/webmentions/index.astro";
-import { getAllPosts, getPostSortDate, sortMDByDate } from "@/data/post";
+import { getAllPosts, sortMDByDate } from "@/data/post";
 import { siteConfig } from "@/site-config";
 import { formatBylineDate, formatEyebrowDate } from "@/utils/date";
 import { absoluteUrl, withBase } from "@/utils/path";
@@ -14,16 +14,20 @@ import { Schema } from "astro-seo-schema";
 
 interface Props {
 	post: CollectionEntry<"post">;
+	headings?: { depth: number; slug: string; text: string }[];
 }
 
-const { post } = Astro.props;
+type Heading = NonNullable<Props["headings"]>[number];
+type TocHeading = Heading & { label: string };
+
+const { post, headings = [] } = Astro.props;
 
 const sortedAll = sortMDByDate(await getAllPosts());
 const idx = sortedAll.findIndex((p) => p.id === post.id);
 const newerPost = idx > 0 ? sortedAll[idx - 1] : undefined;
 const olderPost = idx >= 0 && idx < sortedAll.length - 1 ? sortedAll[idx + 1] : undefined;
 const {
-	data: { coverImage, description, ogImage, publishDate, title, updatedDate, tags, draft },
+	data: { coverImage, description, ogImage, publishDate, title, updatedDate, tags, draft, toc },
 	id: slug,
 } = post;
 const socialImage = ogImage ?? `/og-image/${slug}.png`;
@@ -44,6 +48,36 @@ const bylineDate = formatBylineDate(publishDate);
 // Prefer remark plugin's value; fall back to "".
 const readingTime: string =
 	(remarkPluginFrontmatter as { minutesRead?: string })?.minutesRead ?? "";
+
+const sectionCounters = [0, 0, 0];
+const numberedHeadings = headings.reduce<TocHeading[]>((acc, heading) => {
+	if (heading.depth < 2 || heading.depth > 4) return acc;
+	if (heading.slug === "footnote-label") return acc;
+
+	const counterIndex = heading.depth - 2;
+	sectionCounters[counterIndex] += 1;
+	for (let i = counterIndex + 1; i < sectionCounters.length; i += 1) {
+		sectionCounters[i] = 0;
+	}
+
+	acc.push({
+		...heading,
+		label: sectionCounters.slice(0, counterIndex + 1).join("."),
+	});
+
+	return acc;
+}, []);
+const tocHeadings = numberedHeadings.filter(({ depth }) => depth === 2 || depth === 3);
+const hasTableOfContents = toc && tocHeadings.length >= 2;
+const escapeCssString = (value: string) => value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+const headingNumberStyles = toc
+	? numberedHeadings
+			.map(
+				({ depth, label, slug }) =>
+					`.post-article h${depth}[id="${escapeCssString(slug)}"]::before{content:"${escapeCssString(label)}";}`,
+			)
+			.join("")
+	: "";
 
 // Custom giscus themes only in prod: the giscus.app iframe can't fetch CSS from localhost / private IPs.
 const giscusThemes = import.meta.env.PROD
@@ -70,6 +104,8 @@ const giscusThemes = import.meta.env.PROD
 		description: description,
 	}}
 />
+
+{headingNumberStyles && <style is:inline set:html={headingNumberStyles} />}
 
 <BaseLayout meta={{ articleDate, description, ogImage: socialImage, title }}>
 	<div class="reading-progress" id="reading-progress" aria-hidden="true"></div>
@@ -123,6 +159,23 @@ const giscusThemes = import.meta.env.PROD
 			)}
 
 			<article class="post-article">
+				{
+					hasTableOfContents && (
+						<nav class="table-of-contents" aria-labelledby="toc-title">
+							<h2 id="toc-title">Contents</h2>
+							<ol>
+								{tocHeadings.map((heading) => (
+									<li class={`toc-depth-${heading.depth}`}>
+										<a href={`#${heading.slug}`}>
+											<span class="toc-number">{heading.label}</span>
+											<span>{heading.text}</span>
+										</a>
+									</li>
+								))}
+							</ol>
+						</nav>
+					)
+				}
 				<slot />
 			</article>
 
@@ -435,6 +488,73 @@ const giscusThemes = import.meta.env.PROD
 		color: hsl(var(--theme-text));
 	}
 
+	.post-article .table-of-contents {
+		max-width: var(--reading-width);
+		margin: 0 0 34px;
+		padding: 0 0 24px;
+		border-bottom: 1px solid var(--hairline);
+	}
+	.post-article .table-of-contents h2 {
+		font-family: var(--font-mono);
+		font-size: 11px;
+		font-weight: 500;
+		letter-spacing: 0.14em;
+		line-height: 1.4;
+		text-transform: uppercase;
+		color: hsl(var(--theme-text) / 0.58);
+		margin: 0 0 14px;
+	}
+	.post-article .table-of-contents ol {
+		columns: 2;
+		column-gap: 28px;
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		max-width: none;
+	}
+	.post-article .table-of-contents li {
+		break-inside: avoid;
+		margin: 0;
+		padding: 0;
+		font-family: var(--font-mono);
+		font-size: 12.5px;
+		line-height: 1.45;
+		color: hsl(var(--theme-text-muted));
+		overflow-wrap: anywhere;
+	}
+	.post-article .table-of-contents li + li {
+		margin-top: 7px;
+	}
+	.post-article .table-of-contents li::before {
+		content: none;
+	}
+	.post-article .table-of-contents .toc-depth-3 {
+		padding-left: 14px;
+		font-size: 12px;
+		color: hsl(var(--theme-text) / 0.58);
+	}
+	.post-article .table-of-contents a {
+		display: inline-flex;
+		gap: 8px;
+		color: inherit;
+		text-decoration: none;
+		text-decoration-color: transparent;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 3px;
+	}
+	.post-article .table-of-contents .toc-number {
+		flex: 0 0 auto;
+		min-width: 2.4ch;
+		color: hsl(var(--theme-accent) / 0.78);
+		font-variant-numeric: tabular-nums;
+		font-feature-settings: "tnum";
+	}
+	.post-article .table-of-contents a:hover {
+		color: hsl(var(--theme-accent));
+		text-decoration: underline;
+		text-decoration-color: hsl(var(--theme-accent));
+	}
+
 	.post-article > p {
 		font-size: 17.5px;
 		line-height: 1.75;
@@ -495,6 +615,22 @@ const giscusThemes = import.meta.env.PROD
 		line-height: 1.35;
 		color: hsl(var(--theme-text));
 		margin: 30px 0 12px;
+	}
+	.post-article h2::before,
+	.post-article h3::before,
+	.post-article h4::before {
+		display: inline-block;
+		font-family: var(--font-mono);
+		font-style: normal;
+		font-weight: 500;
+		letter-spacing: 0.08em;
+		line-height: inherit;
+		color: hsl(var(--theme-accent) / 0.78);
+		font-variant-numeric: tabular-nums;
+		font-feature-settings: "tnum";
+		margin-right: 0.55em;
+		font-size: 1em;
+		vertical-align: baseline;
 	}
 
 	.post-article a {
@@ -646,6 +782,16 @@ const giscusThemes = import.meta.env.PROD
 		font-size: 14px;
 	}
 
+	@media (max-width: 720px) {
+		.post-article .table-of-contents {
+			margin-bottom: 30px;
+			padding-bottom: 20px;
+		}
+		.post-article .table-of-contents ol {
+			columns: 1;
+		}
+	}
+
 	.post-article .footnotes {
 		max-width: var(--reading-width);
 		margin: 48px 0 0;
@@ -663,6 +809,10 @@ const giscusThemes = import.meta.env.PROD
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 		color: hsl(var(--theme-text) / 0.72);
+	}
+	.post-article .footnotes h2::before {
+		content: none !important;
+		display: none;
 	}
 	.post-article .footnotes ol {
 		list-style: decimal;
