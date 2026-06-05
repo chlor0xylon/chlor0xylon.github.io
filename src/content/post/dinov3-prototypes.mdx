@@ -253,7 +253,19 @@ For the sake of simplicity I copied their notations, but here are equivalences b
 
 The main two differences are that the search space and the regularization term. They use the unit ball for the $\|\cdot\|_{2,\infty}$ column-wise norm in lieu of the orthant of poitwise non-negative elements, and they regularize the assignments $\alpha$ with the $L_1$ norm to favor sparse solutions.
 
-In a later republished journal version of the paper [@JMLRv11mairal10a], the authors also tackle the non-negative matrix factorization problem that taken from another referenced line of research[^note-nmf], and one particular sentence is particularly interesting for the problem at hand: _``A simple modification of our algorithm (...) allows us to handle these [non-negativity] constraints, while guaranteeing to find a stationary point of the optimization problem.''_ Wonderful, I thought. The algorithm in question has been reproduced below:
+In a later extended journal version of the paper [@JMLRv11mairal10a], section 5.3, the authors also tackle the non-negative matrix factorization problem (NMF for short) taken from another referenced line of research[^note-nmf].
+
+$$
+\arg\min_{\mathbf{D} \in \mathbb{R}^{m\times k}, \alpha \in \mathbb{R}^{k\times n}} \|\mathbf{X} - \mathbf{D} \alpha \|_F^2 + \lambda \|\alpha\|_{1,1} \quad \text{s.t.} \quad \mathbf{D}, \alpha \ge 0
+$$
+
+
+and one particular comment is particularly interesting: 
+ 
+ > ``The only difference with the dictionary learning
+problem is that non-negativity constraints are imposed on $\mathbf{D}$ and the vectors $\alpha_i$. A simple modification of our algorithm (...) allows us to handle these constraints, while guaranteeing to find a stationary point of the optimization problem.''
+
+Wonderful, I thought. This is exactly the setup I was looking for. The algorithm in question has been reproduced below:
 
 [^note-nmf]: That's where we can learn, among other things, that non-negative matrix factorization for sparse coding seems to date back as early as 2001.
 
