@@ -494,16 +494,15 @@ const giscusThemes = import.meta.env.PROD
 		margin: 0 0 14px;
 	}
 	.post-article .table-of-contents ol {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		columns: 2;
 		column-gap: 28px;
-		row-gap: 7px;
 		list-style: none;
 		margin: 0;
 		padding: 0;
 		max-width: none;
 	}
 	.post-article .table-of-contents li {
+		break-inside: avoid;
 		margin: 0;
 		padding: 0;
 		font-family: var(--font-mono);
@@ -511,6 +510,9 @@ const giscusThemes = import.meta.env.PROD
 		line-height: 1.45;
 		color: hsl(var(--theme-text-muted));
 		overflow-wrap: anywhere;
+	}
+	.post-article .table-of-contents li + li {
+		margin-top: 7px;
 	}
 	.post-article .table-of-contents li::before {
 		content: none;
@@ -792,7 +794,7 @@ const giscusThemes = import.meta.env.PROD
 			padding-bottom: 20px;
 		}
 		.post-article .table-of-contents ol {
-			grid-template-columns: 1fr;
+			columns: 1;
 		}
 	}
 
