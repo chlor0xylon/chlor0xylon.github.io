@@ -69,6 +69,27 @@ function commandLabel(text: string) {
 	return "";
 }
 
+function splitTextWithMath(text: string): RootContent[] {
+	const nodes: RootContent[] = [];
+	const re = /\$([^$\n]+)\$/g;
+	let last = 0;
+	for (let match = re.exec(text); match; match = re.exec(text)) {
+		if (match.index > last) {
+			nodes.push({ type: "text", value: text.slice(last, match.index) } as RootContent);
+		}
+		nodes.push(
+			h(
+				"code",
+				{ class: "language-math math-inline" },
+				[{ type: "text", value: match[1] } as RootContent],
+			),
+		);
+		last = match.index + match[0].length;
+	}
+	if (last < text.length) nodes.push({ type: "text", value: text.slice(last) } as RootContent);
+	return nodes;
+}
+
 function renderLine(line: Line): RootContent {
 	if (line.kind === "blank") return h("div", { class: "algorithm-blank" });
 	if (line.kind === "comment") {
@@ -84,9 +105,9 @@ function renderLine(line: Line): RootContent {
 
 	if (label) {
 		children.push(h("span", { class: "algorithm-keyword" }, [{ type: "text", value: label } as RootContent]));
-		if (body) children.push({ type: "text", value: ` ${body}` } as RootContent);
+		if (body) children.push(...splitTextWithMath(` ${body}`));
 	} else {
-		children.push({ type: "text", value: line.text } as RootContent);
+		children.push(...splitTextWithMath(line.text));
 	}
 
 	return h("div", { class: `algorithm-line algorithm-line-${line.kind}`, style: `--algorithm-depth:${line.depth};` }, children);
@@ -105,7 +126,7 @@ export const remarkAlgorithm: Plugin<[], Root> = () => (tree) => {
 		const body: Line[] = [];
 		for (const line of lines) {
 			if (!caption && line.kind === "caption") {
-				caption = line.text.replace(/^(algorithm\b|procedure\b|function\b)\s*:?\s*/i, "");
+				caption = line.text;
 				continue;
 			}
 			body.push(line);
