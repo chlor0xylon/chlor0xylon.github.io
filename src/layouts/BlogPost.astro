@@ -922,6 +922,20 @@ const giscusThemes = import.meta.env.PROD
 	.post-article .algorithm-body :global(.katex) {
 		font-size: 1em;
 	}
+	.post-article .algorithm-math {
+		margin: 8px 0 10px;
+		padding-left: calc(var(--algorithm-depth, 0) * 1.5rem);
+		overflow-x: auto;
+	}
+	.post-article .algorithm-math :global(pre) {
+		margin: 0;
+		background: transparent;
+		border: 0;
+		padding: 0;
+	}
+	.post-article .algorithm-math :global(.katex-display) {
+		margin: 0;
+	}
 
 	/* Predictable sizing prevents CLS */
 	.post-article figure {

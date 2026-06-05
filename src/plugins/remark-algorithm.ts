@@ -4,6 +4,7 @@ import type { Plugin } from "unified";
 import { visit } from "unist-util-visit";
 
 type LineKind = "caption" | "command" | "comment" | "blank";
+type MathBlockKind = "inline" | "display";
 
 type Line = {
 	depth: number;
@@ -18,6 +19,12 @@ type HastBackedNode = RootContent & {
 		hProperties: Properties;
 	};
 	type: "algorithm";
+};
+
+type MathBlock = {
+	depth: number;
+	kind: MathBlockKind;
+	text: string;
 };
 
 function h(el: string, attrs: Properties = {}, children: RootContent[] = []): RootContent {
@@ -62,6 +69,51 @@ function parseCaption(text: string) {
 	return title ? `${prefix}: ${title}` : prefix;
 }
 
+function parseMathBlock(source: string): Array<Line | MathBlock> {
+	const lines = source.replace(/\t/g, "  ").split(/\r?\n/);
+	const out: Array<Line | MathBlock> = [];
+	let captionUsed = false;
+	let inDisplayMath = false;
+	let displayDepth = 0;
+	let displayLines: string[] = [];
+
+	const flushDisplay = () => {
+		out.push({ depth: displayDepth, kind: "display", text: displayLines.join("\n") });
+		displayLines = [];
+		inDisplayMath = false;
+	};
+
+	for (const raw of lines) {
+		if (inDisplayMath) {
+			if (raw.trim() === "$$") {
+				flushDisplay();
+				continue;
+			}
+			displayLines.push(raw);
+			continue;
+		}
+
+		if (!raw.trim()) continue;
+		const depth = Math.floor((raw.match(/^\s*/)?.[0].length ?? 0) / 2);
+		const trimmed = raw.trim();
+		if (trimmed === "$$") {
+			inDisplayMath = true;
+			displayDepth = depth;
+			continue;
+		}
+
+		const kind =
+			!captionUsed && /^(algorithm\b|procedure\b|function\b)/i.test(trimmed)
+				? ((captionUsed = true), "caption")
+				: trimmed.startsWith("//")
+					? "comment"
+					: "command";
+		out.push({ depth, kind, text: trimmed });
+	}
+
+	return out;
+}
+
 function commandLabel(text: string) {
 	const head = text.split(/\s+/)[0] ?? "";
 	const lower = head.toLowerCase();
@@ -101,6 +153,18 @@ function splitTextWithMath(text: string): RootContent[] {
 	return nodes;
 }
 
+function renderMathBlock(text: string, depth: number): RootContent {
+	return h(
+		"div",
+		{ class: "algorithm-math", style: `--algorithm-depth:${depth};` },
+		[
+			h("code", { class: "language-math math-display" }, [
+				{ type: "text", value: text } as RootContent,
+			]),
+		],
+	);
+}
+
 function renderLine(line: Line): RootContent {
 	if (line.kind === "blank") return h("div", { class: "algorithm-blank" });
 	if (line.kind === "comment") {
@@ -130,11 +194,11 @@ export const remarkAlgorithm: Plugin<[], Root> = () => (tree) => {
 		const lang = node.lang?.toLowerCase();
 		if (lang !== "algorithm" && lang !== "algo") return;
 
-		const lines = parseLines(normalize(node.value));
+		const lines = parseMathBlock(normalize(node.value));
 		if (!lines.length) return;
 
 		let caption = "";
-		const body: Line[] = [];
+		const body: Array<Line | MathBlock> = [];
 		for (const line of lines) {
 			if (!caption && line.kind === "caption") {
 				caption = parseCaption(line.text) || line.text;
@@ -147,7 +211,15 @@ export const remarkAlgorithm: Plugin<[], Root> = () => (tree) => {
 		if (caption) {
 			children.push(h("figcaption", { class: "algorithm-caption" }, [{ type: "text", value: caption } as RootContent]));
 		}
-		children.push(h("div", { class: "algorithm-body" }, body.map(renderLine)));
+		children.push(
+			h(
+				"div",
+				{ class: "algorithm-body" },
+				body.map((line) =>
+					line.kind === "display" ? renderMathBlock(line.text, line.depth) : renderLine(line as Line),
+				),
+			),
+		);
 
 		parent.children[index] = h("figure", { class: "algorithm-box" }, children);
 	});
