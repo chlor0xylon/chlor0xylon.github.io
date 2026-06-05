@@ -52,6 +52,7 @@ const readingTime: string =
 const sectionCounters = [0, 0, 0];
 const numberedHeadings = headings.reduce<TocHeading[]>((acc, heading) => {
 	if (heading.depth < 2 || heading.depth > 4) return acc;
+	if (heading.slug === "footnote-label") return acc;
 
 	const counterIndex = heading.depth - 2;
 	sectionCounters[counterIndex] += 1;
@@ -808,6 +809,10 @@ const giscusThemes = import.meta.env.PROD
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 		color: hsl(var(--theme-text) / 0.72);
+	}
+	.post-article .footnotes h2::before {
+		content: none !important;
+		display: none;
 	}
 	.post-article .footnotes ol {
 		list-style: decimal;
