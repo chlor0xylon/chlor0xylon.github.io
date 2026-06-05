@@ -15,6 +15,7 @@ import remarkDirective from "remark-directive";
 import remarkMath from "remark-math";
 import { rehypeBasePath } from "./src/plugins/rehype-base-path";
 import { rehypeLinkCitationUrls } from "./src/plugins/rehype-link-citation-urls";
+import { remarkAlgorithm } from "./src/plugins/remark-algorithm";
 import { remarkAdmonitions } from "./src/plugins/remark-admonitions";
 import { remarkFigureReferences } from "./src/plugins/remark-figure-references";
 import { remarkReadingTime } from "./src/plugins/remark-reading-time";
@@ -119,6 +120,7 @@ export default defineConfig({
 		remarkPlugins: [
 			remarkReadingTime,
 			remarkDirective,
+			remarkAlgorithm,
 			remarkAdmonitions,
 			remarkMath,
 			remarkFigureReferences,
