@@ -253,9 +253,50 @@ For the sake of simplicity I copied their notations, but here are equivalences b
 
 The main two differences are that the search space and the regularization term. They use the unit ball for the $\|\cdot\|_{2,\infty}$ column-wise norm in lieu of the orthant of poitwise non-negative elements, and they regularize the assignments $\alpha$ with the $L_1$ norm to favor sparse solutions.
 
-In a later republished journal version of the paper [@JMLRv11mairal10a], the authors also tackle the non-negative matrix factorization problem that taken from another referenced line of research[^note-nmf], and one particular sentence is particularly interesting for the problem at hand: _``A simple modification of our algorithm (...) allows us to handle these [non-negativity] constraints, while guaranteeing to find a stationary point of the optimization problem.''_ Wonderful, I thought.
+In a later republished journal version of the paper [@JMLRv11mairal10a], the authors also tackle the non-negative matrix factorization problem that taken from another referenced line of research[^note-nmf], and one particular sentence is particularly interesting for the problem at hand: _``A simple modification of our algorithm (...) allows us to handle these [non-negativity] constraints, while guaranteeing to find a stationary point of the optimization problem.''_ Wonderful, I thought. The algorithm in question has been reproduced below:
 
 [^note-nmf]: That's where we can learn, among other things, that non-negative matrix factorization for sparse coding seems to date back as early as 2001.
+
+
+```algorithm
+Algorithm: Online Dictionary Learning [@JMLRv11mairal10a]
+Require $\mathbf{x} \in \mathbb{R}^m \sim p(\mathbf{x})$, $\lambda \in \mathbb{R}$, $\mathbf{D}_0 \in \mathbb{R}^{m \times k}$, $T$
+$\mathbf{A}_0 \in \mathbb{R}^{k \times k} \gets \mathbf{0}$, $\mathbf{B}_0 \in \mathbb{R}^{m \times k} \gets \mathbf{0}$ // Reset the past information
+For $t = 1$ to $T$
+  Draw $\mathbf{x}_t$ from $p(\mathbf{x})$
+  State Sparse coding: compute $\alpha_t$ such that
+    $$
+    \alpha_t \triangleq \arg\min_{\alpha \in \mathbb{R}^k} \frac{1}{2}\|\mathbf{x}_t - \mathbf{D}_{t-1}\alpha\|_2^2 + \lambda \|\alpha\|_1
+    $$
+  $\mathbf{A}_t \gets \mathbf{A}_{t-1} + \alpha_t \alpha_t^T$
+  $\mathbf{B}_t \gets \mathbf{B}_{t-1} + \mathbf{x}_t \alpha_t^T$
+  State Compute $\mathbf{D}_t$ using Algorithm 2, with $\mathbf{D}_{t-1}$ as a warm restart
+    $$
+    \mathbf{D}_t \triangleq \arg\min_{\mathbf{D} \in \mathcal{C}} \frac{1}{t}\sum_{i=1}^t \left(\frac{1}{2}\|\mathbf{x}_i - \mathbf{D}\alpha_i\|_2^2 + \lambda \|\alpha_i\|_1\right) \\
+	= \arg\min_{\mathbf{D} \in \mathcal{C}} \frac{1}{t} \left( \frac{1}{2} \mathrm{Tr}(\mathbf{D}^\top \mathbf{DA}_t - \mathrm{Tr}(\mathbf{DB}_t) \right)
+    $$
+  Return $\mathbf{D}_T$
+EndFor
+```
+
+```algorithm
+Algorithm: Dictionary Update [@JMLRv11mairal10a]
+Require $\mathbf{D} = [\mathbf{d}_1,\dots,\mathbf{d}_k]\in \mathbb{R}^{m\times k}$ (input dictionary)
+$\mathbf{A} = [\mathbf{a}_1,\dots,\mathbf{a}_k]\in \mathbb{R}^{k\times k}$
+$\mathbf{B} = [\mathbf{b}_1,\dots,\mathbf{b}_k]\in \mathbb{R}^{m\times k}$
+Repeat
+  For $j = 1$ to $k$
+    State Update the $j$-th column:
+      $\mathbf{u}_j \leftarrow \big(\mathbf{b}_j - \mathbf{D}\mathbf{a}_j\big) / \mathbf{A}[j,j] + \mathbf{d}_j$
+      $\mathbf{d}_j \leftarrow \mathbf{u}_j / \max\big(\left\|\mathbf{u}_j\right\|_2, 1\big)$
+  EndFor
+Until convergence
+Return $\mathbf{D}$ (updated dictionary)
+```
+
+
+
+
 
 ## References
 
