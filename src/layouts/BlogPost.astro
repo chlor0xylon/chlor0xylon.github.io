@@ -613,30 +613,27 @@ const giscusThemes = import.meta.env.PROD
 	.post-article h2::before,
 	.post-article h3::before,
 	.post-article h4::before {
-		display: block;
+		display: inline-block;
 		font-family: var(--font-mono);
 		font-style: normal;
 		font-weight: 500;
 		letter-spacing: 0.08em;
-		line-height: 1;
+		line-height: inherit;
 		color: hsl(var(--theme-accent) / 0.78);
 		font-variant-numeric: tabular-nums;
 		font-feature-settings: "tnum";
+		margin-right: 0.55em;
+		font-size: 1em;
+		vertical-align: baseline;
 	}
 	.post-article h2::before {
 		content: counter(section);
-		font-size: 12px;
-		margin-bottom: 10px;
 	}
 	.post-article h3::before {
 		content: counter(section) "." counter(subsection);
-		font-size: 11px;
-		margin-bottom: 8px;
 	}
 	.post-article h4::before {
 		content: counter(section) "." counter(subsection) "." counter(subsubsection);
-		font-size: 10.5px;
-		margin-bottom: 7px;
 	}
 
 	.post-article a {
