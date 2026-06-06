@@ -189,7 +189,7 @@ I hypothesize that with more robust representations, proper regularization, incr
 
 Another sensible way of phrasing that hunch would be the following: formerly, classification-trained discriminative models had the possibility to take hacky shortcuts in order to cut through the visual patterns and return the correct label. For example, early convolutional neural networks are typically known to rely on texture information [@imagenet2018texturebias], or at least local shapes [@burgert2026imagenettrained], which isn't a bad proxy anyway, but limits the so-called ``global understanding'' of a scene, which Transformers excel at by comparing each patch with one another.
 
-The relative robustness of late frontier convolutional networks only came from scaling the sheer amount of different classes[^note-number-classes-imagenet] to force them to refine their understanding. By contrast, nowadays, models of DINO's caliber, which are trained on datasets three orders of magnitude larger[^note-number-images-dino-training] and forced to capture subtle internal pieces of visual context in an unsupervized learning setup, should be able to encode semantic relationships between images more finely, albeit in a latent space with roughly the same number of dimensions[^note-dimensions-models]. If true, that intuition should mean it should be less tricky to produce prototypes from those modern models because they compress visual information less aggressively.
+The relative robustness of late frontier convolutional networks only came from scaling the sheer amount of different classes[^note-number-classes-imagenet] to force them to refine their understanding. By contrast, nowadays, models of DINO's caliber, which are trained on datasets three orders of magnitude larger[^note-number-images-dino-training] and forced to capture subtle internal pieces of visual context in an unsupervized learning setup, should be able to encode semantic relationships between images more finely, albeit in a latent space with roughly the same number of dimensions[^note-dimensions-models]. If true, that intuition suggests it should be less tricky to produce prototypes from those modern models because they compress visual information less aggressively.
 
 [^note-number-classes-imagenet]: The ImageNet-1K dataset [@imagenet1k2012], used to train ResNets, is comprised of merely 1.4 million images split up into 1000 categories.
 
@@ -262,7 +262,7 @@ They come up with an algorithm with proven convergence for solving that problem.
 ```algorithm
 Algorithm: Online Dictionary Learning [@JMLRv11mairal10a]
 Require $\mathbf{x} \in \mathbb{R}^m \sim p(\mathbf{x})$, $\lambda \in \mathbb{R}$, $\mathbf{D}_0 \in \mathbb{R}^{m \times k}$, $T$
-$\mathbf{A}_0 \in \mathbb{R}^{k \times k} \gets \mathbf{0}$, $\mathbf{B}_0 \in \mathbb{R}^{m \times k} \gets \mathbf{0}$ // Reset the past information
+$\mathbf{A}_0 \in \mathbb{R}^{k \times k} \gets \mathbf{0}$, $\mathbf{B}_0 \in \mathbb{R}^{m \times k} \gets \mathbf{0}$
 For $t = 1$ to $T$
   Draw $\mathbf{x}_t$ from $p(\mathbf{x})$
   State Sparse coding: compute $\alpha_t$ such that
@@ -301,7 +301,7 @@ So, looking into the procedure reveals that the optimization performs a step in 
 - then aggregate statistics about the codes into two buffers and update the dictionary state
 
 
-In a later extended journal version of the paper [@JMLRv11mairal10a], in sections 5.2 & 5.3, the authors also tackle regularization variants, notably the non-negative matrix factorization problem (NMF for short) taken from another referenced line of research[^note-nmf], as part of the broader framework of different constraint sets for the dictionary and the codes.
+In an extended journal version of the paper [@JMLRv11mairal10a], the authors also tackle regularization variants, notably the non-negative matrix factorization problem (NMF for short) taken from another referenced line of research[^note-nmf], as part of the broader framework of different constraint sets for the dictionary and the codes.
 
 [^note-nmf]: That's where we can learn, among other things, that non-negative matrix factorization for sparse coding seems to date back as early as 2001.
 
@@ -317,7 +317,7 @@ Wonderful, I thought. This is exactly the setup we're looking for. The implicati
 
 ### Implementation
 
-In order to online compute the dictionary according to the approach proposed by @holistic2023fel retaining concepts of positive activations only, I wrote a Python script that given a huggingface model and a dataloader wrapping a PyTorch datasest, evaluates the latents of some random crops of the provided images and saves the resulting vectors in Numpy's binary file format. Then, I made another separate PyTorch dataset wrapper to index those saved vectors, de-interlace them from their saved batch files and stream them into whatever other tool I need, like a dictionary learning procedure.
+In order to online compute the dictionary according to the approach proposed by @holistic2023fel retaining concepts of positive activations only, I wrote a Python script that given a huggingface model and a dataloader wrapping a PyTorch datasest, evaluates the latents of some random crops of the provided images and saves the resulting vectors in Numpy's binary file format. Then, I made another separate PyTorch dataset wrapper to index those saved vectors materialize them from their saved batch files into memory, shuffle them, interleave into batches on the fly, and stream them to whatever other tool I need, like a dictionary learning procedure.
 
 The numerical computations of dictionary learning with lots of vectorized operations are natural fit for [Jax](https://docs.jax.dev/en/latest/). Unlike PyTorch, `jax` fuses operations by default because it compiles the computation graph and it allows looped computations to happen faster by avoiding python interruptions between operations. This is especially handy for iterative algorithms to solve linear algebra problems. Before this project I was familiar with PyTorch but I had never used Jax so it was a good use case to learn.
 
@@ -402,7 +402,7 @@ def nonnegative_lasso_fista(
 
 ### Dictionary update step
 
-The dictionary step is pretty much about following to the letter instructions from the algorithm, with the additional projection to enforce non-negative values for the new dictionary columns. Also, instead of simply accumulating the statistics, I average them with the simple online mean update formula to avoid overflow. Since the values of columns of $\mathbf{A}$ and $\mathbf{B}$ are used in tandem, using the averaged aggregate values scaled by $\frac{1}{T}$ ($T$ is the global time step) instead of the raw sums does not change anything to the algorithm  in the running inner loop of the dictionary update step $\mathbf{u}_j \leftarrow \big(\mathbf{b}_j - \mathbf{D}\mathbf{a}_j\big) / \mathbf{A}[j,j] + \mathbf{d}_j$. I got rid of the original columnn-wise $L_2$ unit ball constraint for the dictionary atoms and, obviously, I added the projection onto the set of positively-valued vectors. Below is the Jax code for reference.
+The dictionary update step is pretty much about following to the letter instructions from the algorithm, with the additional projection to enforce non-negative values for the new dictionary columns. Also, instead of simply accumulating the statistics, I average them with the simple online mean update formula to avoid overflow. Since the values of columns of $\mathbf{A}$ and $\mathbf{B}$ are used in tandem, using the averaged aggregate values scaled by $\frac{1}{T}$ ($T$ is the global time step) instead of the raw sums does not change anything to the algorithm  in the running inner loop of the dictionary update step $\mathbf{u}_j \leftarrow \big(\mathbf{b}_j - \mathbf{D}\mathbf{a}_j\big) / \mathbf{A}[j,j] + \mathbf{d}_j$. I got rid of the original columnn-wise $L_2$ unit ball constraint for the dictionary atoms and, obviously, I added the projection onto the set of positively-valued vectors. Below is the Jax code for reference.
 
 ```python
 def update_dictionary(
@@ -453,6 +453,9 @@ def update_dictionary(
     W, _, _ = jax.lax.while_loop(cond_fn, body_fn, (W, 0, jnp.inf))
     return W, A, B
 ```
+
+
+### Results
 
 ## Visualizing the latent concepts with prototype images
 
