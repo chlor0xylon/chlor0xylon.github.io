@@ -226,7 +226,7 @@ Note that $\mathbf{U}$ and $\mathbf{W}$ are required to belong to the positive o
 
 
 ### Solving procedure
-Solving the above mathematical problem can be approached in at least a few different manners. In Fel's PhD thesis manuscript [@fel2025sparksexplainabilityrecentadvancements], in section C.1.3 wlong with the implementation details of CRAFT, they explain that they used a method called alternating direction method of multipliers (ADMM for short), which I also encountered during my Master's Thesis, because it arises a lot in the literature about applied mathematical optimization problems with cumbersome constraints such as non-negativity. The drawback of this algorithm in our present use is that it requires storing the values in memory during the iterative solving process, and even duplicating variables to account for the separation of optimization and constraint enforcement, as per the ADMM framework. And it does not scale particularly well, given the dataset can be huge. For example, the full ImageNet dataset comprised of 1.3 million images, coded over 384 dimensions of 32-bit floating point numbers would take up about 2GB in memory. Fully manageable even on most modern laptops even in the VRAM, but we're nearly on the edge. Any $\times 5$ scaling of dataset and memory IO would probably becomes a noticeable limiting factor.
+Solving the above mathematical problem can be approached in at least a few different manners. In Fel's PhD thesis manuscript [@fel2025sparksexplainabilityrecentadvancements], in section C.1.3 wlong with the implementation details of CRAFT, they explain that they used a method called alternating direction method of multipliers (ADMM for short), which I also encountered during my Master's Thesis, because it arises a lot in the literature about applied mathematical optimization problems with cumbersome constraints such as non-negativity. The drawback of this algorithm in our present use is that it requires storing the values in memory during the iterative solving process, and even duplicating variables to account for the separation of optimization and constraint enforcement, as per the ADMM framework. And it does not scale particularly well, given the dataset can be huge. For example, the full ImageNet dataset comprised of 1.3 million images, coded over 384 dimensions of 32-bit floating point numbers would take up about 2GB in memory. Fully manageable even on most modern laptops even in the VRAM, but we're nearly on the edge. Any $\times 5$ scaling of dataset and memory IO would probably becomes a seriously limiting factor.
 
 Yet, in hindsight, we are only really interested in the final dictionary $\mathbf{W}$ solution, _not_ the full decompositions $\mathbf{U}$ of our dataset, which can be recomputed at will once $\mathbf{W}$ is set. The problem is indeed separable, thanks to the following identify:
 
@@ -235,9 +235,10 @@ $$
 $$
 which goes to show that $\mathbf{W}$ could be conceptually updated by only considering a subset of the dataset elements at a time indexed in $\llbracket 1, n \rrbracket$, akin to how neural networks update their weights by considering an objective computed on small parts of the dataset at a time.
 
-I don't like having the mental pressure of accounting for my 32GB of RAM limitation (let alone VRAM culminating at a quarter of that), or having to rent a VPS if I ever want to scale up my experiment past ImageNet in the future, so a streaming algorithm would be in order to avoid storing the decompositions. Possibly at the expense of convergence speed, exactness or correctness. So I began looking for such an algorithm. That in itself, was a small experiment to try.
+I don't like having the mental pressure of accounting for my 32GB of RAM limitation (let alone VRAM culminating at a quarter of that), or having to rent a VPS if I ever want to scale up my experiment past ImageNet in the future, so I wanted to use a streaming algorithm from the start to avoid storing the full decompositions of the dataset, even if that meant sacrifying convergence speed, exactness or even correctness. 
 
-And so I found a promising paper about exactly that [@onlinelearning2009] exposing a procedure for online dictionary learning. By the way, Julien Mairal is also a credited author of the three DINO papers. They address the following problem:
+
+So I began looking for such an algorithm. That in itself, was a small experiment to try. And it turns out that this problem is solved. I found a paper about exactly that [@onlinelearning2009] exposing a procedure for online dictionary learning. By the way, Julien Mairal is also a credited author of the three DINO papers. They address the following problem:
 
 $$
 \arg\min_{\mathbf{D} \in \mathbb{R}^{m\times k}, \alpha \in \mathbb{R}^{k\times n}} \|\mathbf{X} - \mathbf{D} \alpha \|_F^2 + \lambda \|\alpha\|_{1,1} \quad \text{s.t.} \quad \mathbf{D} \in \mathcal{C}
@@ -319,7 +320,8 @@ The paper describes a framework where the dictionary can be learned by only stre
 ### Overall implementation
 
 In order to online compute the dictionary according to the approach proposed by @holistic2023fel retaining concepts of positive activations only, I wrote several Python scripts that given a Hugging Face model and a dataset, perform in turn the following steps:
-- a custom `ImageNetDataset(torch.Dataset)` scrapes and indexes images from the downloaded ImageNet dataset file tree structure as well as some metadata like image size, in a Polars dataframe to emulate a tiny database and accepts filtering predicates to select images whose dimensions lie above 64 pixels in both width and height, for example (see <a data-figure-ref="fig-imagenet-density"></a> showing the dimensions' density), and appends some random transform codes to the batch generated by a custom-made `TransformsMaker` factory to augment the dataset on the fly to apply random crops of 48 by 48 pixels or other future transformations;
+- A custom `ImageNetDataset(torch.Dataset)` scrapes and indexes images from the downloaded ImageNet dataset file tree structure as well as some metadata like image size, in a Polars dataframe to emulate a tiny database and accepts filtering predicates to select images whose dimensions lie above 64 pixels in both width and height, for example (see <a data-figure-ref="fig-imagenet-density"></a> showing the dimensions' density), and appends some random transform codes to the batch generated by a custom-made `TransformsMaker` factory to augment the dataset on the fly to apply random crops of 48 by 48 pixels or other future transformations.
+
 ```python
 @dataclass
 class InputImageBatch:
@@ -345,11 +347,13 @@ class InputImageBatch:
 		Density plot of ImageNet's image dimensions distribution
 	</figcaption>
 </figure>
-- a conventional wrapper around `torch.DataLoader` retrieves images from the dataset drawn at random;
-- a processing loop streams those formed batches to the model adapter, which extracts their latent CLS token or pooled outputs and repackages the model outputs, unique ids and transform codes;
-- a custom-made `ArrayArtifactStore` persists the raw batched model outputs as binary numpy format sharded them into batches on disk, and saves the metadata transform codes and ids to a Polars bookkeeping registry;
-- a specialized dictionary learning script relying on a custom new `VectorDataset(torch.Dataset)` with manually-paginated lazy loading capability via `__getitems__` to leverage the OS-level caching instead of making one (or using numpy's memory map) and decouple the requested materialization batch size from the sharding size on disk, and yet another wrapper around `torch.DataLoader` to compute iteratively the dictionary weights and write them on the disk;
-- a visualizer script reuses some custom-made `VectorDataset` methods leveraging [Usearch](https://github.com/unum-cloud/usearch) to perform vector $L_2$ or cosine-distance indexing the persisted latent vectors and allow efficient matching between learned concept vectors and other extracted latents at inference time. 
+- A conventional wrapper `ImageNetDataLoader(torch.DataLoader)` retrieves images from the dataset drawn at random.
+- A processing loop streams those formed batches to the model adapter, which extracts their latent CLS token or pooled outputs and repackages the model outputs, unique ids and transform codes.
+- A custom-made `ArrayArtifactStore` persists the raw batched model outputs as binary numpy format sharded them into batches on disk, and saves the metadata transform codes and ids to a Polars bookkeeping registry.
+- A specialized dictionary learning script  to compute iteratively the dictionary weights and persist them on disk, relying on:
+    - a custom new `VectorDataset(torch.Dataset)` with manually-paginated lazy loading capability via `__getitems__` to leverage OS-level file caching instead of making one (or using numpy's memory map) and decouple the requested materialization batch size from the sharding size on disk;
+    - yet another dataloader wrapper `VectorDataLoader(torch.DataLoader)`.
+- A visualizer script reuses some custom-made `VectorDataset` methods leveraging [Usearch](https://github.com/unum-cloud/usearch) to perform vector $L_2$ or cosine-distance indexing the persisted latent vectors and allow efficient matching between learned concept vectors and other extracted latents at inference time.
 
 
 
