@@ -335,7 +335,6 @@ def train_step(
     T: int,           # global step counter
     lam: float,
 ):
-    W_prev = W
     H = nonnegative_lasso_fista(W=W, X=X, lam=lam, H0=H0)
     W, A, B = update_dictionary(W=W, H=H, X=X, A=A, B=B, T=T)
     return W, A, B
