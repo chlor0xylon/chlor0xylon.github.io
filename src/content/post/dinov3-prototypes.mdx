@@ -380,8 +380,11 @@ class InputImageBatch:
 - A specialized dictionary learning script  to compute iteratively the dictionary weights and persist them on disk, relying on:
     - a custom new `VectorDataset(torch.Dataset)` with manually-paginated lazy loading capability via `__getitems__` to leverage OS-level file caching instead of making one (or using numpy's memory map) and decouple the requested materialization batch size from the sharding size on disk;
     - yet another dataloader wrapper `VectorDataLoader(torch.DataLoader)`.
-- A visualizer script reuses some custom-made `VectorDataset` methods leveraging [Usearch](https://github.com/unum-cloud/usearch) to perform vector $L_2$ or cosine-distance indexing the persisted latent vectors and allow efficient matching between learned concept vectors and other extracted latents at inference time.
-
+- A concept visualizer script is responsible with
+    - reading the concepts saved on disk;
+    - then firing some custom-made `VectorDataset` methods leveraging [Usearch](https://github.com/unum-cloud/usearch) to build a compacted vector index to be able to compute efficient matching & retrieval later;
+    - for all saved concept vector of the dictionary, retrieve the closest matches in the dataset saved latents in terms of $L_2$ or cosine distance;
+    - reload the latter from the disk; replay their transformations and display them. allow  between learned concept vectors and other extracted latents at inference time.
 
 
 
