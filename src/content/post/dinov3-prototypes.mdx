@@ -356,7 +356,7 @@ class InputImageBatch:
 			src={imagenetDensityHex.src}
 			width={imagenetDensityHex.width}
 			height={imagenetDensityHex.height}
-			alt="ImageNet image-dimension density plot in hex-bin format."
+			alt="ImageNet image-dimension density plot, linear scale format."
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
@@ -364,14 +364,14 @@ class InputImageBatch:
 			src={imagenetDensitySquare.src}
 			width={imagenetDensitySquare.width}
 			height={imagenetDensitySquare.height}
-			alt="ImageNet image-dimension density plot in square-bin format."
+			alt="ImageNet image-dimension density plot, log-scale format."
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
 	</div>
 	<figcaption>
 		<span class="label"></span>
-		Density plots of ImageNet's image dimensions distribution in hex-bin and square-bin formats. Images expectedly accumulate along frequent size ratios, and the majority of images concentrate in the 400-500-ish range in height and width.
+		Density plots of ImageNet's image dimensions distribution in linear scale and log-scale. Images expectedly accumulate along frequent size ratios, and the majority of images concentrate in the 400-500-ish range in height and width.
 	</figcaption>
 </figure>
 - A conventional wrapper `ImageNetDataLoader(torch.DataLoader)` retrieves images from the dataset drawn at random and transforms them on the fly according to the transform codes.
