@@ -470,7 +470,9 @@ def nonnegative_lasso_fista(
 
 ### Dictionary update step
 
-The dictionary update step is pretty much about following to the letter instructions from the algorithm, with the additional projection to enforce non-negative values for the new dictionary columns. Also, instead of simply accumulating the statistics, I average them with the simple online mean update formula to avoid overflow. Since the values of columns of $\mathbf{A}$ and $\mathbf{B}$ are used in tandem, using the averaged aggregate values scaled by $\frac{1}{T}$ ($T$ is the global time step) instead of the raw sums does not change anything to the algorithm  in the running inner loop of the dictionary update step $\mathbf{u}_j \leftarrow \big(\mathbf{b}_j - \mathbf{D}\mathbf{a}_j\big) / \mathbf{A}[j,j] + \mathbf{d}_j$. I got rid of the original columnn-wise $L_2$ unit ball constraint for the dictionary atoms and, obviously, I added the projection onto the set of positively-valued vectors. Below is the Jax code for reference.
+The dictionary update step is pretty much about following to the letter instructions from the algorithm, with the additional projection to enforce non-negative values for the new dictionary columns. Also, instead of simply accumulating the statistics, I average them with the simple online mean update formula to avoid overflow. Since the values of columns of $\mathbf{A}$ and $\mathbf{B}$ are used in tandem, using the averaged aggregate values scaled by $\frac{1}{T}$ ($T$ is the global time step) instead of the raw sums does not change anything to the algorithm  in the running inner loop of the dictionary update step $\mathbf{u}_j \leftarrow \big(\mathbf{b}_j - \mathbf{D}\mathbf{a}_j\big) / \mathbf{A}[j,j] + \mathbf{d}_j$. I kept the original columnn-wise $L_2$ unit ball constraint for stability of the dictionary atoms[^note-proj-l2-lasso-fista], and  obviously, I added the projection onto the set of positively-valued vectors. Below is the Jax code for reference.
+
+[^note-proj-l2-lasso-fista]: Without it, the concept vectors would explode and their norms would increase indefinitely in my tests.
 
 ```python
 def update_dictionary(
@@ -502,8 +504,11 @@ def update_dictionary(
         u_j = jnp.where(a_jj > 0.0, u_j, d_j)
 
         # d_j <- max(u_j, 0)
-        d_j_next = jnp.where(u_j > 0.0, u_j, 0.0)
-        return W_current.at[:, j].set(d_j_next)
+        u_j = jnp.where(u_j > 0.0, u_j, 0.0)
+        # d_j <- u_j / max(||u_j||_2, 1)
+        norm_u = jnp.linalg.norm(u_j, ord=2)
+        u_j = u_j / jnp.maximum(norm_u, 1.0)
+        return W_current.at[:, j].set(u_j)
 
     def cond_fn(state):
         _, pass_idx, rel_change = state
