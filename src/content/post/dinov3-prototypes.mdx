@@ -25,7 +25,7 @@ In the mid-2010s, the renowned Transformers architecture [@vaswani2017attention]
 :::
 
 
-## Feature visualization
+## Introduction
 
 One of Distill's foundational articles is called _Feature Visualization_ [@olah2017featureVisualization]. It describes how neural networks designed for computer vision tasks can be probed to reverse-engineer the learned patterns cristallized into their weights after the training phase[^note-older-feature-viz].
 
@@ -35,14 +35,10 @@ It's safe to say the work carried out by Distill's authors has inspired many com
 
 
 
-## Reverse-engineering visual patterns
+## Feature visialization
 
-### Images and signals
 
-I like ML-related computer vision because unlike natural language, images can be natively thought of as _signals_ (as in: signal processing). And signals unlock a whole range of intuitions and tools to process or analyze them. Digital signal processing, in particular, has become a computer science area of its own. Also, because images are made of pixels aggregating to form consistent structures, the space of meaningful images to the human eye features many unexplored or unusual areas that depicts patterns still interpretable, even though they may not be present in natural images. For example, pixels can be reassigned to draw waveforms. Waveforms do not appear naturally in every day images, but they certainly are interpretable. On the other hand, the minimal atomic structures of textual language are discrete symbols (letters or even tokens, as seen by LLMs), which do not really enable very diversified ways of rearranging text in creative, interpretable manner, because in most languages, most letter arrangements fall completely outside of what's humanely intelligible. In my opinion, even though language has proven to be remarkably and effectively well-modelled by signals and linear algebra ever since Word2Vec [@word2vec], the coarseness and inflexible nature of text will remain seriously limiting factors to going beyond metadescription-level of interpretability, whereas the image medium allows to tanscend the existing visual language.
-
-### Feature visialization
-Speaking of visual language, to _visualize_ features in the context of machine learning research, means to synthesize images by whichever means possible, comprising patterns that maximize some given activations or outputs of a neural network, in order to gain insights about what the model perceives and how it ``interprets'' the inputs. In other words it's about finding _prototypical_ images that make particular neuron groups fire in a certain way[^note-on-fire-modes]. The proper mathematical term is _preimage_, but it has nothing to do with actual images made of pixels in the general sense, so to avoid that ambiguity I will henceforth refer to such artificial images simply as _prototypes_ in the remaining of this post, to stick to the literature's coined terminology.
+To _visualize_ features in the context of machine learning research, means to synthesize images by whichever means possible, comprising patterns that maximize some given activations or outputs of a neural network (the said features), in order to gain insights about what the model perceives and how it ``interprets'' the inputs. In other words it's about finding _prototypical_ images that make particular neuron groups fire in a certain way[^note-on-fire-modes]. The proper mathematical term is _preimage_, but it has nothing to do with actual images made of pixels in the general sense, so to avoid that ambiguity I will henceforth refer to such artificial images simply as _prototypes_ in the remaining of this post, to stick to the literature's coined terminology.
 
 [^note-on-fire-modes]: Said chosen groups can mean a specific neuron, or a collection of designated neurons. Distill's article _The Building Blocks of Interpretability_ [@olah2018buildingBlocks] showcases some neuron grouping choices for activation maximization.
 
