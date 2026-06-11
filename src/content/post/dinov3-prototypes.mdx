@@ -321,7 +321,7 @@ Wonderful, I thought. This is exactly the setup we're looking for. The implicati
 The paper describes a framework where the dictionary can be learned by only streaming one dataset element at a time, but the algorithm trivially generalizes to batch sizes above 1. 
 
 ### Overall implementation
-<figure id="fig-online-dictionary-svg" class="figure-wide">
+<figure id="fig-online-dictionary-learning-svg" class="figure-wide">
 	<img
 		src={onlineDictionarySvgDiagram}
 		width="357"
@@ -528,10 +528,36 @@ def update_dictionary(
     return W, A, B
 ```
 
+### Protocol
+
+Here I outline the methodology for the dictionary learning process (refer to <a data-figure-ref="fig-online-dictionary-learning-svg"></a>).
+- The first step is to compute image embeddings from a sufficiently large subset of image crops of the dataset. Thus I ran a script writing the obtained latents of random crops of size $128 \times 128$ of as many images as possible taken from the dataset. Images with any side less than 128 pixels was discarded. Other augmentations are possible (like geometry or colorimetry alterations) to capture more elaborate, transcendental concepts about the model's internal representations, although I did not use any in this experiment, focusing on the visual concepts. It is even desirable to get several views of the same image in the dataset, so we can extract crops on several passes. The idea is to train the dictionary on somewhat local views of images, allowing the model to capture multiple objects simultaneously; fostering a sufficient but not too rich diversity of concepts at once.
+- Second, I ran the dictionary learning script on the persisted batches of latents with a buffer of 512 concepts, and perform an update training step in the above code, with LASSO sparse coding regularization weight $\lambda$ set to 0. At this point, the point is not to get sparse codes, but rather to compute a dictionary of as good concepts as possible.
+- Third, I examined the produced dictionary and I this time evaluate the codes of original, unaltered images from the same dataset to test the decompositions with a positive regularization weight. 
+
+
+### Metrics
+I use the Hoyer sparsity measure [@nmf2004hoyer] to evaluate the sparsity of the produced codes:
+$$
+\mathrm{Hoyer}(\mathbf{x})
+= \frac{\sqrt{n} - \frac{\|\mathbf{x}\|_1}{\|\mathbf{x}\|_2}}{\sqrt{n} - 1}
+$$
+as well as the simple residues:
+$$
+\text{Residue}(\mathbf{x}) = \|\mathbf{x} - \mathbf{D} \alpha(\mathbf{x}) \|_2
+$$
+Note that $\alpha$ is the approximate codes from the iterative procedure for the approximate reconstruction, not the mathematical optimum.
+
+Finally, given a code $\alpha$, I also reinterpret-cast the non-negative elements as a probability distribution over the concepts and I compute a normalized entropy score that acts as another measure of non-sparseness:
+$$
+p = \frac{1}{\|\alpha\|_1}\mathbf{\alpha} \quad \text{so that} \quad \tilde{H}(\alpha) = \frac{1}{\log K}H(p)
+$$
 
 ### Results
 
 ## Visualizing the latent concepts with prototype images
+
+TBD...
 
 
 ## References
