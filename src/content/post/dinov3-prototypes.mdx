@@ -165,8 +165,8 @@ This poses a serious problem to gradient ascent approaches, because iteratively 
 
 Fortunately, all is not lost. Numerous Pre-2020 research results tackle prototype generation for convolutional networks. I will not reiterate here the already plentiful literature reviews of the various strategies they came up with to circumvent adversarial images. Both @Nguyen2019UnderstandingVisualizing and @olah2017featureVisualization provide one. But let's only state that they all involve some form of regularization in the model input space. Most of them aim to curb parasitic high frequencies, with various implementations techniques (for example directly in the gradients, or in the buffers; or indirectly via intermediary image transforms interleaved with gradient steps).
 
-### TODO: Mettre les tentatives avec ResNet
-Figure goes here
+{/* ### TODO: Append ResNet attempts
+Figure goes here */}
 
 ## The current state of feature visualization
 
@@ -229,7 +229,7 @@ Note that $\mathbf{U}$ and $\mathbf{W}$ are required to belong to the positive o
 
 
 ### Solving procedure
-Solving the above mathematical problem can be approached in at least a few different manners. In Fel's PhD thesis manuscript [@fel2025sparksexplainabilityrecentadvancements], in section C.1.3 wlong with the implementation details of CRAFT, they explain that they used a method called alternating direction method of multipliers (ADMM for short), which I also encountered during my Master's Thesis, because it arises a lot in the literature about applied mathematical optimization problems with cumbersome constraints such as non-negativity. The drawback of this algorithm in our present use is that it requires storing the values in memory during the iterative solving process, and even duplicating variables to account for the separation of optimization and constraint enforcement, as per the ADMM framework. And it does not scale particularly well, given the dataset can be huge. For example, the full ImageNet dataset comprised of 1.3 million images, coded over 384 dimensions of 32-bit floating point numbers would take up about 2GB in memory, ignoring any overhead. Probably manageable even on most modern laptops even in the VRAM, but we're nearly on the edge. Any $\times 5$ scaling of dataset and memory IO would probably becomes a seriously limiting factor.
+Solving the above mathematical problem can be approached in at least a few different manners. In Fel's PhD thesis manuscript [@fel2025sparksexplainabilityrecentadvancements], in section C.1.3 along with the implementation details of CRAFT, they explain that they used a method called alternating direction method of multipliers (ADMM for short), which I also encountered during my Master's Thesis, because it arises a lot in the literature about applied mathematical optimization problems with cumbersome constraints such as non-negativity. The drawback of this algorithm is that it requires storing the values in memory during the iterative solving process, and even duplicating variables to account for the separation of optimization and constraint enforcement, as per the ADMM framework. And it does not scale particularly well, given the dataset can be huge. For example, the full ImageNet dataset comprised of 1.3 million images, coded over 384 dimensions of 32-bit floating point numbers would take up about 2GB in memory, ignoring any overhead. Probably manageable even on most modern laptops even in the VRAM, but we're nearly on the edge. Any $\times 5$ scaling of dataset and memory IO would probably becomes a seriously limiting factor.
 
 Yet, in hindsight, we are only really interested in the final dictionary $\mathbf{W}$ solution, _not_ the full decompositions $\mathbf{U}$ of our dataset, which can be recomputed at will once $\mathbf{W}$ is set. The problem is indeed separable, thanks to the following identify:
 
@@ -326,11 +326,11 @@ The paper describes a framework where the dictionary can be learned by only stre
 		src={onlineDictionarySvgDiagram}
 		width="357"
 		height="256"
-		alt="Overview of the whole process to obtain prototype images"
+		alt="Overview of the whole process to compute concepts, and prototype images with intermediary steps"
 	/>
 	<figcaption>
 		<span class="label"></span>
-		Overview of the whole process pipelines
+		Overview of this post's experiments
 	</figcaption>
 </figure>
 
