@@ -114,24 +114,21 @@ The DINOv3 ViT-backbone uses $14\times 14$-pixel patches with a stride of 14, wh
 	<div class="figure-grid-images">
 		<img
 			src={filtersResnet18.src}
-			width={filtersResnet18.width}
-			height={filtersResnet18.height}
 			alt="First-layer filter visualization for ResNet-18."
 			loading="lazy"
+			style="aspect-ratio: auto;"
 		/>
 		<img
 			src={filtersConvNextTiny.src}
-			width={filtersConvNextTiny.width}
-			height={filtersConvNextTiny.height}
 			alt="First-layer filter visualization for DINOv3 ConvNeXt Tiny."
 			loading="lazy"
+			style="aspect-ratio: auto;"
 		/>
 		<img
 			src={filtersVitSmall.src}
-			width={filtersVitSmall.width}
-			height={filtersVitSmall.height}
 			alt="Patch embedding filter visualization for DINOv3 ViT Small."
 			loading="lazy"
+			style="aspect-ratio: auto;"
 		/>
 	</div>
 	<figcaption>
@@ -154,10 +151,9 @@ initialization (random or zeros). Other prompted directions corresponding to ind
 <figure id="fig-adversarial-gradient-ascent" class="figure-narrow">
 	<img
 		src={adversarialResnet18.src}
-		width={adversarialResnet18.width}
-		height={adversarialResnet18.height}
 		alt="Adversarial image produced by gradient ascent on ResNet-18."
 		loading="lazy"
+		style="aspect-ratio: auto;"
 	/>
 	<figcaption>
 		<span class="label"></span>
@@ -363,16 +359,12 @@ class InputImageBatch:
 	<div class="figure-grid-images" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
 		<img
 			src={imagenetDensityHex.src}
-			width={imagenetDensityHex.width}
-			height={imagenetDensityHex.height}
 			alt="ImageNet image-dimension density plot, linear scale format."
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
 		<img
 			src={imagenetDensitySquare.src}
-			width={imagenetDensitySquare.width}
-			height={imagenetDensitySquare.height}
 			alt="ImageNet image-dimension density plot, log-scale format."
 			loading="lazy"
 			style="aspect-ratio: auto;"
@@ -570,8 +562,6 @@ I generated a dictionary of $512$ concept vectors for the $384$-dimensional CLS-
 	<div class="figure-grid-images" style="grid-template-columns: minmax(0, 1fr);">
 		<img
 			src={dictionaryConceptValueDistribution.src}
-			width={dictionaryConceptValueDistribution.width}
-			height={dictionaryConceptValueDistribution.height}
 			alt="Histogram of positive entry values across all learned concepts."
 			loading="lazy"
 			style="aspect-ratio: auto;"
@@ -587,16 +577,12 @@ I generated a dictionary of $512$ concept vectors for the $384$-dimensional CLS-
 	<div class="figure-grid-images">
 		<img
 			src={dictionaryConceptSimilarities.src}
-			width={dictionaryConceptSimilarities.width}
-			height={dictionaryConceptSimilarities.height}
 			alt="Pairwise cosine similarity matrix between learned concept vectors."
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
 		<img
 			src={dictionaryFeaturesOverConcepts.src}
-			width={dictionaryFeaturesOverConcepts.width}
-			height={dictionaryFeaturesOverConcepts.height}
 			alt="Heatmap of positive feature weights over learned concepts."
 			loading="lazy"
 			style="aspect-ratio: auto;"
@@ -619,24 +605,18 @@ Then I evaluated how held-out ImageNet latents decompose over the learned dictio
 	<div class="figure-grid-images">
 		<img
 			src={dictionaryCodesValuesDistribution.src}
-			width={dictionaryCodesValuesDistribution.width}
-			height={dictionaryCodesValuesDistribution.height}
 			alt="Histogram of normalized entropy values for non-negative sparse codes."
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
 		<img
 			src={dictionaryCodeSparsity.src}
-			width={dictionaryCodeSparsity.width}
-			height={dictionaryCodeSparsity.height}
 			alt="Histogram of Hoyer sparsity values for non-negative sparse codes."
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
 		<img
 			src={dictionaryResidueNorms.src}
-			width={dictionaryResidueNorms.width}
-			height={dictionaryResidueNorms.height}
 			alt="Histogram of reconstruction residue norms for dictionary decompositions."
 			loading="lazy"
 			style="aspect-ratio: auto;"
@@ -656,16 +636,12 @@ Finally, <a data-figure-ref="fig-dictionary-joint-diagnostics"></a> combines the
 	<div class="figure-grid-images" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
 		<img
 			src={dictionaryResidueNormsVsSparsity.src}
-			width={dictionaryResidueNormsVsSparsity.width}
-			height={dictionaryResidueNormsVsSparsity.height}
 			alt="Two-dimensional histogram of residue norms against Hoyer sparsity."
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
 		<img
 			src={dictionaryCodesValuesDistributionVsSparsity.src}
-			width={dictionaryCodesValuesDistributionVsSparsity.width}
-			height={dictionaryCodesValuesDistributionVsSparsity.height}
 			alt="Two-dimensional histogram of normalized entropy against Hoyer sparsity."
 			loading="lazy"
 			style="aspect-ratio: auto;"
