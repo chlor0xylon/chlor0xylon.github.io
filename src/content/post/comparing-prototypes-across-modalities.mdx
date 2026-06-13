@@ -1,0 +1,68 @@
+---
+title: "Comparing prototype generation feasibility across modalities"
+toc: true
+publishDate: 2026-06-09
+description: "Discussion about the structural differences that exist between image and text-based neural networks"
+tags: [machine learning, interpretability, transformers]
+---
+
+
+
+### Atomic representations
+
+Let's pause and ponder about images. What are the atoms of images? Well, images can be natively thought of as _signals_ (as in: signal processing). And signals unlock a whole range of intuitions and tools to process or analyze them. In particular, digital images are sampled signals using pixels as atoms. Images that convey a visual meaning to humans represent a tiny fraction of the whole space of possible images, for a given set of sampling parameters (resolution, color depth, color channels). 
+
+
+On the other hand, take text data. The minimal atomic units of most written language are arguably discrete symbols (typically letters or ideograms, characters in general). Equally, texts that convey a meaning to humans (regardless of the languages considered) represent a tiny fraction of possible token arrangements, for a given set of allowed tokens (for example, the tokens in the dictionary of a modern LLM).
+
+
+### Context
+
+Ever since early-2010 research such as Word2Vec [@word2vec], we know that natural language can be very effectively modelled in chunks by token-level embedding vectors[^note-word2vec].
+
+[^note-word2vec]: To this day, I am still in awe before the algebraic relationships in Word2Vec embeddings emerging from optimizing a completely unrelated loss.
+
+More than a decade later, it would become apparent that image chunks could be embedded into latents as well.
+
+Furthemore, Transformers have since become the de facto universal processor for images and text alike, among other modalities, leveraging that token embedding principle.
+
+In my opinion the coarseness and inflexible nature of written textual language remains a very limiting factor to bending latents at will in order to reverse-engineer prototypical pieces of text; whereas the image medium feels much more amenable to interpolation due to its intrinsic signal-like nature.
+
+### Tokens in transformers
+Transformers serve as a unified framework for processing both textual data and image data by splitting them into intermediary-sized units. LLMs use statistically frequent groups of characters as tokens, while ViTs use image patches of a few pixels wide squares.
+
+Note that lossless data compression algorithms, both developed in the 20th century along with the booming progress in computer science, already leveraged tokens. Huffman coding for bitstreams and JPEG coding each use tokens in a way that is very similar to the notion of visual or textual tokens used in Transformers. Therefore it is not surprising at all to see this approach reused in machine learning systems, to embed tokens into abstract latent spaces to be post-processed in downstream tasks. Yet a significant difference remains: the latent space of tokens is more or less dense, and the mapping from token space to latent space is therefore more or less reversible.
+
+- Embedding layers used by LLMs associate a unique vector to every known token in the dictionary[^note-tokenizers], so it's a one-to-one mapping, but the input token space is uncompromisingly discrete and does not admit any natural notion of interpolation or vector-space operations between tokens. They spread across the immense volume of a high-dimensional embedding space, and not all points in this space (within permitted range of values) correspond to valid tokens: there is a finite quantity of textual tokens from the start and no new unseen token can be retroengineered from a given latent. 
+
+[^note-tokenizers]: Uniqueness is not enforced per se, but it is a desirable property and ultimately a very probable outcome after training LLMs, if only because of limited limited floating point accuracy.
+
+- Conversely, the mapping from ViTs patch embedding layers usually are linear layers (so, either surjective or injective linear transformations depending on the model's internal dimension), but both the input space and output spaces remain parallelotopes and points in either space can still be interpreted through the mapping as images or projected preimages of points in the other continuous space, respectively. So even though the quantity of valid image patches is also technically finite due to color chanel quantization [^note-orders-magnitude] and many are admittedly random noise, the set of representable image patches comprises many unobserved or unusual--but very valid--patterns that also depict intelligible visuals to the human eye, even though they may not be naturally present in real-world images[^note-waveforms].
+
+[^note-orders-magnitude]: The orders of magnitude at play are still a lot bigger. Vocabulary sizes in modern LLMs typically span the hundreds of thousands, while a $16 \times 16$ RGB image patch with 8-bit color depth comprises more than 4 billion distinct images.
+
+[^note-waveforms]: For example, pixels can be reassigned to draw colored waveforms. Perfect waveforms do not typically appear naturally in every day images, but they certainly are visually interpretable.
+
+
+### The breakdown in text-based transformers
+
+
+
+
+I argue that when using pure feature inversion (i.e. maximizing a semantic objective in the output latent space), generating artificial, prototypical sequences of valid language can't be easily synthesized in a LLM in a grammatically compelling manner the same way that artificial prototypical images can be synthetized in a vision model in a visually compelling manner.
+
+Gradient ascent enables very diversified ways of rearranging text in automatically interpretable manners, because in most languages, the vast majority of token arrangements fall completely outside of what's syntaxically correct.
+
+
+I can identify two reasons for that:
+- First, there are only a few hundred thousands valid textual tokens available at hand that the current systems can handle efficiently[^note-llms-artificial-text], and raw token embeddings occupy a tiny bit of the latent space they live in. So, even two existing, very close tokens can't be fused together into a third made-up interpolated, interpretable token. By comparison, visual patches of pixels can be mixed pretty continuously into compounds that makes visual sense regardless, and the limiting factor of numerical precision is much more permissive than textual tokens' sparsity wall.
+
+[^note-llms-artificial-text]: Current LLMs would probably perform poorly on letter-level text processing, and that's for letter-based alphabets alone. Other languages that natively require larger sets of characters (not token compounds) cannot even be finely described. 
+
+
+- Second, linguistic priors for meaningful texts sampled are harder to describe and dynamically adjust algorithmically, whereas image priors benefit from longer hindsight in signal processing, image compression, and human visual perception. 
+
+In other words, textual data is intrinsically more combinatorially constrained and obeys the superposition principle a lot less than visual data.
+
+
+For instance, language doesn't really allow interleaving two valid strings of text without destroying. On the other hand, interpolating between two given images is intrinsically possible. Images can be crudely superimposed and mixed and still convey some meaning, or patches of pixels can be intertwined and still retain most of both contexts.
