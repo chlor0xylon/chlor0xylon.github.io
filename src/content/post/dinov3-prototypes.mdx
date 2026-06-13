@@ -13,6 +13,14 @@ import imagenetDensityHex from "./imagenet-dimensions-density-hex.png"
 import imagenetDensitySquare from "./imagenet-dimensions-density-square.png"
 import adversarialResnet18 from "./adversarial_resnet-18.png";
 import onlineDictionarySvgDiagram from "./overview-process.svg?url";
+import dictionaryCodesValuesDistribution from "./figures_dictionary_learning/code_entropy.png";
+import dictionaryCodesValuesDistributionVsSparsity from "./figures_dictionary_learning/code_entropy_vs_code_sparsity.png";
+import dictionaryCodeSparsity from "./figures_dictionary_learning/code_sparsity.png";
+import dictionaryConceptSimilarities from "./figures_dictionary_learning/concepts_cosine_similarities.png";
+import dictionaryConceptValueDistribution from "./figures_dictionary_learning/concept_value_distribution.png";
+import dictionaryFeaturesOverConcepts from "./figures_dictionary_learning/features_over_concepts.png";
+import dictionaryResidueNorms from "./figures_dictionary_learning/residue_norms.png";
+import dictionaryResidueNormsVsSparsity from "./figures_dictionary_learning/residue_norms_vs_code_sparsity.png";
 
 Almost ten years ago, as I was wandering the internet during my bachelor years, I once came across the famous machine learning blog [Distill.pub](https://distill.pub). At the time, this research blog stood at the forefront of research in computer vision interpretability, among other related topics. To some extent it still does in 2026. I can't remember exactly how I stumbled upon it back then, but I wasn't introduced to computer vision or even machine learning basics at that time, and I clearly remember the technicality of it all leaving me intrigued yet mostly confused at the sight of it. I thought to myself: *What are those funny visuals supposed to mean? What exactly do they represent? Mildly interesting, but weird.* Not grasping the significance of this work, I archived the URL nonetheless for future reference.
 
@@ -537,7 +545,7 @@ Here I outline the methodology for the dictionary learning process (refer to <a 
 
 
 ### Metrics
-I use the Hoyer sparsity measure [@nmf2004hoyer] to evaluate the sparsity of the produced codes:
+I'll use the Hoyer sparsity measure [@nmf2004hoyer] to evaluate the sparsity of the produced codes:
 $$
 \mathrm{Hoyer}(\mathbf{x})
 = \frac{\sqrt{n} - \frac{\|\mathbf{x}\|_1}{\|\mathbf{x}\|_2}}{\sqrt{n} - 1}
@@ -546,7 +554,7 @@ as well as the simple residues:
 $$
 \text{Residue}(\mathbf{x}) = \|\mathbf{x} - \mathbf{D} \alpha(\mathbf{x}) \|_2
 $$
-Note that $\alpha$ is the approximate codes from the iterative procedure for the approximate reconstruction, not the mathematical optimum.
+where $\alpha$ is the approximate reconstruction codes from the iterative procedure, not the mathematical optimum.
 
 Finally, given a code $\alpha$, I also reinterpret-cast the non-negative elements as a probability distribution over the concepts and I compute a normalized entropy score that acts as another measure of non-sparseness:
 $$
@@ -554,6 +562,121 @@ p = \frac{1}{\|\alpha\|_1}\mathbf{\alpha} \quad \text{so that} \quad \tilde{H}(\
 $$
 
 ### Results
+
+#### Concepts
+I generated a dictionary of $512$ concept vectors for the $384$-dimensional CLS-token latent space of the model `facebook/dinov3-vits16-pretrain-lvd1689m`, with the random crops. The first sanity check is to inspect the dictionary itself. <a data-figure-ref="fig-dictionary-concept-value-distribution"></a> shows the distribution of positive concept-entry values, while <a data-figure-ref="fig-dictionary-concept-diagnostics"></a> shows the pairwise cosine similarities of the concepts and the raw feature-by-concept weight matrix.
+
+<figure id="fig-dictionary-concept-value-distribution" class="figure-grid">
+	<div class="figure-grid-images" style="grid-template-columns: minmax(0, 1fr);">
+		<img
+			src={dictionaryConceptValueDistribution.src}
+			width={dictionaryConceptValueDistribution.width}
+			height={dictionaryConceptValueDistribution.height}
+			alt="Histogram of positive entry values across all learned concepts."
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+	</div>
+	<figcaption>
+		<span class="label"></span>
+		Distribution of positive concept-entry values across all learned concepts.
+	</figcaption>
+</figure>
+
+<figure id="fig-dictionary-concept-diagnostics" class="figure-grid figure-grid-two">
+	<div class="figure-grid-images">
+		<img
+			src={dictionaryConceptSimilarities.src}
+			width={dictionaryConceptSimilarities.width}
+			height={dictionaryConceptSimilarities.height}
+			alt="Pairwise cosine similarity matrix between learned concept vectors."
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+		<img
+			src={dictionaryFeaturesOverConcepts.src}
+			width={dictionaryFeaturesOverConcepts.width}
+			height={dictionaryFeaturesOverConcepts.height}
+			alt="Heatmap of positive feature weights over learned concepts."
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+	</div>
+	<figcaption>
+		<span class="label"></span>
+		Dictionary diagnostics: concept-to-concept cosine similarities and the learned
+		non-negative feature weights over the 512 concepts (enlarge to visualize details)
+	</figcaption>
+</figure>
+
+The positive-value histogram summarizes the frequency distribution of strictly positive entries across all concept vectors after the positivity projection. The cosine-similarity heatmap is useful to check that the dictionary has not collapsed into repeated atoms. The feature-over-concepts heatmap shows how the positive weights are distributed across latent dimensions.
+
+#### Codes
+Then I evaluated how held-out ImageNet latents decompose over the learned dictionary by solving the non-negative LASSO coding step with $\lambda = 0.5$. <a data-figure-ref="fig-dictionary-code-distributions"></a> reports the three one-dimensional summaries: normalized code entropy, Hoyer sparsity, and reconstruction residue norm. These plots depict the three sparsity metrics that I introduced above aggregated over a sample of images from the dataset.
+
+
+<figure id="fig-dictionary-code-distributions" class="figure-grid figure-grid-three">
+	<div class="figure-grid-images">
+		<img
+			src={dictionaryCodesValuesDistribution.src}
+			width={dictionaryCodesValuesDistribution.width}
+			height={dictionaryCodesValuesDistribution.height}
+			alt="Histogram of normalized entropy values for non-negative sparse codes."
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+		<img
+			src={dictionaryCodeSparsity.src}
+			width={dictionaryCodeSparsity.width}
+			height={dictionaryCodeSparsity.height}
+			alt="Histogram of Hoyer sparsity values for non-negative sparse codes."
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+		<img
+			src={dictionaryResidueNorms.src}
+			width={dictionaryResidueNorms.width}
+			height={dictionaryResidueNorms.height}
+			alt="Histogram of reconstruction residue norms for dictionary decompositions."
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+	</div>
+	<figcaption>
+		<span class="label"></span>
+		Distribution of coding statistics on sampled ImageNet latents: normalized
+		entropy, Hoyer sparsity, and $L_2$ reconstruction residue norm.
+	</figcaption>
+</figure>
+
+
+Finally, <a data-figure-ref="fig-dictionary-joint-diagnostics"></a> combines the same per-sample statistics into two-dimensional histograms for two combinations of the three possible metrics pairs.
+
+<figure id="fig-dictionary-joint-diagnostics" class="figure-grid">
+	<div class="figure-grid-images" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+		<img
+			src={dictionaryResidueNormsVsSparsity.src}
+			width={dictionaryResidueNormsVsSparsity.width}
+			height={dictionaryResidueNormsVsSparsity.height}
+			alt="Two-dimensional histogram of residue norms against Hoyer sparsity."
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+		<img
+			src={dictionaryCodesValuesDistributionVsSparsity.src}
+			width={dictionaryCodesValuesDistributionVsSparsity.width}
+			height={dictionaryCodesValuesDistributionVsSparsity.height}
+			alt="Two-dimensional histogram of normalized entropy against Hoyer sparsity."
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+	</div>
+	<figcaption>
+		<span class="label"></span>
+		Joint diagnostics for the same sampled codes: reconstruction residue versus
+		Hoyer sparsity, and normalized entropy versus Hoyer sparsity.
+	</figcaption>
+</figure>
 
 ## Visualizing the latent concepts with prototype images
 
