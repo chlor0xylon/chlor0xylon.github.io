@@ -528,15 +528,17 @@ def update_dictionary(
     return W, A, B
 ```
 
-### Protocol
+### Results
 
-Here I outline the methodology for the dictionary learning process (refer to <a data-figure-ref="fig-online-dictionary-learning-svg"></a>).
+#### Protocol
+
+Here I outline the main steps in the dictionary learning process (refer to <a data-figure-ref="fig-online-dictionary-learning-svg"></a>).
 - The first step is to compute image embeddings from image crops of the dataset. I discarded images with width or height less than 128 pixels. Then I ran a script that extracts random crops of size $128 \times 128$ pixels from images of the dataset, runs them through the vision encoder, and persists the obtained latents on the disk. Other augmentations are of course possible (like geometry or colorimetry alterations) to capture more elaborate, transcendental concepts about the model's internal representations, but I did not use any of these in the framework of this experiment to focus on the actual image contents. I ran several passes on the dataset with different seeds, to get several views of the same image in the dataset. The idea is to train the dictionary on the latents obtained from local views of images that encapsulate mainly local visual context all the while including some small variations. The 128 pixels size is arbitrary for now, but should be chosen in accordance with the dataset's image width and height distribution. ImageNet is an old dataset and many images it contains are small in resolution by modern image standards, so 128 feels like a sound middleground to extract semantically local patches.
 - Second, I ran the dictionary learning script on the persisted batches of latents with a buffer of 512 concepts, and perform an update training step in the above code, with LASSO sparse coding regularization weight $\lambda$ set to 0. At this point, the point is not to get sparse codes as of yet, but rather to compute a dictionary of as representative concepts as possible, by allowing the reconstructions to span many concepts.
 - Third, I examined the produced dictionary and I evaluated the codes of unaltered images from the same dataset with a sparsity constraint in order to gauge the bottleneck of the learned dictionary.
 
 
-### Metrics
+#### Metrics
 I'll use three metrics to get a get a sense of the produced concepts.
 
 First, a quick search revealed the _Hoyer sparsity measure_ [@nmf2004hoyer] at the scale of an individual concept vector $\mathbf{d}$ in dimension $n$:
@@ -555,7 +557,9 @@ $$
 p = \frac{1}{\|\alpha\|_1}\mathbf{\alpha} \quad \text{so that} \quad \tilde{H}(\alpha) = \frac{1}{\log K}H(p)
 $$
 
-### Results
+
+
+#### Concepts
 
 I generated a dictionary of $512$ concept vectors for the $384$-dimensional CLS-token latent space of the model `facebook/dinov3-vits16-pretrain-lvd1689m`, with the random crops. The first sanity check is to inspect the dictionary itself. <a data-figure-ref="fig-dictionary-concept-value-distribution"></a> shows the distribution of positive concept-entry values, while <a data-figure-ref="fig-dictionary-concept-diagnostics"></a> shows the pairwise cosine similarities of the concepts and the raw feature-by-concept weight matrix.
 
@@ -598,8 +602,9 @@ I generated a dictionary of $512$ concept vectors for the $384$-dimensional CLS-
 
 The positive-value histogram summarizes the frequency distribution of strictly positive entries across all concept vectors after the positivity projection. The cosine-similarity heatmap is useful to check that the dictionary has not collapsed into repeated atoms. The feature-over-concepts heatmap shows how the positive weights are distributed across latent dimensions.
 
+#### Codes
 
-Then I evaluated how held-out ImageNet latents decompose over the learned dictionary by solving the non-negative LASSO coding step with $\lambda = 0.5$. <a data-figure-ref="fig-dictionary-code-distributions"></a> reports the three one-dimensional summaries: normalized code entropy, Hoyer sparsity, and reconstruction residue norm. These plots depict the three sparsity metrics that I introduced above aggregated over a sample of images from the dataset.
+Then I evaluated how held-out ImageNet latents decompose over the learned dictionary by solving the non-negative LASSO coding step with various values of $\lambda$. <a data-figure-ref="fig-dictionary-code-distributions"></a> reports the three one-dimensional summaries: normalized code entropy, Hoyer sparsity, and reconstruction residue norm. These plots depict the three sparsity metrics that I introduced above aggregated over a sample of images from the dataset.
 
 
 <figure id="fig-dictionary-code-distributions" class="figure-grid figure-grid-three">
@@ -626,7 +631,7 @@ Then I evaluated how held-out ImageNet latents decompose over the learned dictio
 	<figcaption>
 		<span class="label"></span>
 		Distribution of coding statistics on sampled ImageNet latents: normalized
-		entropy, Hoyer sparsity, and $L_2$ reconstruction residue norm.
+		entropy, Hoyer sparsity, and $L_2$ reconstruction residue norm with $\lambda = 0.5$
 	</figcaption>
 </figure>
 
@@ -651,7 +656,7 @@ Finally, <a data-figure-ref="fig-dictionary-joint-diagnostics"></a> combines the
 	<figcaption>
 		<span class="label"></span>
 		Joint diagnostics for the same sampled codes: reconstruction residue versus
-		Hoyer sparsity, and normalized entropy versus Hoyer sparsity.
+		Hoyer sparsity, and normalized entropy versus Hoyer sparsity with $\lambda = 0.5$
 	</figcaption>
 </figure>
 
