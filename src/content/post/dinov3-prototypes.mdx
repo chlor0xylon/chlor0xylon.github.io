@@ -254,7 +254,9 @@ Solving the above mathematical problem can be approached in at least a few diffe
 
 
 ### Toward a more holistic approach
-Now, in the paper @holistic2023fel, they do not actually compute concepts across the whole dataset at once. Rather, the dictionary is computed on a per-class basis and is low-rank from the start to only retain a handful of concepts per class (they take 10). In a later stage, their attribution method yields the contribution scores to the class. On one hand, this significantly lowers the numerical complexity requirements since it cuts by a factor of 1000 the effective dataset size (ImageNet has a thousand classes). The resulting concepts are then aggregated and compared with each other (the showcase is known as the [Lens Project](https://serre-lab.github.io/Lens/)). On the other hand, it explicitely relies on the data being labelled.
+Now, in the paper @holistic2023fel, they do not actually compute concepts across the whole dataset at once. Rather, the dictionary is computed on a per-class basis and is low-rank from the start to only retain a handful of concepts per class (they take 10). In a later stage, their attribution method yields the contribution scores to the class.
+
+On one hand, this significantly lowers the numerical complexity requirements since it cuts by a factor of 1000 the effective dataset size (ImageNet has a thousand classes). The resulting concepts are then aggregated and compared with each other (the showcase is known as the [Lens Project](https://serre-lab.github.io/Lens/)). On the other hand, this approach explicitely relies on the data being labelled (which I don't assume), and the approach may waste energy by recomputing shared concepts present across the different classes of the dataset.
 
 But I wanted to try a more holistic approach, perhaps more ambitious, and compute a dictionary with possibly orders of magnitude more concepts being determined at once, regardless of there being labels available. The drawback of the paper's leveraged ADMM algorithm is that it requires storing the complete explained dataset (as well as the dictionary) in memory during the solving procedure. Even more, the ADMM algorithm needs duplicating the variables to account for the separation of optimization objective and constraint enforcement.
 
@@ -725,7 +727,7 @@ As a sanity check it can be interesting to observe how the regularization hyperp
 	</div>
 	<figcaption>
 		<span class="label"></span>
-		Metrics density for $\lambda \in \{0.0, 0.2, 0.5, 1.0\}$
+		Hoyer sparsity and reconstruction residue norms for $\lambda \in \{0.0, 0.2, 0.5, 1.0\}$
 	</figcaption>
 </figure>
 ## Visualizing the latent concepts with prototype images
