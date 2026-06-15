@@ -214,19 +214,29 @@ There _is_ a series of recent experiments and papers that are worth seeing, howe
 
 That, and the will to test whether my above hypothesis is true, is what made me want to try to reproduce it on DINOv3.
 
-## Computing latent concepts with dictionary learning
+## Dictionary learning: an introduction
 
-Before visualizing concepts as images, we need to compute them in the DINOv3's latent space, to gain better understanding of the representations. In order to achieve that, we'll learn a dictionary of the most prominent concepts directions arising in the abstract latent space. That's called _dictionary learning_. 
+Before visualizing concepts as images, we need to compute them in the DINOv3's latent space, to gain better understanding of the representations. This can be achieved thanks to a prominent method in the field of interpretability that's called _dictionary learning_.
 
-Dictionary learning is a data representation learning technique that discovers a set of interpretable building blocks, enabling complex data to be expressed as sparse combinations of simple patterns, or atoms, that together make up a _dictionary_. It provides compact, meaningful representations for tasks such as denoising, compression, and feature extraction. Unlike PCA or SVD, dictionary learning approaches usually attempt to make the decomposition _sparse_, whose byproduct is usually better interpretability. It is very akin to how data compression works by seeking a better representation basis to encode the data in the most compact way possible. Think about how the JPEG standard decomposes each $8 \times 8$ block of pixels onto the 64-element basis of cosine waveforms. These waveforms put together do not carry inherently more information as the simple canonical basis of the 64 individual dots in the grid, because both groups form a _basis_, but it turns out that real-world signals are usually better explained by smooth variations resembling sparse combinations of cosine waves, and this better prior it allows a lower-rank representation to describe a typical signal. Sparsity is a desirable property when doing coding, either for storage space purposes, or for the sake of interpretability. Because of that, dictionary learning is also known as sparse coding.
+It is a data representation learning technique that seeks to discover a set of building blocks to express complex data as a sparse combinations of these patterns--sometimes refered to as _atoms_--that together form the _dictionary_. An efficient dictionary provides compact, meaningful representations that are useful for tasks such as denoising, compression, and feature extraction. Unlike PCA or SVD, dictionary learning approaches usually attempt to make the decomposition _sparse_. In that sense, it is close in spirit to data compression. Because of that, dictionary learning is also known as sparse coding.
 
-### Dictionary learning
+:::note
+Data compression works by seeking a representation basis to encode the data in the most compact way possible. For example, the JPEG standard breaks down each $8 \times 8$ block of pixels into a sum of cosine-based waveforms. These waveforms put together do not carry inherently more information as the simple canonical basis of the 64 individual dots in the grid, because both groups form a _basis_. However, it turns out that real-world signals are usually better explained by smooth variations resembling a sparse combination of cosine waves, and this better prior it allows a lower-rank representation to describe signals that match the human vision with fewer resources. Sparsity is a desirable property when doing coding, either for storage saving purposes, or for the sake of interpretability.
+:::
+
+
+
+
+
+### Formal definition
 I will rely on @holistic2023fel, a paper which unifies the concept extraction variants attempts in the literature and compares them all. One of the latest methods presented was coined CRAFT, standing for _Concept Recursive Activation FacTorization for Explainability_, from the preceding paper @craft2023fel, which adds non-negativity constraint to the learned priors. In the paper, it is claimed indeed that the positivity of the decomposition 
 - ``encourages sparsity''
 - ``allows missing data to be imputed''
 - ``enhances the interpretability of the decomposition''
 
-The first claim is obvious. Regarding the second claim, the authors also introduce an attribution method for visualizing the concept activations in images and rely on preceeding research, but here I'm only interested in the part about dictionary learning, so I won't comment it. Regarding the third one, my understanding of the approach is that only positive activations are meaningful because they , whereas negative activations do not carry significant information similar to how negative logit values would compress into irrelevancy and produce near-zero probabilities that are overshadowed by positive logits. 
+:::note
+The first claim is obvious because negative entries will force the concept vectors to keep many null entries to be able to encode zero entries, the closest approximation of any negative value projected onto the half-line $\mathbb{R}_{\ge 0}$. Regarding the second claim, the authors develop an attribution method for visualizing the concept activations in images and rely on preceeding research to support their statement, but here I'm only interested in the part about dictionary learning, and I don't know or care about it for now. Regarding the third one, my understanding of the approach is that only positive activations are meaningful because they represent strongly-typed features, whereas negative activations do not carry significant information similar to how negative logit values would compress into irrelevancy and produce near-zero probabilities that are overshadowed by positive logits.
+:::
 
 The setup goes like this: let $\mathbf{X} \in \mathbb{R}^{n\times p}$ be a set of $n$ captured activations in dimension $p$ from the latents from a vision model taken from a provided collection of images. Let $r$ be a positive integer, denoted as the rank of the decomposition. The positive dictionary learning approach consists in solving the following neighbouring problem:
 
@@ -239,20 +249,33 @@ where $\mathbf{W}$ is the _dictionary of concepts_ onto which the dataset is pro
 Note that $\mathbf{U}$ and $\mathbf{W}$ are required to belong to the positive orthant of matrices with **non-negative values**. That constraint is a deliberate modeling choice. Note that the solution space is convex, but the search is made arduous because positivity prevents the use of off-the-shelf linear algebra results. This formulated problem  is known as the **Non-Negative Least Squares problem** (NNLS), and I first encountered during my Master's Thesis in the context of beamforming in transmission-related problems.
 
 
-### Solving procedure
-Solving the above mathematical problem can be approached in at least a few different manners. In Fel's PhD thesis manuscript [@fel2025sparksexplainabilityrecentadvancements], in section C.1.3 along with the implementation details of CRAFT, they explain that they used a method called alternating direction method of multipliers (ADMM for short), which I also encountered during my Master's Thesis, because it arises a lot in the literature about applied mathematical optimization problems with cumbersome constraints such as non-negativity. The drawback of this algorithm is that it requires storing the values in memory during the iterative solving process, and even duplicating variables to account for the separation of optimization and constraint enforcement, as per the ADMM framework. And it does not scale particularly well, given the dataset can be huge. For example, the full ImageNet dataset comprised of 1.3 million images, coded over 384 dimensions of 32-bit floating point numbers would take up about 2GB in memory, ignoring any overhead. Probably manageable even on most modern laptops even in the VRAM, but we're nearly on the edge. Any $\times 5$ scaling of dataset and memory IO would probably becomes a seriously limiting factor.
+### Naïve solving procedure
+Solving the above mathematical problem can be approached in at least a few different manners. In Fel's PhD thesis manuscript [@fel2025sparksexplainabilityrecentadvancements], in section C.1.3 along with the implementation details of CRAFT, they explain that they used a method called alternating direction method of multipliers (ADMM for short), which I also encountered during my Master's Thesis, because it arises a lot in the literature about applied mathematical optimization problems with cumbersome constraints such as non-negativity.
 
-Yet, in hindsight, we are only really interested in the final dictionary $\mathbf{W}$ solution, _not_ the full decompositions $\mathbf{U}$ of our dataset, which can be recomputed at will once $\mathbf{W}$ is set. The problem is indeed separable, thanks to the following identify:
+
+### Toward a more holistic approach
+Now, in the paper @holistic2023fel, they do not actually compute concepts across the whole dataset at once. Rather, the dictionary is computed on a per-class basis and is low-rank from the start to only retain a handful of concepts per class (they take 10). In a later stage, their attribution method yields the contribution scores to the class. On one hand, this significantly lowers the numerical complexity requirements since it cuts by a factor of 1000 the effective dataset size (ImageNet has a thousand classes). The resulting concepts are then aggregated and compared with each other (the showcase is known as the [Lens Project](https://serre-lab.github.io/Lens/)). On the other hand, it explicitely relies on the data being labelled.
+
+But I wanted to try a more holistic approach, perhaps more ambitious, and compute a dictionary with possibly orders of magnitude more concepts being determined at once, regardless of there being labels available. The drawback of the paper's leveraged ADMM algorithm is that it requires storing the complete explained dataset (as well as the dictionary) in memory during the solving procedure. Even more, the ADMM algorithm needs duplicating the variables to account for the separation of optimization objective and constraint enforcement.
+
+
+The ADMM does not scale particularly well. For example, the full ImageNet dataset comprised of 1.3 million images, coded over 384 dimensions of 32-bit floating point numbers would take up about 2GB in memory, ignoring any overhead. Probably manageable even on most modern laptops even in the VRAM, but we're nearly on the edge. Any $\times 5$ scaling of dataset and memory IO would probably becomes a seriously limiting factor. 
+
+So we need a computationally more manageable algorithm, even if it means sacrifying convergence speed or even exactness. 
+
+### Online solving procedure
+
+#### Decomposability of dictionary learning
+In hindsight indeed, we are only really interested in the final dictionary $\mathbf{W}$ solution, _not_ the full access to transient decompositions $\mathbf{U}$ of the dataset, which can be recomputed at will once $\mathbf{W}$ is set. The problem is separable in terms of the training data, thanks to the following equality:
 
 $$
 \|\mathbf{X} - \mathbf{UW}^\top \|_F^2 = \sum_{i=1}^{n} \| \mathbf{X}_{[i,:]} - \mathbf{U}_{[i,:]} \mathbf{W}\|_2^2
 $$
-which goes to show that $\mathbf{W}$ could be conceptually updated by only considering a subset of the dataset elements at a time indexed in $\llbracket 1, n \rrbracket$, akin to how neural networks update their weights by considering an objective computed on small parts of the dataset at a time.
-
-I don't like having the mental pressure of accounting for my 32GB of RAM limitation (let alone VRAM culminating at a quarter of that), or having to rent a VPS if I ever want to scale up my experiment past ImageNet in the future, so I wanted to use a streaming algorithm from the start to avoid storing the full decompositions of the dataset, even if that meant sacrifying convergence speed, exactness or even correctness. 
+which goes to show that $\mathbf{W}$ could be conceptually updated by only considering a subset of the dataset elements at a time indexed in $\llbracket 1, n \rrbracket$, akin to how neural networks update their weights by considering an objective computed on small views of the training data at a time.
 
 
-So I began looking for such an algorithm. That in itself, was a small experiment to try. And it turns out that this problem is solved. I found a paper about exactly that [@onlinelearning2009] exposing a procedure for online dictionary learning. By the way, Julien Mairal is also a credited author of the three DINO papers. They address the following problem:
+#### Online Non-Negative Matrix Factorization
+So I began looking for an algorithm meeting that criterion. That in itself, was a small experiment to try. And it turns out that this problem is addressed in the literature. I found a paper about exactly that [@onlinelearning2009] exposing a procedure for online dictionary learning. By the way, Julien Mairal is also a credited author of the three DINO papers. They address the following problem:
 
 $$
 \arg\min_{\mathbf{D} \in \mathbb{R}^{m\times k}, \alpha \in \mathbb{R}^{k\times n}} \|\mathbf{X} - \mathbf{D} \alpha \|_F^2 + \lambda \|\alpha\|_{1,1} \quad \text{s.t.} \quad \mathbf{D} \in \mathcal{C}
@@ -321,17 +344,18 @@ In an extended journal version of the paper [@JMLRv11mairal10a], the authors als
 
 [^note-nmf]: That's where we can learn, among other things, that non-negative matrix factorization for sparse coding seems to date back as early as 2001.
 
-They mention the alternative constraint set $\mathcal{C}^\prime = \{\mathbf{D}\in \mathbb{R}^{m\times k}, \forall j \in \llbracket 1, k \rrbracket, \mathbf{d}_j^\top \mathbf{d}_j \le 1 \text{ and } \mathbf{d}_j \ge 0\}$ for $\mathbf{D}$, as well as the eventuality of also constraining $\alpha \ge 0$ independently. More importantly, they mention the simplest problem featuring the same objective with only positivity constraints on $\mathbf{D}$ and $\alpha$, amounting to solve $\arg\min_{\mathbf{D}, \alpha} \|\mathbf{X} - \mathbf{D} \alpha \|_F^2 + \lambda \|\alpha\|_{1,1}$ such that $\mathbf{D}, \alpha \ge 0$. One comment about this particular variant is interesting: 
+They mention the alternative constraint set $\mathcal{C}^\prime = \{\mathbf{D}\in \mathbb{R}^{m\times k}, \forall j \in \llbracket 1, k \rrbracket, \mathbf{d}_j^\top \mathbf{d}_j \le 1 \text{ and } \mathbf{d}_j \ge 0\}$ for $\mathbf{D}$, as well as the eventuality of also constraining $\alpha \ge 0$ independently. More importantly, they mention the simplest problem featuring the same objective with only some positivity constraints on $\mathbf{D}$ and $\alpha$ (without norm constraints on the atoms $\mathbf{d}_j$), thus amounting to solve $\arg\min_{\mathbf{D}, \alpha} \|\mathbf{X} - \mathbf{D} \alpha \|_F^2 + \lambda \|\alpha\|_{1,1}$ such that $\mathbf{D}, \alpha \ge 0$. One comment about this particular variant is interesting: 
  
  > ``When $\lambda = 0$, this formulation is equivalent to NMF. The only difference with the dictionary learning
 problem is that non-negativity constraints are imposed on $\mathbf{D}$ and the vectors $\alpha_i$. A simple modification of our algorithm (...) allows us to handle these constraints, while guaranteeing to find a stationary point of the optimization problem.''
 
-Wonderful, I thought. This is exactly the setup we're looking for. The implications here affect both steps of the overall procedure, namely the initial sparse coding solve step (by constraining additionally $\alpha$ to remain non-negative), and the projections in the dictionary update routine.
+Wonderful. This is exactly the setup we're looking for. The implications here affect both steps of the overall procedure, namely the initial sparse coding solve step (by constraining additionally $\alpha$ to remain non-negative), and the projections in the dictionary update routine.
 
 
 The paper describes a framework where the dictionary can be learned by only streaming one dataset element at a time, but the algorithm trivially generalizes to batch sizes above 1. 
 
-### Process overview
+
+## Whole process overview
 <figure id="fig-online-dictionary-learning-svg" class="figure-wide">
 	<img
 		src={onlineDictionarySvgDiagram}
@@ -346,7 +370,7 @@ The paper describes a framework where the dictionary can be learned by only stre
 </figure>
 
 
-In order to get concepts and visualize them altogether according to the approach proposed by @holistic2023fel retaining concepts of positive activations only, I wrote several Python scripts that given a Hugging Face model and a dataset, perform in turn the following steps:
+In order to get concepts and visualize them altogether according to the approach proposed by @holistic2023fel, I wrote several Python scripts that given a Hugging Face model and a dataset, perform in turn the following steps:
 - A custom `ImageNetDataset(torch.Dataset)`
     - scrapes and indexes images from the downloaded ImageNet dataset file tree structure as well as some metadata like image size and saves them in a Polars dataframe to emulate a tiny database;
     - filters images to select those whose dimensions lie above 64 pixels in both width and height (which only eliminates a negligible proportion of the dataset, see <a data-figure-ref="fig-imagenet-density"></a>);
@@ -395,8 +419,8 @@ class InputImageBatch:
     - reloading images from the disk then replaying their transformations and finally displaying them.
 
 
-### Dictionary learning
-The numerical computations of dictionary learning with lots of vectorized operations are natural fit for [Jax](https://docs.jax.dev/en/latest/). Unlike PyTorch, `jax` fuses operations by default because it compiles the computation graph and it allows looped computations to happen faster by avoiding python interruptions between operations. This is especially handy for iterative algorithms to solve linear algebra problems. Before this project I was familiar with PyTorch but I had never used Jax so it was a good incentive to test it.
+## Dictionary learning: technical aspects
+The numerical computations of dictionary learning rely heavily on vectorized operations and linear algebra, so they are a natural fit for [Jax](https://docs.jax.dev/en/latest/). Unlike PyTorch, Jax fuses operations by default because it compiles the computation graph and it allows looped computations to happen faster by avoiding python interruptions between operations. This is especially handy for iterative algorithms to solve linear algebra problems. Before this project I was familiar with PyTorch but I had never used Jax so it was a good incentive to test it.
 
 In the code, I kept the original notations with $\mathbf{W} \in \mathbb{R}^{p \times r}$ and $\mathbf{U} \in \mathbb{R}^{n \times r}$. However, since $\mathbf{U}$ is conceptually reserved for the full dataset codes, and is never materialized in memory, so I named its batched counterpart $\mathbf{H} \in \mathbb{R}^{b\times r}$ where $b$ is the batch size with obviously $b < n$. At any step, we draw $\mathbf{X} \in \mathbb{R}^{b\times n}$ and apply the above algorithm.
 
@@ -417,7 +441,7 @@ def train_step(
     return W, A, B
 ```
 
-#### Non-negative LASSO sparse coding step
+### Non-negative LASSO sparse coding step
 The modified sparse positive coding step to compute $\alpha_t = \arg\min_{\alpha \in \mathbb{R}^k} \frac{1}{2}\|\mathbf{x}_t - \mathbf{D}_{t-1}\alpha\|_2^2 + \lambda \|\alpha\|_1$ is a procedure in and of itself. Thanks to the magic of LLMs nowadays, I got to know that there exists a respectable algorithm that lends itself well to the non-negative LASSO problem, called Fast Iterative Shrinkage-Thresholding Algorithm (a.k.a. FISTA in the literature) [@teboulle09fista]. To be honest, I wasn't particularly interested in the details of this minor technicality in the broader scheme of dictionary learning, so I gladly let Codex do the research and work out the Jax function for it (that I could look at and get inspiration from to code the subsequent step). The only relevant practicality to be aware of is that it involves an iterative procedure of its own, so fine-tuning the tolerance and/or an iteration cap is a thing to look out for. Below is the code for reference.
 
 ```python
@@ -476,7 +500,7 @@ def nonnegative_lasso_fista(
     return H
 ```
 
-#### Dictionary update step
+### Dictionary update step
 
 The dictionary update step is pretty much about following the  instructions from the above algorithm to the letter, with the additional projection to enforce non-negative values for the new dictionary columns. Also, instead of simply accumulating the statistics, I average them with the simple online mean update formula to avoid overflow. Since the values of columns of $\mathbf{A}$ and $\mathbf{B}$ are used in tandem, using the averaged aggregate values scaled by $\frac{1}{T}$ ($T$ is the global batch index counter) instead of the raw sums does not change anything to the algorithm  in the running inner loop of the dictionary update step $\mathbf{u}_j \leftarrow \big(\mathbf{b}_j - \mathbf{D}\mathbf{a}_j\big) / \mathbf{A}[j,j] + \mathbf{d}_j$. I kept the original columnn-wise $L_2$ unit ball constraint for stability of the dictionary atoms[^note-proj-l2-lasso-fista], and  obviously, I added the projection onto the set of positively-valued vectors. Below is the Jax code for reference.
 
@@ -536,16 +560,16 @@ def update_dictionary(
 ```
 
 
-### Protocol
+## Protocol & design choices
 
 Here I outline the overall design choices of the dictionary learning method (see also <a data-figure-ref="fig-online-dictionary-learning-svg"></a>). The following values are a draft to query the mechanics of the produced concepts, not the final values I used.
 
 
-#### Obtaining crops
+### Obtaining crops
 
 The first step is to compute image embeddings from image crops of the dataset. I discarded images with width or height less than 128 pixels. Then I ran a script that extracts random crops of size $128 \times 128$ pixels from images of the dataset, runs them through the vision encoder, and persists the obtained latents on the disk. Other augmentations are of course possible (like geometry or colorimetry alterations) to capture more elaborate, transcendental concepts about the model's internal representations, but I did not use any of these in the framework of this experiment to focus on the actual image contents. I ran several passes on the dataset with different seeds, to obtain different views of all images in the dataset. My idea is to train the dictionary on the latents obtained from views of images that essentially encapsulate somewhat _local_ visual context all the while including some outer context. The 128 pixels size is arbitrary for now, but should be chosen in accordance with the dataset's image width and height distribution. ImageNet is an old dataset and many images it contains are small in resolution by modern image standards (see <a data-figure-ref="fig-imagenet-density"></a>). In @craft2023fel, they use 64-pixel large patches, but these patches. Going with 128 seems like a sound middleground to extract semantically local patches. 
 
-#### Dictionary learning design choices
+### Dictionary learning design choices
 The second step is to run the dictionary learning script on the persisted batches of latents with a buffer of 512 concepts, and execute the training algorithm in the above code, with LASSO sparse coding regularization weight $\lambda$ set to 0. At this point, the point is not to get sparse codes as of yet, but rather to compute a dictionary of as representative concepts as possible, by allowing the reconstructions to span many concepts, that's why I disable the regularization entirely.
 
 Moreover, $k=512$ is a small number compared to the numbers found in the literature. @craft2023fel does not specify the number of total concepts used, but in the [Lens Project](https://serre-lab.github.io/Lens/) they use identify no less than 32,000. 
