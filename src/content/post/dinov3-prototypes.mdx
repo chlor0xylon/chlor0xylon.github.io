@@ -546,16 +546,18 @@ $$
 \mathrm{Hoyer}(\mathbf{d})
 = \frac{\sqrt{n} - \frac{\|\mathbf{d}\|_1}{\|\mathbf{d}\|_2}}{\sqrt{n} - 1}
 $$
-Second, we can obviously evaluate the residues of a given vector $\mathbf{x}$ once reconstructed by the dictionary:
+Second, we can obviously evaluate the residues of the positive part of a given vector $\mathbf{x}$ once reconstructed by the dictionary:
 $$
-\text{Residue}(\mathbf{x}) = \|\mathbf{x} - \mathbf{D} \alpha(\mathbf{x}) \|_2
+\text{Residue}(\mathbf{x}) = \||\mathbf{x}| - \mathbf{D} \alpha(\mathbf{x}) \|_2
 $$
 where $\alpha$ is the (approximate) reconstruction codes from the iterative procedure.
 
-Finally, given a reconstruction vector $\alpha$, I also reinterpret-cast the non-negative elements as a probability distribution over the concepts and I compute a normalized entropy score that acts as another measure of non-sparseness:
+Finally, given a reconstruction vector $\alpha$, given that the codes are non-negative, I was also curious to reinterpret it as a probability distribution over concepts. So came up with a normalized entropy score that acts like a measurement of density for the codes:
 $$
-p = \frac{1}{\|\alpha\|_1}\mathbf{\alpha} \quad \text{so that} \quad \tilde{H}(\alpha) = \frac{1}{\log K}H(p)
+\text{let} \quad p = \frac{1}{\|\alpha\|_1}\mathbf{\alpha} \quad \text{so that} \quad \tilde{H}(\alpha) = \frac{1}{\log k}H(p)
 $$
+
+(recall that $k$ is the dictionary size, thus the dimension of $\alpha$ too).
 
 
 
@@ -636,7 +638,7 @@ Then I evaluated how held-out ImageNet latents decompose over the learned dictio
 </figure>
 
 
-Finally, <a data-figure-ref="fig-dictionary-joint-diagnostics"></a> combines the same per-sample statistics into two-dimensional histograms for two combinations of the three possible metrics pairs.
+Finally, <a data-figure-ref="fig-dictionary-joint-diagnostics"></a> combines the same per-sample statistics into two-dimensional histograms for two combinations of the three possible metrics pairs. To my surprise, there is no clear correlation between the Hoyer sparsity measure and the quality of reconstruction as per the residual norms, although it does seem llike there is a Pareto front beyond which further gains in sparsity come at the cost of deteriorated reconstruction accuracy. Meanwhile, there is a strong correlation between the Hoyer and entropy metrics, so let's focus on Hoyer sparsity henceforth. The same behaviors were observed with other values of $\lambda$.
 
 <figure id="fig-dictionary-joint-diagnostics" class="figure-grid">
 	<div class="figure-grid-images" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
