@@ -221,7 +221,12 @@ Before visualizing concepts as images, we need to compute them in the DINOv3's l
 Dictionary learning is a data representation learning technique that discovers a set of interpretable building blocks, enabling complex data to be expressed as sparse combinations of simple patterns, or atoms, that together make up a _dictionary_. It provides compact, meaningful representations for tasks such as denoising, compression, and feature extraction. Unlike PCA or SVD, dictionary learning approaches usually attempt to make the decomposition _sparse_, whose byproduct is usually better interpretability. It is very akin to how data compression works by seeking a better representation basis to encode the data in the most compact way possible. Think about how the JPEG standard decomposes each $8 \times 8$ block of pixels onto the 64-element basis of cosine waveforms. These waveforms put together do not carry inherently more information as the simple canonical basis of the 64 individual dots in the grid, because both groups form a _basis_, but it turns out that real-world signals are usually better explained by smooth variations resembling sparse combinations of cosine waves, and this better prior it allows a lower-rank representation to describe a typical signal. Sparsity is a desirable property when doing coding, either for storage space purposes, or for the sake of interpretability. Because of that, dictionary learning is also known as sparse coding.
 
 ### Dictionary learning
-I will rely on @holistic2023fel, a paper which unifies the concept extraction variants attempts in the literature and compares them. One of the methods presented was coined CRAFT, standing for _Concept Recursive Activation FacTorization for Explainability_, from the preceding paper @craft2023fel, which adds the constraint of positivity for the learned priors, in order to only consider positive activations as meaningful. They also propose an attribution method for visualizing the concept activations in images. Here I'm only interested in the first part, about learning the dictionary.
+I will rely on @holistic2023fel, a paper which unifies the concept extraction variants attempts in the literature and compares them all. One of the latest methods presented was coined CRAFT, standing for _Concept Recursive Activation FacTorization for Explainability_, from the preceding paper @craft2023fel, which adds non-negativity constraint to the learned priors. In the paper, it is claimed indeed that the positivity of the decomposition 
+- ``encourages sparsity''
+- ``allows missing data to be imputed''
+- ``enhances the interpretability of the decomposition''
+
+The first claim is obvious. Regarding the second claim, the authors also introduce an attribution method for visualizing the concept activations in images and rely on preceeding research, but here I'm only interested in the part about dictionary learning, so I won't comment it. Regarding the third one, my understanding of the approach is that only positive activations are meaningful because they , whereas negative activations do not carry significant information similar to how negative logit values would compress into irrelevancy and produce near-zero probabilities that are overshadowed by positive logits. 
 
 The setup goes like this: let $\mathbf{X} \in \mathbb{R}^{n\times p}$ be a set of $n$ captured activations in dimension $p$ from the latents from a vision model taken from a provided collection of images. Let $r$ be a positive integer, denoted as the rank of the decomposition. The positive dictionary learning approach consists in solving the following neighbouring problem:
 
@@ -326,7 +331,7 @@ Wonderful, I thought. This is exactly the setup we're looking for. The implicati
 
 The paper describes a framework where the dictionary can be learned by only streaming one dataset element at a time, but the algorithm trivially generalizes to batch sizes above 1. 
 
-### Overall implementation
+### Process overview
 <figure id="fig-online-dictionary-learning-svg" class="figure-wide">
 	<img
 		src={onlineDictionarySvgDiagram}
@@ -341,7 +346,7 @@ The paper describes a framework where the dictionary can be learned by only stre
 </figure>
 
 
-In order to online compute the dictionary according to the approach proposed by @holistic2023fel retaining concepts of positive activations only, I wrote several Python scripts that given a Hugging Face model and a dataset, perform in turn the following steps:
+In order to get concepts and visualize them altogether according to the approach proposed by @holistic2023fel retaining concepts of positive activations only, I wrote several Python scripts that given a Hugging Face model and a dataset, perform in turn the following steps:
 - A custom `ImageNetDataset(torch.Dataset)`
     - scrapes and indexes images from the downloaded ImageNet dataset file tree structure as well as some metadata like image size and saves them in a Polars dataframe to emulate a tiny database;
     - filters images to select those whose dimensions lie above 64 pixels in both width and height (which only eliminates a negligible proportion of the dataset, see <a data-figure-ref="fig-imagenet-density"></a>);
@@ -380,17 +385,17 @@ class InputImageBatch:
 - A conventional wrapper `ImageNetDataLoader(torch.DataLoader)` retrieves images from the dataset drawn at random and transforms them on the fly according to the transform codes.
 - A processing loop streams those formed batches to the model adapter, which extracts their latent CLS token or pooled outputs and repackages the model outputs, unique ids and transform codes to be replayed later upon retrieval.
 - A custom-made `ArrayArtifactStore` persists the raw batched model outputs as binary numpy format sharded them into batches on disk, and saves the metadata transform codes and ids to a Polars bookkeeping registry.
-- A specialized dictionary learning script  to compute iteratively the dictionary weights and persist them on disk, relying on:
+- A specialized dictionary learning script iteratively updates the dictionary weights and persists them on disk, relying on:
     - a custom new `VectorDataset(torch.Dataset)` with manually-paginated lazy loading capability via `__getitems__` to leverage OS-level file caching instead of making one (or using numpy's memory map) and decouple the requested materialization batch size in memory from the sharding size on disk;
     - yet another dataloader wrapper `VectorDataLoader(torch.DataLoader)`.
-- A concept visualizer script is responsible with
+- A concept visualizer script is responsible for
     - reading the concepts saved on disk;
-    - then firing some custom-made `VectorDataset` methods leveraging [Usearch](https://github.com/unum-cloud/usearch) to build a compacted vector index to be able to compute efficient matching & retrieval later;
-    - for all saved concept vector of the dictionary, retrieve the closest matches in the dataset saved latents in terms of $L_2$ or cosine distance;
-    - reload the latter from the disk; replay their transformations and display them. allow  between learned concept vectors and other extracted latents at inference time.
+    - triggering a custom-made `VectorDataset` method that leverages [Usearch](https://github.com/unum-cloud/usearch) to build a compacted vector index to be able to compute efficient matching & retrieval later;
+    - retrieving the closest matches in the dataset's saved latents (in terms of cosine distance) for every concept vector of the dictionary;
+    - reloading images from the disk then replaying their transformations and finally displaying them.
 
 
-
+### Dictionary learning
 The numerical computations of dictionary learning with lots of vectorized operations are natural fit for [Jax](https://docs.jax.dev/en/latest/). Unlike PyTorch, `jax` fuses operations by default because it compiles the computation graph and it allows looped computations to happen faster by avoiding python interruptions between operations. This is especially handy for iterative algorithms to solve linear algebra problems. Before this project I was familiar with PyTorch but I had never used Jax so it was a good incentive to test it.
 
 In the code, I kept the original notations with $\mathbf{W} \in \mathbb{R}^{p \times r}$ and $\mathbf{U} \in \mathbb{R}^{n \times r}$. However, since $\mathbf{U}$ is conceptually reserved for the full dataset codes, and is never materialized in memory, so I named its batched counterpart $\mathbf{H} \in \mathbb{R}^{b\times r}$ where $b$ is the batch size with obviously $b < n$. At any step, we draw $\mathbf{X} \in \mathbb{R}^{b\times n}$ and apply the above algorithm.
@@ -412,7 +417,7 @@ def train_step(
     return W, A, B
 ```
 
-### Non-negative LASSO sparse coding step
+#### Non-negative LASSO sparse coding step
 The modified sparse positive coding step to compute $\alpha_t = \arg\min_{\alpha \in \mathbb{R}^k} \frac{1}{2}\|\mathbf{x}_t - \mathbf{D}_{t-1}\alpha\|_2^2 + \lambda \|\alpha\|_1$ is a procedure in and of itself. Thanks to the magic of LLMs nowadays, I got to know that there exists a respectable algorithm that lends itself well to the non-negative LASSO problem, called Fast Iterative Shrinkage-Thresholding Algorithm (a.k.a. FISTA in the literature) [@teboulle09fista]. To be honest, I wasn't particularly interested in the details of this minor technicality in the broader scheme of dictionary learning, so I gladly let Codex do the research and work out the Jax function for it (that I could look at and get inspiration from to code the subsequent step). The only relevant practicality to be aware of is that it involves an iterative procedure of its own, so fine-tuning the tolerance and/or an iteration cap is a thing to look out for. Below is the code for reference.
 
 ```python
@@ -471,7 +476,7 @@ def nonnegative_lasso_fista(
     return H
 ```
 
-### Dictionary update step
+#### Dictionary update step
 
 The dictionary update step is pretty much about following the  instructions from the above algorithm to the letter, with the additional projection to enforce non-negative values for the new dictionary columns. Also, instead of simply accumulating the statistics, I average them with the simple online mean update formula to avoid overflow. Since the values of columns of $\mathbf{A}$ and $\mathbf{B}$ are used in tandem, using the averaged aggregate values scaled by $\frac{1}{T}$ ($T$ is the global batch index counter) instead of the raw sums does not change anything to the algorithm  in the running inner loop of the dictionary update step $\mathbf{u}_j \leftarrow \big(\mathbf{b}_j - \mathbf{D}\mathbf{a}_j\big) / \mathbf{A}[j,j] + \mathbf{d}_j$. I kept the original columnn-wise $L_2$ unit ball constraint for stability of the dictionary atoms[^note-proj-l2-lasso-fista], and  obviously, I added the projection onto the set of positively-valued vectors. Below is the Jax code for reference.
 
@@ -530,15 +535,24 @@ def update_dictionary(
     return W, A, B
 ```
 
-### Results
 
-#### Protocol
+### Protocol
 
-Here I outline the main steps in the dictionary learning process (refer to <a data-figure-ref="fig-online-dictionary-learning-svg"></a>).
-- The first step is to compute image embeddings from image crops of the dataset. I discarded images with width or height less than 128 pixels. Then I ran a script that extracts random crops of size $128 \times 128$ pixels from images of the dataset, runs them through the vision encoder, and persists the obtained latents on the disk. Other augmentations are of course possible (like geometry or colorimetry alterations) to capture more elaborate, transcendental concepts about the model's internal representations, but I did not use any of these in the framework of this experiment to focus on the actual image contents. I ran several passes on the dataset with different seeds, to get several views of the same image in the dataset. The idea is to train the dictionary on the latents obtained from local views of images that encapsulate mainly local visual context all the while including some small variations. The 128 pixels size is arbitrary for now, but should be chosen in accordance with the dataset's image width and height distribution. ImageNet is an old dataset and many images it contains are small in resolution by modern image standards, so 128 feels like a sound middleground to extract semantically local patches.
-- Second, I ran the dictionary learning script on the persisted batches of latents with a buffer of 512 concepts, and perform an update training step in the above code, with LASSO sparse coding regularization weight $\lambda$ set to 0. At this point, the point is not to get sparse codes as of yet, but rather to compute a dictionary of as representative concepts as possible, by allowing the reconstructions to span many concepts.
+Here I outline the overall design choices of the dictionary learning method (see also <a data-figure-ref="fig-online-dictionary-learning-svg"></a>). The following values are a draft to query the mechanics of the produced concepts, not the final values I used.
+
+
+#### Obtaining crops
+
+The first step is to compute image embeddings from image crops of the dataset. I discarded images with width or height less than 128 pixels. Then I ran a script that extracts random crops of size $128 \times 128$ pixels from images of the dataset, runs them through the vision encoder, and persists the obtained latents on the disk. Other augmentations are of course possible (like geometry or colorimetry alterations) to capture more elaborate, transcendental concepts about the model's internal representations, but I did not use any of these in the framework of this experiment to focus on the actual image contents. I ran several passes on the dataset with different seeds, to obtain different views of all images in the dataset. My idea is to train the dictionary on the latents obtained from views of images that essentially encapsulate somewhat _local_ visual context all the while including some outer context. The 128 pixels size is arbitrary for now, but should be chosen in accordance with the dataset's image width and height distribution. ImageNet is an old dataset and many images it contains are small in resolution by modern image standards (see <a data-figure-ref="fig-imagenet-density"></a>). In @craft2023fel, they use 64-pixel large patches, but these patches. Going with 128 seems like a sound middleground to extract semantically local patches. 
+
+#### Dictionary learning design choices
+The second step is to run the dictionary learning script on the persisted batches of latents with a buffer of 512 concepts, and execute the training algorithm in the above code, with LASSO sparse coding regularization weight $\lambda$ set to 0. At this point, the point is not to get sparse codes as of yet, but rather to compute a dictionary of as representative concepts as possible, by allowing the reconstructions to span many concepts, that's why I disable the regularization entirely.
+
+Moreover, $k=512$ is a small number compared to the numbers found in the literature. @craft2023fel does not specify the number of total concepts used, but in the [Lens Project](https://serre-lab.github.io/Lens/) they use identify no less than 32,000. 
 - Third, I examined the produced dictionary and I evaluated the codes of unaltered images from the same dataset with a sparsity constraint in order to gauge the bottleneck of the learned dictionary.
 
+
+### Results
 
 #### Metrics
 I'll use three metrics to get a get a sense of the produced concepts.
@@ -550,9 +564,9 @@ $$
 $$
 Second, we can obviously evaluate the residues of the positive part of a given vector $\mathbf{x}$ once reconstructed by the dictionary:
 $$
-\text{Residue}(\mathbf{x}) = \||\mathbf{x}| - \mathbf{D} \alpha(\mathbf{x}) \|_2
+\text{Residue}(\mathbf{x}) = \||\mathbf{x}| - \mathbf{D} \alpha(\mathbf{x}) \|
 $$
-where $\alpha$ is the (approximate) reconstruction codes from the iterative procedure.
+where $\alpha$ is the (approximate) reconstruction codes from the iterative procedure. The exact norm flavor is intentionally unspecified, it can be $L_2$ or $L_\infty$ in particular.
 
 Finally, given a reconstruction vector $\alpha$, given that the codes are non-negative, I was also curious to reinterpret it as a probability distribution over concepts. So came up with a normalized entropy score that acts like a measurement of density for the codes:
 $$
@@ -608,7 +622,7 @@ The positive-value histogram summarizes the frequency distribution of strictly p
 
 #### Codes
 
-Then I evaluated how held-out ImageNet latents decompose over the learned dictionary by solving the non-negative LASSO coding step with various values of $\lambda$. <a data-figure-ref="fig-dictionary-code-distributions"></a> reports the three one-dimensional summaries: normalized code entropy, Hoyer sparsity, and reconstruction residue norm. These plots depict the three sparsity metrics that I introduced above aggregated over a sample of images from the dataset.
+I evaluated how held-out ImageNet latents decompose over the learned dictionary by solving the non-negative LASSO coding step with various values of $\lambda$. <a data-figure-ref="fig-dictionary-code-distributions"></a> reports the three one-dimensional summaries: normalized code entropy, Hoyer sparsity, and reconstruction residue norm. These plots depict the three sparsity metrics that I introduced above aggregated over a sample of images from the dataset. All three are unimodal distributions, which is a bit reassuring, in the sense that the contrary would probably raise questions about the stability of the iterative procedure. The residue norms typically lie in the range of a few units. To put that into perspective, we have to remember that it means the error spreads over the 384 latent dimensions of the model (`facebook/dinov3-vits16-pretrain-lvd1689m`), and compare it against the typical value range of the latents dimensions.
 
 
 <figure id="fig-dictionary-code-distributions" class="figure-grid figure-grid-three">
@@ -634,13 +648,13 @@ Then I evaluated how held-out ImageNet latents decompose over the learned dictio
 	</div>
 	<figcaption>
 		<span class="label"></span>
-		Distribution of coding statistics on sampled ImageNet latents: normalized
-		entropy, Hoyer sparsity, and $L_2$ reconstruction residue norm with $\lambda = 0.5$
+		Distribution of coding statistics on sampled ImageNet latents against a dictionary of 512 learned concepts: normalized
+		entropy, Hoyer sparsity, as wel as $L_2$ &  $L_\infty$ reconstruction residue norm for $\lambda = 0.5$.
 	</figcaption>
 </figure>
 
 
-Finally, <a data-figure-ref="fig-dictionary-joint-diagnostics"></a> combines the same per-sample statistics into two-dimensional histograms for two combinations of the three possible metrics pairs. To my surprise, there is no clear correlation between the Hoyer sparsity measure and the quality of reconstruction as per the residual norms, although it does seem llike there is a Pareto front beyond which further gains in sparsity come at the cost of deteriorated reconstruction accuracy. Meanwhile, there is a strong correlation between the Hoyer and entropy metrics, so let's focus on Hoyer sparsity henceforth. The same behaviors were observed with other values of $\lambda$.
+<a data-figure-ref="fig-dictionary-joint-diagnostics"></a> combines the same per-sample statistics into two-dimensional histograms for two combinations of the three possible metrics pairs. To my surprise, there is no clear correlation between the Hoyer sparsity measure and the quality of reconstruction as per the residual norms, although it does seem llike there is a Pareto front beyond which further gains in sparsity come at the cost of deteriorated reconstruction accuracy. Meanwhile, there is a strong correlation between the Hoyer and entropy metrics, so let's focus on Hoyer sparsity henceforth. The same behaviors were observed with other values of $\lambda$.
 
 <figure id="fig-dictionary-joint-diagnostics" class="figure-grid">
 	<div class="figure-grid-images" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
