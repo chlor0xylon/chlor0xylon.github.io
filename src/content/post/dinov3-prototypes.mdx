@@ -6,12 +6,9 @@ description: "Reproducing some recent advancements in computer vision interpreta
 tags: [machine learning, interpretability, computer vision]
 ---
 
-import filtersConvNextTiny from "./filters_dinov3-convnext-tiny.png";
-import filtersVitSmall from "./filters_dinov3-vit-small.png";
-import filtersResnet18 from "./filters_resnet18.png";
+
 import imagenetDensityHex from "./imagenet-dimensions-density-hex.png"
 import imagenetDensitySquare from "./imagenet-dimensions-density-square.png"
-import adversarialResnet18 from "./adversarial_resnet-18.png";
 import dictionaryCodesValuesDistribution from "./figures_dictionary_learning/code_entropy.png";
 import dictionaryCodesValuesDistributionVsSparsity from "./figures_dictionary_learning/code_entropy_vs_code_sparsity.png";
 import dictionaryCodeSparsity from "./figures_dictionary_learning/code_sparsity.png";
@@ -114,19 +111,19 @@ The DINOv3 ViT-backbone uses $14\times 14$-pixel patches with a stride of 14, wh
 <figure id="fig-first-layer-filters" class="figure-grid figure-grid-three">
 	<div class="figure-grid-images">
 		<img
-			src={filtersResnet18.src}
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781602204/filters_resnet18_zinjve.png"}
 			alt="First-layer filter visualization for ResNet-18."
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
 		<img
-			src={filtersConvNextTiny.src}
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781602203/filters_dinov3-convnext-tiny_pkkboe.png"}
 			alt="First-layer filter visualization for DINOv3 ConvNeXt Tiny."
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
 		<img
-			src={filtersVitSmall.src}
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781602204/filters_dinov3-vit-small_kdvuma.png"}
 			alt="Patch embedding filter visualization for DINOv3 ViT Small."
 			loading="lazy"
 			style="aspect-ratio: auto;"
@@ -151,7 +148,7 @@ initialization (random or zeros). Other prompted directions corresponding to ind
 
 <figure id="fig-adversarial-gradient-ascent" class="figure-narrow">
 	<img
-		src={adversarialResnet18.src}
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781602375/adversarial_resnet-18_i8rxxo.png"}
 		alt="Adversarial image produced by gradient ascent on ResNet-18."
 		loading="lazy"
 		style="aspect-ratio: auto;"
