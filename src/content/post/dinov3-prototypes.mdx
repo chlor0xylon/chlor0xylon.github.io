@@ -8,14 +8,6 @@ tags: [machine learning, interpretability, computer vision]
 
 
 
-import dictionaryCodesValuesDistribution from "./figures_dictionary_learning/code_entropy.png";
-import dictionaryCodesValuesDistributionVsSparsity from "./figures_dictionary_learning/code_entropy_vs_code_sparsity.png";
-import dictionaryCodeSparsity from "./figures_dictionary_learning/code_sparsity.png";
-import dictionaryConceptSimilarities from "./figures_dictionary_learning/concepts_cosine_similarities.png";
-import dictionaryConceptValueDistribution from "./figures_dictionary_learning/concept_value_distribution.png";
-import dictionaryFeaturesOverConcepts from "./figures_dictionary_learning/features_over_concepts.png";
-import dictionaryResidueNorms from "./figures_dictionary_learning/residue_norms.png";
-import dictionaryResidueNormsVsSparsity from "./figures_dictionary_learning/residue_norms_vs_code_sparsity.png";
 import sparsityAllLambdas from "./figures_dictionary_learning/code_sparsity_all_lambdas.png"
 import residuesAllLambdas from "./figures_dictionary_learning/residue_norms_all_lambdas.png"
 
@@ -613,46 +605,45 @@ $$
 
 #### Concepts
 
-I generated a dictionary of $512$ concept vectors for the $384$-dimensional CLS-token latent space of the model `facebook/dinov3-vits16-pretrain-lvd1689m`, with the random crops. The first sanity check is to inspect the dictionary itself. <a data-figure-ref="fig-dictionary-concept-value-distribution"></a> shows the distribution of positive concept-entry values, while <a data-figure-ref="fig-dictionary-concept-diagnostics"></a> shows the pairwise cosine similarities of the concepts and the raw feature-by-concept weight matrix.
+I generated a dictionary of $512$ concept vectors for the $384$-dimensional CLS-token latent space of the model `facebook/dinov3-vits16-pretrain-lvd1689m`, with the random crops. The first sanity check is to inspect the dictionary itself. <a data-figure-ref="fig-dictionary-concept-value-distribution"></a> shows the distribution of positive concept components, while <a data-figure-ref="fig-dictionary-concept-diagnostics"></a> shows the pairwise cosine similarities of the concepts and the raw feature-by-concept weight matrix.
 
 <figure id="fig-dictionary-concept-value-distribution" class="figure-grid">
 	<div class="figure-grid-images" style="grid-template-columns: minmax(0, 1fr);">
 		<img
-			src={dictionaryConceptValueDistribution.src}
-			alt="Histogram of positive entry values across all learned concepts."
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781616893/concept_value_distribution_vmovmj.svg"}
+			alt="Concept components distribution of values across all learned concepts"
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
 	</div>
 	<figcaption>
 		<span class="label"></span>
-		Distribution of positive concept-entry values across all learned concepts.
+		Distribution of positive concept component values across all learned concepts.
 	</figcaption>
 </figure>
 
 <figure id="fig-dictionary-concept-diagnostics" class="figure-grid figure-grid-two">
 	<div class="figure-grid-images">
 		<img
-			src={dictionaryConceptSimilarities.src}
-			alt="Pairwise cosine similarity matrix between learned concept vectors."
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781616508/concepts_cosine_similarities_cpsto5.svg"}
+			alt="Pairwise cosine similarity matrix between learned concept vectors"
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
 		<img
-			src={dictionaryFeaturesOverConcepts.src}
-			alt="Heatmap of positive feature weights over learned concepts."
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781616586/features_over_concepts_ej6ifz.svg"}
+			alt="Heatmap of positive feature weights over learned concepts"
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
 	</div>
 	<figcaption>
 		<span class="label"></span>
-		Dictionary diagnostics: concept-to-concept cosine similarities and the learned
-		non-negative feature weights over the 512 concepts (enlarge to visualize details)
+		Dictionary diagnostics: concept-to-concept cosine similarities and learned non-negative feature weights over the 512 concepts
 	</figcaption>
 </figure>
 
-The positive-value histogram summarizes the frequency distribution of strictly positive entries across all concept vectors after the positivity projection. The cosine-similarity heatmap is useful to check that the dictionary has not collapsed into repeated atoms. The feature-over-concepts heatmap shows how the positive weights are distributed across latent dimensions.
+The positive-value histogram summarizes the frequency distribution of strictly positive entries across all concept vectors after the positivity projection. The cosine-similarity heatmap is useful to check that the dictionary has not collapsed into repeated atoms. The feature-over-concepts constellation heatmap shows how the positive weights are distributed across latent dimensions.
 
 #### Codes
 
@@ -662,20 +653,20 @@ I evaluated how held-out ImageNet latents decompose over the learned dictionary 
 <figure id="fig-dictionary-code-distributions" class="figure-grid figure-grid-three">
 	<div class="figure-grid-images">
 		<img
-			src={dictionaryCodesValuesDistribution.src}
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781615395/code_entropy_ewnu4j.svg"}
 			alt="Histogram of normalized entropy values for non-negative sparse codes."
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
 		<img
-			src={dictionaryCodeSparsity.src}
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781615395/code_sparsity_lci3ea.svg"}
 			alt="Histogram of Hoyer sparsity values for non-negative sparse codes."
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
 		<img
-			src={dictionaryResidueNorms.src}
-			alt="Histogram of reconstruction residue norms for dictionary decompositions."
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781617049/residue_norms_flosuj.svg"}
+			alt="Euclidian norm of reconstructed residues of dictionary decompositions."
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
@@ -693,13 +684,13 @@ I evaluated how held-out ImageNet latents decompose over the learned dictionary 
 <figure id="fig-dictionary-joint-diagnostics" class="figure-grid">
 	<div class="figure-grid-images" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
 		<img
-			src={dictionaryResidueNormsVsSparsity.src}
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781615066/residue_norms_vs_code_sparsity_fmhngn.svg"}
 			alt="Two-dimensional histogram of residue norms against Hoyer sparsity."
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
 		<img
-			src={dictionaryCodesValuesDistributionVsSparsity.src}
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781615066/code_entropy_vs_code_sparsity_bztujj.svg"}
 			alt="Two-dimensional histogram of normalized entropy against Hoyer sparsity."
 			loading="lazy"
 			style="aspect-ratio: auto;"
