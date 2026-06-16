@@ -643,7 +643,7 @@ The positive-value histogram summarizes the frequency distribution of strictly p
 
 #### Codes
 
-I evaluated how held-out ImageNet latents decompose over the learned dictionary by solving the non-negative LASSO coding step with various values of $\lambda$. <a data-figure-ref="fig-dictionary-code-distributions"></a> reports the three one-dimensional summaries: normalized code entropy, Hoyer sparsity, and reconstruction residue norm. These plots depict the three sparsity metrics that I introduced above aggregated over a sample of images from the dataset. All three are unimodal distributions, which is a bit reassuring, in the sense that the contrary would probably raise questions about the stability of the iterative procedure. The residue norms typically lie in the range of a few units. To put that into perspective, we have to remember that it means the error spreads over the 384 latent dimensions of the model (`facebook/dinov3-vits16-pretrain-lvd1689m`), and compare it against the typical value range of the latents dimensions.
+I evaluated how held-out ImageNet latents decompose over the learned dictionary by solving the non-negative LASSO coding step with various values of $\lambda$. <a data-figure-ref="fig-dictionary-code-distributions"></a> reports the three one-dimensional summaries: normalized code entropy, Hoyer sparsity, and reconstruction residue norms. These plots depict the three sparsity metrics that I introduced above aggregated over a sample of images from the dataset. All three are unimodal distributions, which is a bit reassuring, in the sense that the contrary would probably raise questions about the stability of the iterative procedure. The residue norms typically lie in the range of a few units. To put that into perspective, we have to remember that it means the error spreads over the 384 latent dimensions of the model (`facebook/dinov3-vits16-pretrain-lvd1689m`), and compare it against the typical value range of the latents dimensions.
 
 
 <figure id="fig-dictionary-code-distributions" class="figure-grid figure-grid-three">
@@ -670,7 +670,7 @@ I evaluated how held-out ImageNet latents decompose over the learned dictionary 
 	<figcaption>
 		<span class="label"></span>
 		Distribution of coding statistics on sampled ImageNet latents against a dictionary of 512 learned concepts: normalized
-		entropy, Hoyer sparsity, as wel as $L_2$ &  $L_\infty$ reconstruction residue norm for $\lambda = 0.5$.
+		entropy, Hoyer sparsity, and $L_2$ reconstruction residue norm for $\lambda = 0.5$.
 	</figcaption>
 </figure>
 
