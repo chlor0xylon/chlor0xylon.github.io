@@ -385,25 +385,19 @@ class InputImageBatch:
 ```
 
 <figure id="fig-imagenet-density" class="figure">
-	<div class="figure-grid-images" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
-		<img
-			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781602467/imagenet-dimensions-density-hex_le3dk9.png"}
-			alt="ImageNet image-dimension density plot, linear scale format."
-			loading="lazy"
-			style="aspect-ratio: auto;"
-		/>
-		<img
-			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781602467/imagenet-dimensions-density-square_mfgkcy.png"}
-			alt="ImageNet image-dimension density plot, log-scale format."
-			loading="lazy"
-			style="aspect-ratio: auto;"
-		/>
-	</div>
+
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781612897/imagenet-dimensions-density_ug1tit.png"}
+		alt="ImageNet image-dimension density plot, linear scale format."
+		loading="lazy"
+		style="aspect-ratio: auto;"
+	/>
 	<figcaption>
 		<span class="label"></span>
 		Density plots of ImageNet's image dimensions distribution in linear scale and log-scale. Images expectedly accumulate along frequent size ratios, and the majority of images concentrate in the 400-500-ish range in height and width.
 	</figcaption>
 </figure>
+
 - A conventional wrapper `ImageNetDataLoader(torch.DataLoader)` retrieves images from the dataset drawn at random and transforms them on the fly according to the transform codes.
 - A processing loop streams those formed batches to the model adapter, which extracts their latent CLS token or pooled outputs and repackages the model outputs, unique ids and transform codes to be replayed later upon retrieval.
 - A custom-made `ArrayArtifactStore` persists the raw batched model outputs as binary numpy format sharded them into batches on disk, and saves the metadata transform codes and ids to a Polars bookkeeping registry.
