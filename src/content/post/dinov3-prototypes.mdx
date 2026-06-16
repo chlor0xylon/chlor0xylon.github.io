@@ -569,9 +569,23 @@ Here I outline the overall design choices of the dictionary learning method (see
 
 ### Obtaining crops
 
-The first stage is to compute image embeddings from image crops of the dataset. I discarded images with width or height less than 128 pixels. Then I ran a script that extracts random crops of size $128 \times 128$ pixels from images of the dataset, runs them through the vision encoder, and persists the obtained latents on the disk. Other augmentations are of course possible (like geometry or colorimetry alterations) to capture more elaborate, transcendental concepts about the model's internal representations, but I did not use any of these in the framework of this experiment to focus on the actual image contents. I ran several passes on the dataset with different seeds, to obtain different views of all images in the dataset.
+The first stage is to compute image embeddings from image crops of the dataset. I discarded images with width or height less than 128 pixels. Then I ran a script that extracts random crops of size $128 \times 128$ pixels from images of the dataset, runs them through the vision encoder, and persists the obtained latents on the disk. Other augmentations are of course possible (like geometry or colorimetry alterations) to capture more elaborate, transcendental concepts about the model's internal representations, but I did not use any of these in this experiment. I ran several passes on the dataset with different seeds, to obtain different views of all images in the dataset.
 
-My idea is to train the dictionary on the latents obtained from views of images that essentially encapsulate somewhat _local_ visual context all the while including some outer context. The 128 pixels size is arbitrary for now, but should be chosen in accordance with the dataset's image width and height distribution. ImageNet is an old dataset and many images it contains are small in resolution by modern image standards (see <a data-figure-ref="fig-imagenet-density"></a>). In @craft2023fel, they use 64-pixel large patches, but these patches always belonged to images taken from the same class. On the same dataset independently of any classification hierarchy, going with 128 seems like a sound middleground to extract semantically local, consistent features.
+My idea is to train the dictionary on the latents obtained from views of images that encapsulate local but extended visual context compared to prior results from the literature. The 128 pixels size is arbitrary for now, but it remains in accordance with the dataset's image width and height statistics. ImageNet contains many images of small resolution by modern image standards (see <a data-figure-ref="fig-imagenet-density"></a>). In @craft2023fel, 64-by-64-pixel patches are used. An increased size of 128 seems like a sound middleground to extract local semantics all the while extending the field of view to a limited fraction of the image in the majority of cases (see <a data-figure-ref="fig-imagenet-crops-area-ratio-svg"></a>).
+
+
+<figure id="fig-imagenet-crops-area-ratio-svg" class="figure-narrow">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781601592/imagenet-crops-area-ratio_qrsbsl.svg"}
+		alt="Crops area over total image area ratio"
+		loading="lazy"
+		style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		128-by-128 crops to total image surface area ratio distribution for ImageNet
+	</figcaption>
+</figure>
 
 ### Dictionary learning design choices
 The second stage is to run the dictionary learning script on the persisted batches of latent vectors on a dictionary buffer of $k=512$ concepts, and execute the training algorithm in the above code, with LASSO sparse coding regularization weight $\lambda$ set to 0. At this point, the objective is not to get sparse codes as of yet, but rather to compute a dictionary of as representative concepts as possible, by allowing the reconstructions to span many concepts, that's why I disable the regularization entirely. The reason I went with 512 concepts for now is twofold: it is about half the number of classes in the ImageNet dataset--which may incidentally already form clusters in the model's latent space--so it safely avoids concepts collapsing onto trivial vectors due to enlarging the crop size; and I hypothesize that it is close to the actual number of ``independent'' concepts as per the Lens Project, which features numerous inter-class concept similarities.
