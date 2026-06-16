@@ -27,3 +27,7 @@ pnpm-debug.log*
 temp/
 
 src/content/templates
+
+# images
+*.svg
+*.png
