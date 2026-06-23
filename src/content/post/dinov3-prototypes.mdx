@@ -1,5 +1,5 @@
 ---
-title: "Peering into DINOv3"
+title: "Peering into DINOv3 (part 1)"
 toc: true
 publishDate: 2026-06-22
 description: "Reproducing some recent advancements in computer vision interpretability"
@@ -643,7 +643,7 @@ The positive-value histogram summarizes the frequency distribution of strictly p
 
 #### Codes
 
-I evaluated how held-out ImageNet latents decompose over the learned dictionary by solving the non-negative LASSO coding step with various values of $\lambda$. <a data-figure-ref="fig-dictionary-code-distributions"></a> reports the three one-dimensional summaries: normalized code entropy, Hoyer sparsity, and reconstruction residue norms. These plots depict the three sparsity metrics that I introduced above aggregated over a sample of images from the dataset. All three are unimodal distributions, which is a bit reassuring, in the sense that the contrary would probably raise questions about the stability of the iterative procedure. The residue norms typically lie in the range of a few units. To put that into perspective, we have to remember that it means the error spreads over the 384 latent dimensions of the model (`facebook/dinov3-vits16-pretrain-lvd1689m`), and compare it against the typical value range of the latents dimensions.
+I evaluated how ImageNet latents decompose over the learned dictionary by solving the non-negative LASSO coding step with various values of $\lambda$. <a data-figure-ref="fig-dictionary-code-distributions"></a> reports the three one-dimensional summaries: normalized code entropy, Hoyer sparsity, and reconstruction residue norms. These plots depict the three sparsity metrics that I introduced above aggregated over a sample of images from the dataset. All three are unimodal distributions, which is a bit reassuring, in the sense that the contrary would probably raise questions about the stability of the iterative procedure. The residue norms typically lie in the range of a few units. To put that into perspective, we have to remember that it means the error spreads over the 384 latent dimensions of the model (`facebook/dinov3-vits16-pretrain-lvd1689m`), and compare it against the typical value range of the latents dimensions.
 
 
 <figure id="fig-dictionary-code-distributions" class="figure-grid figure-grid-three">
@@ -727,7 +727,7 @@ As a sanity check it can be interesting to observe how the regularization hyperp
 </figure>
 ## Visualizing the latent concepts with prototype images
 
-Coming soon...
+In part 2, I'll analyze more extensively the obtained concepts and I'll visualize the learned concepts of the dictionary with input image optimization. Coming soon... 
 
 
 ## References
