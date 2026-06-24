@@ -12,9 +12,9 @@ Almost ten years ago, as I was wandering the internet during my bachelor years, 
 Lately, I discovered it again by accident in the process of doing a literature review, so I decided to skim through it anew and catch up with the research with the benefit of hindsight, having more time and background knowledge to delve properly into the contents.
 
 :::note
-Throughout this post, I will mainly mention a few generations of famous vision models (depending on the viewpoint): Microsoft's ResNet [@he2016deepResidualLearning], a representative convolutional classifier from the mid-2010s; Google's GoogLeNet [@googlenet], Meta's more recent SOTA DINO variants from v1 to v3 [@emerging2021dinov1; @oquab2024dinov2; @simeoni2025dinov3], spanning about a decade of R&D in computer vision. Although they differ substantially in architecture, training objectives, and scale, they provide a useful cross-section of how visual representations have evolved over the last decade.
+Throughout this post, I will mainly mention a few generations of famous vision models: Microsoft's ResNet [@he2016deepResidualLearning], a representative convolutional classifier from the mid-2010s; Google's GoogLeNet [@googlenet], Meta's more recent SOTA DINO variants from v1 to v3 [@emerging2021dinov1; @oquab2024dinov2; @simeoni2025dinov3], spanning about a decade of R&D in computer vision. Although they differ substantially in architecture, training objectives, and scale, they provide a useful cross-section of how visual representations have evolved over the last decade.
 
-In the mid-2010s, the renowned Transformers architecture [@vaswani2017attention] and the [attention](<https://en.wikipedia.org/wiki/Attention_(machine_learning)>) mechanism, that nowadays underpins modern neural image processing, had not been conceptualized; and state-of-the-art vision models still used convolutional backbones, stemming from learnable, signal processing-inspired convolutional filters. Leveraging Transformers for vision tasks wouldn't be formally introduced for another two years, until 2019 [@dosovitskiy2021vit].
+In the mid-2010s, the renowned Transformers architecture [@vaswani2017attention] and the [attention](<https://en.wikipedia.org/wiki/Attention_(machine_learning)>) mechanism, that nowadays underpins modern neural image processing, had not been conceptualized yet; and state-of-the-art vision models still used convolutional backbones, stemming from learnable, signal processing-inspired convolutional filters. Leveraging Transformers for vision tasks wouldn't be formally introduced for another two years, until 2019 [@dosovitskiy2021vit].
 :::
 
 
@@ -24,14 +24,14 @@ One of Distill's foundational articles is called _Feature Visualization_ [@olah2
 
 [^note-older-feature-viz]: Even in 2017, visualizing features by creating images to maximize activations wasn't exactly new. The numerous papers cited in Distill's _Feature Visualization_ is evidence of those previous attempts, some as early as 2009, even before [AlexNet](https://en.wikipedia.org/wiki/AlexNet)'s breakthrough.
 
-It's safe to say the work carried out by Distill's authors has inspired many computer vision interpretability endeavors in mechanistic interpretability following the developments in convolutional neural networks. Other interesting work worth looking at on Distill include exploring ever more specialized vision mechanisms such as curve detectors [@cammarata2020curveDetectors] or spacial frequency edge detectors [@schubert2021highLowFrequencyDetectors] and differentiable image parametrizations [@mordvintsev2018differentiableParameterizations].
+I think it's safe to say the work carried out by Distill's authors has inspired many mechanistic interpretability endeavors in computer vision following the developments in convolutional neural networks. Other interesting works worth looking at on Distill include exploring ever more specialized vision mechanisms such as curve detectors [@cammarata2020curveDetectors] or spacial frequency edge detectors [@schubert2021highLowFrequencyDetectors] and differentiable image parametrizations [@mordvintsev2018differentiableParameterizations].
 
 
 
 ## Feature visialization
 
 
-To _visualize_ features in the context of machine learning research, means to synthesize images by whichever means possible, comprising patterns that maximize some given activations or outputs of a neural network (the said features), in order to gain insights about what the model perceives and how it ``interprets'' the inputs. In other words it's about finding _prototypical_ images that make particular neuron groups fire in a certain way[^note-on-fire-modes]. The proper mathematical term is _preimage_, but it has nothing to do with actual images made of pixels in the general sense, so to avoid that ambiguity I will henceforth refer to such artificial images simply as _prototypes_ in the remaining of this post, to stick to the literature's coined terminology.
+To _visualize_ features in the context of machine learning research, means to synthesize images with patterns that maximize some given activations or outputs of a neural network (the said features), in order to gain insights about what the model perceives and how it "interprets" the inputs. In other words it's about finding _prototypical_ images that make particular neuron groups fire in a certain way[^note-on-fire-modes]. The proper mathematical term is _preimage_, but it has nothing to do with actual images made of pixels in the general sense, so to avoid that ambiguity I will henceforth refer to such artificial images simply as _prototypes_ in the remaining of this post, to stick to the literature's coined terminology.
 
 [^note-on-fire-modes]: Said chosen groups can mean a specific neuron, or a collection of designated neurons. Distill's article _The Building Blocks of Interpretability_ [@olah2018buildingBlocks] showcases some neuron grouping choices for activation maximization.
 
@@ -42,13 +42,13 @@ The output space of a neural network is closely linked to its training setup. Mi
 :::
 
 
-To put it plainly, let $f$ be a provided, trained, frozen neural network accepting images in (a subset of) $\mathcal{X} = \mathbb{R}^{C \times W \times H}$ in input, that returns output vectors $\mathcal{Y} \ni \mathbf{y} = f(\mathbf{x})$. To find a prototype $\tilde{\mathbf{x}}$ in input space for some objective function $s: \mathcal{Y} \rightarrow \mathbb{R}$ means to solve
+To set the stage, let $f$ be a provided, trained, frozen neural network accepting images in (a subset of) $\mathcal{X} = \mathbb{R}^{C \times W \times H}$ in input, that returns output vectors $\mathcal{Y} \ni \mathbf{y} = f(\mathbf{x})$. To find a prototype $\tilde{\mathbf{x}}$ in input space for some objective function $s: \mathcal{Y} \rightarrow \mathbb{R}$ means to solve
 
 $$
 \tilde{\mathbf{x}} = \arg\max_{\mathbf{x} \in \mathcal{X}} s(f(\mathbf{x}))
 $$
 
-which translates into ``finding an input that represents its class or target latent representation perfectly according to measure $s$''.
+which translates to "finding an input that represents its class or target latent representation perfectly according to measure $s$".
 
 For example, $s$ can denote:
 
@@ -58,7 +58,7 @@ For example, $s$ can denote:
 
 In this setup, the optimized variable is the input to the frozen network, a.k.a. the data, as opposed to the training phase where the data was fixed, and drawn from a dataset, and the network's weights were the optimized variables. The point is then to use optimization techniques to synthesize input images that maximally activate specific neurons or layers.
 
-For any neural network of more than, say, at least a few layers and a handful of input variables, such a mathematical problem is not remotely tractable due to the deep and non-linear nature of neural networks. Thus, only approximated solutions are in order. To compute one, we can resort to iterative gradient ascent, backpropagating up the network to the inputs, leveraging the the network's mapping function $f$ being differentiable. One single step of the gradient ascent process goes like this:
+For any neural network of more than, say, at least a few layers and a handful of input variables, solving exactly such a mathematical problem is not remotely tractable due to the deep and non-linear nature of neural networks. Thus, only approximated solutions can be obtained. To compute one, we can resort to iterative gradient ascent, backpropagating up the network to the inputs, leveraging the the network's mapping function $f$ being differentiable. One single step of the gradient ascent process goes like this:
 
 $$
 \mathbf{x}^{(t+1)} \gets \mathbf{x}^{(t)} + \alpha \nabla_{\mathbf{x}} (s \circ f)(\mathbf{x}^{(t)})
@@ -74,13 +74,13 @@ Conventional discriminative vision-based neural networks are _not_ designed to d
 
 [^note-similarity-transformers-hash]: The crucial difference is that Transformers seek to preserve and reorganize information so that it is stable to local noise in the continuous variables, whereas cryptographic hashes irreversibly destroy evidence of similarity and reshuffle discrete inputs.
 
-Rather, they are optimized to aggregate visual cues and compress information from the inputs into progressively more abstract latent representations of densely packed arrays of numbers that are supposed to be more or less invariant to semantic-preserving changes in the input space. These latents are useful for downstream prediction tasks. Forefront convolutional kernels in CNNs and Transformers patch embedding kernels usually look like Gabor filters or random noise patches [@alexnet2012; @dosovitskiy2021vit].
+Rather, they are optimized to aggregate visual cues and compress information from the inputs into more and more abstract latent representations of densely packed numbers layer after layer, that are supposed to be more or less invariant to semantic-preserving changes in the input space. These latents are useful for downstream prediction tasks. The forefront convolutional kernels in CNNs, and the patch embedding kernels in ViTs, usually look like Gabor filters or random noise patches [@alexnet2012; @dosovitskiy2021vit].
 
-To me, legacy convolutional models aggregation strategy resembles an elaborate interferometry system detecting edges and alignments of visual patterns [@zeiler2014visualizingCNNs], whereas the Transformer-based models aggregation strategy consisting in gradually refining the residual stream latents is more reminiscent of internal state buffers in cryptographic hash algorithms such as AES[^note-similarity-transformers-hash].
+Because of that, the legacy convolutional aggregation strategy resembles an elaborate interferometry system detecting edges and alignments of visual patterns [@zeiler2014visualizingCNNs], whereas the Transformer-based aggregation strategy (consisting in gradually refining the residual stream latents) is more reminiscent of internal state buffers in cryptographic hash algorithms such as AES[^note-similarity-transformers-hash].
 
 [^note-highly-specific-reversible-nn]: Except highly-specific architectures designed from the ground-up to also be able to possibly process the data in reverse, like Variational Auto-Encoders.
 
-<a data-figure-ref="fig-first-layer-filters"></a> shows RGB visualizations of front-end filters in Microsoft's 2015 smallest Resnet classification model [@he2016deepResidualLearning] trained on ImageNet [@imagenet1k2012; @imagenet2009] and the two smallest variants of Meta's 2025 DINOv3 ConvNeXt-backend and ViT-backend unsupervised models. For reference, the weights addresses of the HuggingFace models object hierarchy are specified in the below table.
+To illustrate this fact about forefront kernels, <a data-figure-ref="fig-first-layer-filters"></a> shows RGB visualizations of front-end filters in Microsoft's 2015 smallest Resnet classification model [@he2016deepResidualLearning] trained on ImageNet [@imagenet1k2012; @imagenet2009] and the two smallest variants of Meta's 2025 DINOv3 ConvNeXt-backend and ViT-backend unsupervised models. For reference, the weights addresses of the HuggingFace models object hierarchy are specified in the below table.
 
 ResNet-18's weights have significantly smoother kernels resembling [Gabor filters](https://en.wikipedia.org/wiki/Gabor_filter), as expected (the same kind of Gabor-like kernels appeared in AlexNet as well, the first convolutional neural network successfully trained at scale on a large and diverse collection of natural images). Meanwhile, state-of-the-art DINOv3 filters seem to capture very noisy patterns, judging by human perception standards. I guess that's expected as well, because unlike convolution kernels, patch embedding kernels have to capture details at the edge of patch borders, whereas convolution filters tend to focus most of their energy in the center, and convoluting does the rest. 
 
@@ -152,7 +152,7 @@ This poses a serious problem to gradient ascent approaches, because iteratively 
 
 ### Regularizing in model input space
 
-Fortunately, all is not lost. Numerous Pre-2020 research results tackle prototype generation for convolutional networks. I will not reiterate here the already plentiful literature reviews of the various strategies they came up with to circumvent adversarial images. Both @Nguyen2019UnderstandingVisualizing and @olah2017featureVisualization provide one. But let's only state that they all involve some form of regularization in the model input space. Most of them aim to curb parasitic high frequencies, with various implementations techniques (for example directly in the gradients, or in the buffers; or indirectly via intermediary image transforms interleaved with gradient steps).
+Fortunately, all is not lost. Numerous Pre-2020 research results tackle prototype generation for convolutional networks. I will not reiterate here the already plentiful literature reviews of the various proposed strategies to circumvent adversarial images. Both @Nguyen2019UnderstandingVisualizing and @olah2017featureVisualization provide one. But let's only state that they all involve some form of regularization in the model input space. Most of them aim to curb parasitic high frequencies, with various implementations techniques (for example directly in the gradients, or in the buffers; or indirectly via intermediary image transforms interleaved with gradient steps).
 
 {/* ### TODO: Append ResNet attempts
 Figure goes here */}
@@ -161,11 +161,11 @@ Figure goes here */}
 
 ### The shift in paradigm in image computer vision
 
-How did we get from discriminative image neural networks in 2015 categories to task-agnostic models yielding universal image embeddings in 2025?
+By the way, how did we get from discriminative image neural networks in 2015 to task-agnostic models yielding universal image embeddings in 2025?
 
-In the course of a global acceleration in machine learning research, the advent of Transformers [@vaswani2017attention] has completely overhauled the field of computer vision the same way NLP was revolutionized by Transformers a few years prior, coming from cumbersome recurrent neural networks. 
+In the course of a global acceleration in machine learning research, the advent of Transformers [@vaswani2017attention] has completely overhauled the field of computer vision the same way NLP was revolutionized by Transformers a few years before, as the SOTA was coming from cumbersome recurrent neural networks. 
 
-Since the publication of the the first articles about feature visualization on Distill, ViTs have largely taken over convolutional models for vision tasks. Convolutional neural networks have now somewhat fallen into disfavor, and for a good reason: Transformers are more versatile, perform better and and allow to combine tokens of virtually any modality, text and images alike. This major architectural modernization--from ResNet [@2016resnet], to ConvNext [@2023convnext] to ViT [@dosovitskiy2021vit]--unlocked drastically better generalization power between models from the mid-2010's and models from the mid-2020's.
+Since the publication of the  first articles about feature visualization on Distill, ViTs have largely taken over convolutional models for vision tasks. Convolutional neural networks have now somewhat fallen into disfavor, for a good reason though: Transformers are more versatile, perform better and and allow to combine tokens of virtually any modality, text and images alike. This major architectural modernization--from ResNet [@2016resnet], to ConvNext [@2023convnext] to ViT [@dosovitskiy2021vit]--unlocked drastically better generalization power between models from the mid-2010's and models from the mid-2020's.
 
 Over the course of the last five years or so, the quality of image latent representations in frontier vision models has improved a lot due to scaling up both the neural networks and the datasets in use, and improved training methods. Transitioning from discriminative supervised learning to soft self-supervised _knowledge distillation_ learning certainly has a lot to do with improvements in state-of-the-art models indeed.
 
@@ -173,16 +173,16 @@ Over the course of the last five years or so, the quality of image latent repres
 A very nice review of the iterative research about transcending supervision and leveraging better data augmentation techniques in computer vision can be found on [Lil'log](https://lilianweng.github.io/) [@weng2021contrastive; @weng2019selfsup]. I find that it's a very informative overview of the main contrastive learning techniques that heralded novel, more implicit, task-agnostic, better regularized, abstracted-away learning paradigms such as DINO's teacher-student system for robust image representations [@emerging2021dinov1].
 :::
 
-My personal impression is that computer vision as a domain now elicits far less curiosity about the models' inner working principles and interpretability than it used to do when convolutions were the norm, and it has gotten dragged by fast-paced developments driven by a skyrocketing interest in the field of natural language processing.
+Anyway, my personal impression is that computer vision as a domain now elicits far less curiosity about the models' inner working principles and interpretability than it used to do when convolutions were the norm, and it has gotten dragged by fast-paced developments driven by a skyrocketing interest in the field of natural language processing.
 
-I think an indicative example of that trend is the renowned [Transformer Circuits Thread](https://transformer-circuits.pub/), which has shifted from computer vision to NLP since its inception. It seems that vision models have now become a commodity taken for granted, that gets incorporated in all major new image-text model released out there, while the new _El Dorado_ of language processing took control of the AI race monopolizing all the attention (pun intended). Prototypes are the remnants of a forgotten experiment. Mechanistic interpretability now focuses on other means of breaking down neural networks.
+I think an indicative example of that trend is the renowned [Transformer Circuits Thread](https://transformer-circuits.pub/), which has shifted from computer vision to NLP since its inception. It seems that vision models have now become a commodity taken for granted, that gets incorporated in all major new image-text model released out there, while the new _El Dorado_ of language processing took control of the AI race monopolizing all the attention (pun intended). Prototypes seem to be the remnants of a forgotten experiment. Mechanistic interpretability now focuses on other means of breaking down neural networks.
 
 ### A hypothesis on the quality of latent representation
-I hypothesize that with more robust representations, proper regularization, increased generalization and denser datasets compacted into the latent space, come better model calibration and smoother gradients to backpropagate, possibly. This is a hunch I get from reading @sensitivity2018 performing a sensitivity analysis on the MNIST dataset. They show that gradients of the last layers of the network are smoother and less noisy near training points. MNIST is particular in that it's a tiny, minuscule dataset with a handful of extremely repetitive patterns. But cramming representations for billions of diverse images into a few hundred dimensions with proper data curation ensuring balance and representativeness like it's the case for current SOTA models like DINO should yield latent spaces covering the manifold of natural images more densely and smoothly. I have no proof of it, though. This is probably a massive oversimplification.
+I hypothesize that with more robust representations, proper regularization, increased generalization and denser datasets compacted into the latent space, come better model calibration and smoother gradients to backpropagate, possibly. This is a hunch I get from reading @sensitivity2018 performing a sensitivity analysis on the MNIST dataset. They show that gradients of the last layers of the network are smoother and less noisy near training points. MNIST is particular in that it's a tiny, minuscule dataset with a handful of extremely repetitive patterns. But cramming representations for billions of diverse images into a few hundred dimensions with proper data curation ensuring balance and representativeness should yield latent spaces covering the manifold of natural images more densely and smoothly. I have no proof of it, but I like to speculate about such hypotheses and this one sounds plausible to me.
 
-Another sensible way of phrasing that hunch would be the following: formerly, classification-trained discriminative models had the possibility to take hacky shortcuts in order to cut through the visual patterns and return the correct label. For example, early convolutional neural networks are typically known to rely on texture information [@imagenet2018texturebias], or at least local shapes [@burgert2026imagenettrained], which isn't a bad proxy anyway, but limits the so-called ``global understanding'' of a scene, which Transformers excel at by comparing each patch with one another.
+Another sensible way of phrasing that hunch would be the following: formerly, classification-trained discriminative models had the possibility to take hacky shortcuts in order to cut through the visual patterns and return the correct label. For example, early convolutional neural networks are typically known to rely on texture information [@imagenet2018texturebias], or at least local shapes [@burgert2026imagenettrained], which isn't a bad proxy anyway, but limits the so-called "global understanding" of a scene, which Transformers excel at by comparing each patch with one another.
 
-The relative robustness of late frontier convolutional networks only came from scaling the sheer amount of different classes[^note-number-classes-imagenet] to force them to refine their understanding. By contrast, nowadays, models of DINO's caliber, which are trained on datasets three orders of magnitude larger[^note-number-images-dino-training] and forced to capture subtle internal pieces of visual context in an unsupervized learning setup, should be able to encode semantic relationships between images more finely, albeit in a latent space with roughly the same number of dimensions[^note-dimensions-models]. If true, that intuition suggests it should be less tricky to produce prototypes from those modern models because they compress visual information less aggressively.
+The relative robustness of late frontier convolutional networks only came from scaling the sheer amount of different classes[^note-number-classes-imagenet] to force models to refine their latents. By contrast, nowadays, models of DINO's caliber, which are trained on datasets three orders of magnitude larger[^note-number-images-dino-training] and forced to capture subtle internal pieces of visual context in an unsupervized learning setup, should be able to encode semantic relationships between images more finely, albeit in a latent space with roughly the same number of dimensions[^note-dimensions-models].
 
 [^note-number-classes-imagenet]: The ImageNet-1K dataset [@imagenet1k2012], used to train ResNets, is comprised of merely 1.4 million images split up into 1000 categories.
 
@@ -190,18 +190,18 @@ The relative robustness of late frontier convolutional networks only came from s
 
 [^note-dimensions-models]: ResNets models have 512 dimensions (pre-logits). DINOv3 latent spaces range from 384 to 4096 depending on the variant and size, but the comparison holds between equivalently-sized `microsoft/resnet-18` and `facebook/dinov3-convnext-tiny-pretrain-lvd1689m` or `facebook/dinov3-convnext-small-pretrain-lvd1689m` (HuggingFace model identifiers). Unlike classifiers models, with no need for grouping latents into 1000 regions of space.
 
-### The incentive to compute prototypes on the newest frontier models
-Despite the aforementioned developments in self-supervised learning, not many groundbreaking achievements have happened since the late-2010's when it comes to generating image prototypes of vision models. As stated above, that area of research seems to have fallen out of use. 
+### Dispatches from prototype generation research
+Despite the aforementioned developments in self-supervised learning, not many groundbreaking achievements have happened since the late-2010's when it comes to image prototype generation in computer vision. As stated above, that area of research seems to have fallen out of use. 
 
 There _is_ a series of recent experiments and papers that are worth seeing, however. A 2023 paper @fel2023unlocking by ML interpretability researcher Thomas Fel revisited prototype optimization on DINOv2. The resulting showcased prototypes are visually quite compelling, by means of constraining the image spectrum's magnitude prior. The method's name was coined MACO, which stands for _magnitude-constrained_ optimization. Overall, his [personal website](https://thomasfel.fr/) is really well done, and his papers are fascinating to read, striking the right balance between technicality and didacticism.
 
-That, and the will to test whether my above hypothesis is true, is what made me want to try to reproduce it on DINOv3.
+The above and the curiosity to test whether my previous hypothesis is true, is what made me want to try to reproduce it on DINOv3.
 
 ## Dictionary learning: an introduction
 
-Before visualizing concepts as images, we need to compute them in the DINOv3's latent space, to gain better understanding of the representations. This can be achieved thanks to a prominent method in the field of interpretability that's called _dictionary learning_.
+Before visualizing concepts as images, we need to identify semantically representative directions in the model's latent space to gain better understanding of how visuals are encoded. This can be achieved thanks to a prominent method in ML interpretability research called _dictionary learning_.
 
-It is a data representation learning technique that seeks to discover a set of building blocks to express complex data as a sparse combinations of these patterns--sometimes refered to as _atoms_--that together form the _dictionary_. An efficient dictionary provides compact, meaningful representations that are useful for tasks such as denoising, compression, and feature extraction. Unlike PCA or SVD, dictionary learning approaches usually attempt to make the decomposition _sparse_. In that sense, it is close in spirit to data compression. Because of that, dictionary learning is also known as sparse coding.
+Broadly speaking, dictionary learning seeks to discover a set of building blocks to express complex data as a sparse combinations of these patterns--sometimes refered to as _atoms_--that together form the _dictionary_. An efficient dictionary should provide compact, meaningful representations that are useful for interpretability purposes, denoising, or feature extraction for example. Unlike PCA or SVD, dictionary learning approaches usually attempt to make the decomposition _sparse_. In that sense, it is close in spirit to data compression. Because of that, dictionary learning is also known as _sparse coding_.
 
 :::note
 Data compression works by seeking a representation basis to encode the data in the most compact way possible. For example, the JPEG standard breaks down each $8 \times 8$ block of pixels into a sum of cosine-based waveforms. It turns out that real-world image signals are usually better explained by smooth variations resembling a sparse combination of cosine waves, and this better prior it allows a lower-rank representation to match human perceptual vision with fewer resources. Sparsity is a desirable property when doing coding, either for storage saving purposes, or for the sake of interpretability.
@@ -212,16 +212,16 @@ Data compression works by seeking a representation basis to encode the data in t
 
 
 ### Formal definition
-I will rely on @holistic2023fel, a paper which unifies the concept extraction variants attempts in the literature and compares them all. One of the latest methods presented was coined CRAFT, standing for _Concept Recursive Activation FacTorization for Explainability_, from the preceding paper @craft2023fel, which adds non-negativity constraint to the learned priors. In the paper, it is claimed indeed that the positivity of the decomposition 
-- ``encourages sparsity''
-- ``allows missing data to be imputed''
-- ``enhances the interpretability of the decomposition''
+I will rely on @holistic2023fel, a paper which unifies the concept extraction variants attempts in the literature and compares them all. One of the latest methods presented was coined CRAFT, standing for _Concept Recursive Activation FacTorization for Explainability_ and was taken from the preceding paper @craft2023fel, which adds non-negativity constraint to the learned priors. In the paper, it is claimed indeed that the positivity of the decomposition 
+- "encourages sparsity"
+- "allows missing data to be imputed"
+- "enhances the interpretability of the decomposition"
 
 :::note
-The first claim is obvious because negative entries will force the concept vectors to keep many null entries to be able to encode zero entries, the closest approximation of any negative value projected onto the half-line $\mathbb{R}_{\ge 0}$. Regarding the second claim, the authors develop an attribution method for visualizing the concept activations in images and rely on preceeding research to support their statement, but here I'm only interested in the part about dictionary learning, and I don't know or care about it for now. Regarding the third one, my understanding of the approach is that only positive activations are meaningful because they represent strongly-typed features, whereas negative activations do not carry significant information similar to how negative logit values would compress into irrelevancy and produce near-zero probabilities that are overshadowed by positive logits.
+The first claim is obvious because negative entries will force the concept vectors to keep many null entries to be able to encode zero entries, the closest approximation of any negative value projected onto the half-line $\mathbb{R}_{\ge 0}$. Regarding the second claim, the authors develop an attribution method for visualizing the concept activations in images and rely on preceeding research to support their statement, but here I'm only interested in the part about dictionary learning, and I don't know or care about it for now. Regarding the third one, my understanding of the approach is that only positive activations are considered meaningful because they represent strongly-typed features, whereas negative activations do not carry significant information similar to how negative logit values would compress into irrelevancy and produce near-zero probabilities that are overshadowed by positive logits.
 :::
 
-The setup goes like this: let $\mathbf{X} \in \mathbb{R}^{n\times p}$ be a set of $n$ captured activations in dimension $p$ from the latents from a vision model taken from a provided collection of images. Let $r$ be a positive integer, denoted as the rank of the decomposition. The positive dictionary learning approach consists in solving the following neighbouring problem:
+The setup goes like this: let $\mathbf{X} \in \mathbb{R}^{n\times p}$ be a set of $n$ captured activations in dimension $p$ from the latents from a vision model taken from a provided collection of images. Let $r$ be a positive integer, denoted as the rank of the decomposition. The positive dictionary learning approach consists in solving the following problem:
 
 $$
 \arg\min_{\mathbf{U}\in \mathbb{R}^{n\times r}, \, \mathbf{W}\in \mathbb{R}^{p\times r}} \|\mathbf{X} - \mathbf{UW}^\top \|_F^2 \quad \text{s.t.} \quad \mathbf{W}, \mathbf{U} \ge 0
@@ -229,30 +229,30 @@ $$
 
 where $\mathbf{W}$ is the _dictionary of concepts_ onto which the dataset is projected and $\mathbf{U}$ is the dataset decomposition, i.e. the assignments of each data point to each of the $r$ concepts. For dictionary learning to mean anything, $r$ and $n$ must be chosen so that $r < n$.
 
-Note that $\mathbf{U}$ and $\mathbf{W}$ are required to belong to the positive orthant of matrices with **non-negative values**. That constraint is a deliberate modeling choice. Note that the solution space is convex, but the search is made arduous because positivity prevents the use of off-the-shelf linear algebra results. This formulated problem  is known as the **Non-Negative Least Squares problem** (NNLS), and I first encountered during my Master's Thesis in the context of beamforming in transmission-related problems.
+Note that $\mathbf{U}$ and $\mathbf{W}$ are required to belong to the positive orthant of matrices with **non-negative entries**. That constraint is a deliberate modeling choice. Note that the solution space is convex, but the search is made arduous because positivity prevents the use of off-the-shelf linear algebra results. This formulated problem  is known as the **Non-Negative Least Squares problem** (NNLS), and I first encountered during my Master's Thesis in the context of beamforming in transmission-related problems.
 
 
 ### Naïve solving procedure
-Solving the above mathematical problem can be approached in at least a few different manners. In Fel's PhD thesis manuscript [@fel2025sparksexplainabilityrecentadvancements], in section C.1.3 along with the implementation details of CRAFT, they explain that they used a method called alternating direction method of multipliers (ADMM for short), which I also encountered during my Master's Thesis, because it arises a lot in the literature about applied mathematical optimization problems with cumbersome constraints such as non-negativity. There is no point explaining ADMM, as I'm sure it is better explained and presented throughout numerous papers, articles and blog posts, and I will not reuse it anyway.
+Solving the above mathematical problem can be approached in at least a few different manners. In Fel's PhD thesis manuscript [@fel2025sparksexplainabilityrecentadvancements], in section C.1.3 along with the implementation details of CRAFT, they explain that they used a method called alternating direction method of multipliers (ADMM for short), which I also encountered during my Master's Thesis, because it arises a lot in the literature about applied mathematical optimization problems with cumbersome constraints such as non-negativity. There is no point explaining ADMM here, as it is better stated and presented throughout numerous papers, articles and posts, and I will not make use of it anyway.
 
 
 ### Toward a more holistic approach
 @holistic2023fel published the results of the CRAFT method on an interactive website called the [Lens Project](https://serre-lab.github.io/Lens/) that allows to navigate and visualize them. There only retain a few major concepts per class which sums to quite a large pool, but they did not actually compute them across the whole dataset at once. Rather, the dictionary is computed on a per-class basis and is low-rank from the start to only retain a handful of concepts per class (they take 10). In a later stage, their attribution method yields the contribution scores to the class, and they are compared against one another.
 
 
-On one hand, this significantly lowers the numerical complexity requirements since it cuts by a factor of 1000 the effective dataset size (ImageNet has a thousand classes). The resulting concepts are then aggregated and compared with each other. On the other hand, this approach explicitely relies on the data being labelled, and it may considerably waste energy by recomputing shared concepts present across the different classes of the dataset.
+On one hand, this significantly lowers the numerical complexity requirements since it cuts by a factor of 1000 the effective dataset size (remember that ImageNet has a thousand classes). The resulting concepts are then aggregated and compared with each other. On the other hand, this approach explicitely relies on the data being labelled, and it may considerably waste energy by recomputing shared concepts present across the different classes of the dataset.
 
-I wanted to try a more holistic--and perhaps more ambitious--approach, and make a dictionary with possibly orders of magnitude more concepts computed at once, regardless of there being labels available or not. The clear drawback of the paper's leveraged ADMM algorithm is that it requires storing the complete explained dataset (as well as the dictionary) in memory during the solving procedure. Even more, the ADMM algorithm needs duplicating the variables to account for the separation of optimization objective and constraint enforcement.
+I wanted to try a more holistic--and perhaps more ambitious--approach, to make a dictionary with possibly orders of magnitude more concepts computed at once, regardless of there being labels available or not. The clear drawback of the paper's leveraged ADMM algorithm is that it requires storing the complete explained dataset (as well as the dictionary) in memory during the solving procedure. Even more, the ADMM algorithm needs duplicating the variables to account for the separation of optimization objective and constraint enforcement.
 
 
-Because of that, the ADMM does not scale particularly well. For example, the full ImageNet dataset contains 1.3 million images, so coding as many latents over 384 dimensions in FP32 numbers would take up about 2GB in memory. Probably manageable even on most modern laptops even in the VRAM, but we're nearly on the edge. Any $\times 5$ scaling of dataset and memory IO would probably becomes a seriously limiting factor. 
+Because of that, the ADMM does not scale particularly well. For example, the full ImageNet dataset contains 1.3 million images, so coding as many latents over 384 dimensions in FP32 numbers would take up about 2GB in memory. Probably manageable even on most modern laptops even in the VRAM, but we're nearly on the edge: any $\times 5$ scaling of dataset and memory IO would probably becomes a seriously limiting factor. 
 
 So we need a computationally more manageable algorithm, even if it means sacrifying convergence speed or even exactness. 
 
 ### Online solving procedure
 
 #### Decomposability of dictionary learning
-In hindsight indeed, we are only really interested in the final dictionary $\mathbf{W}$ solution, _not_ the full access to transient decompositions $\mathbf{U}$ of the dataset, which can be recomputed at will once $\mathbf{W}$ is set. The problem is separable in terms of the training data, thanks to the following equality:
+In hindsight, we are only really interested in the final dictionary $\mathbf{W}$ solution, _not_ the full transient decompositions $\mathbf{U}$ of the dataset, which can be recomputed at will once $\mathbf{W}$ is learned and frozen. The problem is separable in terms of the training data, thanks to the following equality:
 
 $$
 \|\mathbf{X} - \mathbf{UW}^\top \|_F^2 = \sum_{i=1}^{n} \| \mathbf{X}_{[i,:]} - \mathbf{U}_{[i,:]} \mathbf{W}\|_2^2
@@ -261,7 +261,9 @@ which goes to show that $\mathbf{W}$ could be conceptually updated by only consi
 
 
 #### Online Non-Negative Matrix Factorization
-So I began looking for an algorithm meeting that criterion. That in itself, was a small experiment to try. And it turns out that this problem is addressed in the literature. I found a paper about exactly that [@onlinelearning2009] exposing a procedure for online dictionary learning. By the way, Julien Mairal is also a credited author of the three DINO papers. They address the following problem:
+So I began looking for an algorithm meeting that criterion. That in itself, is a small experiment to try. To my knowledge it hasn't been attempted on this scale in computer vision research on SOTA models latents.
+
+It turns out that this problem is addressed in the literature. I found a paper about exactly that [@onlinelearning2009] exposing a procedure for online dictionary learning. By the way, Julien Mairal is also a credited author of the three DINO papers. Small world. They address the following problem:
 
 $$
 \arg\min_{\mathbf{D} \in \mathbb{R}^{m\times k}, \alpha \in \mathbb{R}^{k\times n}} \|\mathbf{X} - \mathbf{D} \alpha \|_F^2 + \lambda \|\alpha\|_{1,1} \quad \text{s.t.} \quad \mathbf{D} \in \mathcal{C}
@@ -279,9 +281,9 @@ For the sake of clarity, I adopted their notations, but here are equivalences be
 - $\mathbf{X} \in \mathbb{R}^{m \times n} \longleftrightarrow \mathbf{X} \in \mathbb{R}^{n \times p}$
 :::
 
-The main two differences are that the search space and the regularization term. They use the unit ball for the $\|\cdot\|_{2,\infty}$ column-wise norm in lieu of the orthant of poitwise non-negative elements, and they regularize the assignments $\alpha$ with the $L_1$ norm to favor sparse solutions. Regularizing the weights also avoids degeneracy in the solutions due to the degree of freedom of rescaling recoprocally $\alpha$ and $\mathbf{W}$.
+The main two differences are the search space and the regularization term. To begin  with, they use the unit ball for the $\|\cdot\|_{2,\infty}$ column-wise norm in lieu of the orthant of poitwise non-negative elements, and they regularize the assignments $\alpha$ with the $L_1$ norm to favor sparse solutions. Regularizing the weights also avoids degeneracy in the solutions due to the degree of freedom of rescaling recoprocally $\alpha$ and $\mathbf{W}$.
 
-They come up with an algorithm with proven convergence for solving that problem. The algorithm in question has been reproduced below:
+They come up with an algorithm with proven convergence for solving that problem. The said algorithm has been reproduced below:
 
 
 ```algorithm
@@ -330,10 +332,10 @@ In an extended journal version of the paper [@JMLRv11mairal10a], the authors als
 
 [^note-nmf]: That's where we can learn, among other things, that non-negative matrix factorization for sparse coding seems to date back as early as 2001.
 
-They mention the alternative constraint set $\mathcal{C}^\prime = \{\mathbf{D}\in \mathbb{R}^{m\times k}, \forall j \in \llbracket 1, k \rrbracket, \mathbf{d}_j^\top \mathbf{d}_j \le 1 \text{ and } \mathbf{d}_j \ge 0\}$ for $\mathbf{D}$, as well as the eventuality of also constraining $\alpha \ge 0$ independently. More importantly, they mention the simplest problem featuring the same objective with only some positivity constraints on $\mathbf{D}$ and $\alpha$ (without norm constraints on the atoms $\mathbf{d}_j$), thus amounting to solve $\arg\min_{\mathbf{D}, \alpha} \|\mathbf{X} - \mathbf{D} \alpha \|_F^2 + \lambda \|\alpha\|_{1,1}$ such that $\mathbf{D}, \alpha \ge 0$. One comment about this particular variant is interesting: 
+They mention the alternative constraint set $\mathcal{C}^\prime = \{\mathbf{D}\in \mathbb{R}^{m\times k}, \forall j \in \llbracket 1, k \rrbracket, \mathbf{d}_j^\top \mathbf{d}_j \le 1 \text{ and } \mathbf{d}_j \ge 0\}$ for $\mathbf{D}$, as well as the eventuality of also constraining $\alpha \ge 0$ independently. More importantly, they mention the simplest problem featuring the same objective solely with positivity constraints on $\mathbf{D}$ and $\alpha$ (no norm constraints on the atoms $\mathbf{d}_j$), thus amounting to solve $\arg\min_{\mathbf{D}, \alpha} \|\mathbf{X} - \mathbf{D} \alpha \|_F^2 + \lambda \|\alpha\|_{1,1}$ such that $\mathbf{D}, \alpha \ge 0$. One comment about this particular variant is interesting: 
  
- > ``When $\lambda = 0$, this formulation is equivalent to NMF. The only difference with the dictionary learning
-problem is that non-negativity constraints are imposed on $\mathbf{D}$ and the vectors $\alpha_i$. A simple modification of our algorithm (...) allows us to handle these constraints, while guaranteeing to find a stationary point of the optimization problem.''
+ > "When $\lambda = 0$, this formulation is equivalent to NMF. The only difference with the dictionary learning
+problem is that non-negativity constraints are imposed on $\mathbf{D}$ and the vectors $\alpha_i$. A simple modification of our algorithm (...) allows us to handle these constraints, while guaranteeing to find a stationary point of the optimization problem."
 
 Wonderful. This is exactly the setup we're looking for. The implications here affect both steps of the overall procedure, namely the initial sparse coding solve step (by constraining additionally $\alpha$ to remain non-negative), and the projections in the dictionary update routine.
 
@@ -342,6 +344,8 @@ The paper describes a framework where the dictionary can be learned by only stre
 
 
 ## Whole process overview
+
+In this section, I'm introducing the main steps of happening throughout the process of computing prototypes.
 <figure id="fig-online-dictionary-learning-svg" class="figure-wide">
 	<img
 		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781601482/overview-process_oworri.svg"}
@@ -400,7 +404,7 @@ class InputImageBatch:
 
 
 ## Dictionary learning: technical aspects
-The numerical computations of dictionary learning rely heavily on vectorized operations and linear algebra, so they are a natural fit for [Jax](https://docs.jax.dev/en/latest/). Unlike PyTorch, Jax fuses operations by default because it compiles the computation graph and it allows looped computations to happen faster by avoiding python interruptions between operations. This is especially handy for iterative algorithms to solve linear algebra problems. Before this project I was familiar with PyTorch but I had never used Jax so it was a good incentive to test it.
+The numerical computations of dictionary learning rely heavily on vectorized operations and linear algebra, so they are a natural fit for [Jax](https://docs.jax.dev/en/latest/). Unlike Pytorch, Jax provide first-class compiled loop operations for the target hardware. This is especially handy for iterative algorithms to solve linear algebra problems. Before this project I was familiar with PyTorch but I had never used Jax so it was a good incentive to test it.
 
 In the code, I kept the original notations with $\mathbf{W} \in \mathbb{R}^{p \times r}$ and $\mathbf{U} \in \mathbb{R}^{n \times r}$. However, since $\mathbf{U}$ is conceptually reserved for the full dataset codes, and is never materialized in memory, so I named its batched counterpart $\mathbf{H} \in \mathbb{R}^{b\times r}$ where $b$ is the batch size with obviously $b < n$. At any step, we draw $\mathbf{X} \in \mathbb{R}^{b\times n}$ and apply the above algorithm.
 
@@ -422,7 +426,9 @@ def train_step(
 ```
 
 ### Non-negative LASSO sparse coding step
-The modified sparse positive coding step to compute $\alpha_t = \arg\min_{\alpha \in \mathbb{R}^k} \frac{1}{2}\|\mathbf{x}_t - \mathbf{D}_{t-1}\alpha\|_2^2 + \lambda \|\alpha\|_1$ is a procedure in and of itself. Thanks to the magic of LLMs nowadays, I got to know that there exists a respectable algorithm that lends itself well to the non-negative LASSO problem, called Fast Iterative Shrinkage-Thresholding Algorithm (a.k.a. FISTA in the literature) [@teboulle09fista]. To be honest, I wasn't particularly interested in the details of this minor technicality in the broader scheme of dictionary learning, so I gladly let Codex do the research and work out the Jax function for it (that I could look at and get inspiration from to code the subsequent step). The only relevant practicality to be aware of is that it involves an iterative procedure of its own, so fine-tuning the tolerance and/or an iteration cap is a thing to look out for. Below is the code for reference.
+The modified sparse positive coding step to compute $\alpha_t = \arg\min_{\alpha \in \mathbb{R}^k} \frac{1}{2}\|\mathbf{x}_t - \mathbf{D}_{t-1}\alpha\|_2^2 + \lambda \|\alpha\|_1$ is a procedure in and of itself. It is trivial to call constraint programming solvers for this kind of problem, but they mainly run on the CPU (exclusing experimental )
+
+ Thanks to the magic of LLMs nowadays, I got to know that there exists a respectable algorithm that lends itself well to the non-negative LASSO problem, called Fast Iterative Shrinkage-Thresholding Algorithm (FISTA) [@teboulle09fista]. To be honest, I wasn't particularly interested in the details of this minor technicality in the broader scheme of dictionary learning, so I gladly let Codex do the research and work out the Jax function for it (which I could then use as a coding reference for the next step). The only relevant practicality to be aware of is that it involves an iterative procedure of its own, so fine-tuning the tolerance and/or an iteration cap is a thing to look out for. Below is the code for reference.
 
 ```python
 def nonnegative_lasso_fista(
@@ -482,7 +488,7 @@ def nonnegative_lasso_fista(
 
 ### Dictionary update step
 
-The dictionary update step is pretty much about following the  instructions from the above algorithm to the letter, with the additional projection to enforce non-negative values for the new dictionary columns. Also, instead of simply accumulating the statistics, I average them with the simple online mean update formula to avoid overflow. Since the values of columns of $\mathbf{A}$ and $\mathbf{B}$ are used in tandem, using the averaged aggregate values scaled by $\frac{1}{T}$ ($T$ is the global batch index counter) instead of the raw sums does not change anything to the algorithm  in the running inner loop of the dictionary update step $\mathbf{u}_j \leftarrow \big(\mathbf{b}_j - \mathbf{D}\mathbf{a}_j\big) / \mathbf{A}[j,j] + \mathbf{d}_j$. I kept the original columnn-wise $L_2$ unit ball constraint for stability of the dictionary atoms[^note-proj-l2-lasso-fista], and  obviously, I added the projection onto the set of positively-valued vectors. Below is the Jax code for reference.
+The dictionary update step is pretty much about following the  instructions from the above algorithm to the letter, with the additional projection to enforce non-negative values for the new dictionary columns. Also, instead of simply accumulating the statistics, I averaged them with the online average update formula to avoid overflow. I kept the original columnn-wise $L_2$ unit ball constraint for stability of the dictionary atoms[^note-proj-l2-lasso-fista], and  obviously, I added the projection onto the set of positively-valued vectors. Below is the Jax code for reference.
 
 [^note-proj-l2-lasso-fista]: Without it, the concept vectors would explode and their norms would increase indefinitely in my tests.
 
@@ -542,14 +548,14 @@ def update_dictionary(
 
 ## Protocol & design choices
 
-Here I outline the overall design choices of the dictionary learning method (see also <a data-figure-ref="fig-online-dictionary-learning-svg"></a>). The following values are a draft to query the mechanics of the produced concepts, not the final values I used.
+Let's outline some global design choices of the dictionary learning method (see also <a data-figure-ref="fig-online-dictionary-learning-svg"></a>). The values below are preliminary settings meant to be explored and to illustrate their impact on the statistics of the resulting concepts; they are not necessarily the final values I retained.
 
 
 ### Obtaining crops
 
-The first stage is to compute image embeddings from image crops of the dataset. I discarded images with width or height less than 128 pixels. Then I ran a script that extracts random crops of size $128 \times 128$ pixels from images of the dataset, runs them through the vision encoder, and persists the obtained latents on the disk. Other augmentations are of course possible (like geometry or colorimetry alterations) to capture more elaborate, transcendental concepts about the model's internal representations, but I did not use any of these in this experiment. I ran several passes on the dataset with different seeds, to obtain different views of all images in the dataset.
+The first stage is to compute image embeddings from image crops of the dataset. I discarded images with width or height less than 128 pixels. Then I ran a script that extracts random crops of size $128 \times 128$ pixels from images of the dataset, runs them through the vision encoder, and persists the obtained latents on the disk. Other augmentations are of course possible (like geometry or colorimetry alterations) to capture more elaborate concepts about the model's internal representations, but I did not use any of these so far. Maybe another time. I ran several passes on the dataset with different seeds, to obtain different views of all images in the dataset.
 
-My idea is to train the dictionary on the latents obtained from views of images that encapsulate local but extended visual context compared to prior results from the literature. The 128 pixels size is arbitrary for now, but it remains in accordance with the dataset's image width and height statistics. ImageNet contains many images of small resolution by modern image standards (see <a data-figure-ref="fig-imagenet-density"></a>). In @craft2023fel, 64-by-64-pixel patches are used. An increased size of 128 seems like a sound middleground to extract local semantics all the while extending the field of view to a limited fraction of the image in the majority of cases (see <a data-figure-ref="fig-imagenet-crops-area-ratio-svg"></a>).
+My idea is to train the dictionary on the latents obtained from views of images that encapsulate extended local visual context compared to prior results from the literature. The 128 pixels size is arbitrary, but it remains somewhat consistent with the dataset's image width and height distribution: ImageNet contains many images of small resolution by modern image standards (see <a data-figure-ref="fig-imagenet-density"></a>). In @craft2023fel, 64-by-64-pixel patches are used, so  bumping it up to 128 seems like a sound middleground to extract local semantics all the while extending the field of view to a limited fraction of the image in the majority of cases (see <a data-figure-ref="fig-imagenet-crops-area-ratio-svg"></a>).
 
 
 <figure id="fig-imagenet-crops-area-ratio-svg" class="figure-narrow">
@@ -566,7 +572,7 @@ My idea is to train the dictionary on the latents obtained from views of images 
 </figure>
 
 ### Dictionary learning design choices
-The second stage is to run the dictionary learning script on the persisted batches of latent vectors on a dictionary buffer of $k=512$ concepts, and execute the training algorithm in the above code, with LASSO sparse coding regularization weight $\lambda$ set to 0. At this point, the objective is not to get sparse codes as of yet, but rather to compute a dictionary of as representative concepts as possible, by allowing the reconstructions to span many concepts, that's why I disable the regularization entirely. The reason I went with 512 concepts for now is twofold: it is about half the number of classes in the ImageNet dataset--which may incidentally already form clusters in the model's latent space--so it safely avoids concepts collapsing onto trivial vectors due to enlarging the crop size; and I hypothesize that it is close to the actual number of ``independent'' concepts as per the Lens Project, which features numerous inter-class concept similarities.
+The second stage consists of running the dictionary learning script on the persisted batches of latent vectors on a dictionary buffer of $k=512$ concepts, and execute the training algorithm in the above code, with LASSO sparse coding regularization weight $\lambda$ set to 0. At this point, the objective is not to get sparse codes as of yet, but rather to compute a dictionary from diverse, entangled concepts without a sparsity constraint, that's why I disabled the regularization entirely. The reason I went with 512 concepts for now is threefold: it is a power of two for memory alignment if anything; it is about half the number of classes in the ImageNet dataset--which may incidentally already form clusters in the model's latent space--so it safely avoids concepts collapsing onto trivial underlying vectors (possibly due to enlarging the crop size); and I hypothesize that it is close to the actual number of "independent" concepts, which features numerous inter-class concept similarities.
 
 
 
@@ -600,8 +606,7 @@ $$
 
 
 #### Concepts
-
-I generated a dictionary of $512$ concept vectors for the $384$-dimensional CLS-token latent space of the model `facebook/dinov3-vits16-pretrain-lvd1689m`, with the random crops. The first sanity check is to inspect the dictionary itself. <a data-figure-ref="fig-dictionary-concept-value-distribution"></a> shows the distribution of positive concept components, while <a data-figure-ref="fig-dictionary-concept-diagnostics"></a> shows the pairwise cosine similarities of the concepts and the raw feature-by-concept weight matrix.
+After launching the training script on a collection of $384$-dimensional CLS-tokens from the latent space of `facebook/dinov3-vits16-pretrain-lvd1689m` on random crops, I obtained a dictionary of $512$ concept vectors. The first sanity check is to inspect the dictionary itself. <a data-figure-ref="fig-dictionary-concept-value-distribution"></a> shows the distribution of positive concept components, while <a data-figure-ref="fig-dictionary-concept-diagnostics"></a> shows the pairwise cosine similarities of the concepts and the raw feature-by-concept weight matrix.
 
 <figure id="fig-dictionary-concept-value-distribution" class="figure-grid">
 	<div class="figure-grid-images" style="grid-template-columns: minmax(0, 1fr);">
@@ -639,11 +644,11 @@ I generated a dictionary of $512$ concept vectors for the $384$-dimensional CLS-
 	</figcaption>
 </figure>
 
-The positive-value histogram summarizes the frequency distribution of strictly positive entries across all concept vectors after the positivity projection. The cosine-similarity heatmap is useful to check that the dictionary has not collapsed into repeated atoms. The feature-over-concepts constellation heatmap shows how the positive weights are distributed across latent dimensions.
+The positive-value histogram summarizes the frequency distribution of strictly positive entries across all concept vectors after the positivity projection. The cosine-similarity heatmap is useful to ensure the dictionary has not collapsed into repeated atoms. The feature-over-concepts constellation heatmap shows how the positive weights are distributed across latent dimensions.
 
 #### Codes
 
-I evaluated how ImageNet latents decompose over the learned dictionary by solving the non-negative LASSO coding step with various values of $\lambda$. <a data-figure-ref="fig-dictionary-code-distributions"></a> reports the three one-dimensional summaries: normalized code entropy, Hoyer sparsity, and reconstruction residue norms. These plots depict the three sparsity metrics that I introduced above aggregated over a sample of images from the dataset. All three are unimodal distributions, which is a bit reassuring, in the sense that the contrary would probably raise questions about the stability of the iterative procedure. The residue norms typically lie in the range of a few units. To put that into perspective, we have to remember that it means the error spreads over the 384 latent dimensions of the model (`facebook/dinov3-vits16-pretrain-lvd1689m`), and compare it against the typical value range of the latents dimensions.
+Then I evaluated how ImageNet latents decompose over the learned dictionary by solving the non-negative LASSO coding step. <a data-figure-ref="fig-dictionary-code-distributions"></a> reports the three summaries: normalized code entropy, Hoyer sparsity, and reconstruction residue norms for reconstructions for $\lambda = 0.5$. These plots depict the three chosen sparsity metrics aggregated over a pool of image samples from the ImageNet dataset. All three are unimodal distributions, which is a bit reassuring, in the sense that the contrary would probably raise questions about the stability of the iterative procedure. The residue norms typically lie in the range of a few units. To put that into perspective, we have to remember that it means the error spreads over the 384 latent dimensions of the model (`facebook/dinov3-vits16-pretrain-lvd1689m`), and compare it against the typical value range of the latents dimensions.
 
 
 <figure id="fig-dictionary-code-distributions" class="figure-grid figure-grid-three">
@@ -675,7 +680,7 @@ I evaluated how ImageNet latents decompose over the learned dictionary by solvin
 </figure>
 
 
-<a data-figure-ref="fig-dictionary-joint-diagnostics"></a> combines the same per-sample statistics into two-dimensional histograms for two combinations of the three possible metrics pairs. To my surprise, there is no clear correlation between the Hoyer sparsity measure and the quality of reconstruction as per the residual norms, although it does seem llike there is a Pareto front beyond which further gains in sparsity come at the cost of deteriorated reconstruction accuracy. Meanwhile, there is a strong correlation between the Hoyer and entropy metrics, so let's focus on Hoyer sparsity henceforth. The same behaviors were observed with other values of $\lambda$.
+<a data-figure-ref="fig-dictionary-joint-diagnostics"></a> combines the same per-sample statistics into two-dimensional histograms for two combinations of the three possible metrics pairs. To my surprise, there was no clear correlation between the Hoyer sparsity measure and the quality of reconstruction as per the residual norms, although it does seem llike there is a Pareto front beyond which further gains in sparsity come at the cost of deteriorated reconstruction accuracy. Meanwhile, there is a strong correlation between the Hoyer and entropy metrics, so let's focus on Hoyer sparsity henceforth. The same behaviors were observed with other neighboring values of $\lambda$.
 
 <figure id="fig-dictionary-joint-diagnostics" class="figure-grid">
 	<div class="figure-grid-images" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
@@ -725,9 +730,10 @@ As a sanity check it can be interesting to observe how the regularization hyperp
 		Hoyer sparsity and reconstruction residue Euclidian norms for $\lambda \in \{0.0, 0.2, 0.5, 1.0\}$
 	</figcaption>
 </figure>
-## Visualizing the latent concepts with prototype images
 
-In part 2, I'll analyze more extensively the obtained concepts and I'll visualize the learned concepts of the dictionary with input image optimization. Coming soon... 
+## Sequel
+
+Next, I'll analyze more extensively the obtained concepts and I'll visualize the learned concepts of the dictionary with input image optimization. Coming soon... 
 
 
 ## References
