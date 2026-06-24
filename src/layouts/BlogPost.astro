@@ -118,11 +118,12 @@ const giscusThemes = import.meta.env.PROD
 				{draft && <span class="draft-flag">(Draft)</span>}
 				<h1 class="post-title">{title}</h1>
 				<p class="byline">
-					{bylineDate}{readingTime && (
+					{bylineDate}
+					{/* {readingTime && (
 						<>
 							<span class="sep">·</span>{readingTime}
 						</>
-					)}
+					)} */}
 				</p>
 				{!!tags?.length && (
 					<div class="post-tags">
