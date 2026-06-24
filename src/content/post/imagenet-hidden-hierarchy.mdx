@@ -1,0 +1,132 @@
+---
+title: "ImageNet's hidden hierarchy"
+toc: true
+publishDate: 2026-06-01
+description: "A short experiment showing ImageNet's class hierarchy with DINOv3"
+tags: [machine learning, computer vision]
+---
+
+This post is about a small experiment involving a 1-year-old SOTA vision model, a 10-year-old legacy computer vision dataset, and a 20-year-old research database in natural language structure. To recall what ImageNet is and why it mattered so much in the early days of computer vision research, ImageNet-1K [@imagenet1k2012] is a large-scale image classification benchmark made up of 1000 classes, derived from the broader ImageNet ontology [@imagenet2009], that became a defining benchmark for progress in visual recognition in the early 2010s.
+
+
+## The WordNet hierarchy
+
+In practice, ImageNet-1K contains 1.4 million images split into 1000 categorie. These categories also happen to be a small subset of a much larger hierarchy called [WordNet](https://wordnet.princeton.edu/), which is a 2005 project compiling a lexical database of 82000+ modelling the semantic relationships between English words, expressions, and textual concepts.
+
+The classes in the ImageNet dataset are diverse but a lot of them are variants or specialized versions of broader species, objects, or concepts. For example, there are dozens of different dog species. A full list can be found [here](https://deeplearning.cms.waikato.ac.nz/user-guide/class-maps/IMAGENET/). Any two entities of the WordNet hierarchy related by a subset-ordering relation are linked in the graph by a directed edge. The whole WordNet takes the form of a **direct, acyclic graph** (DAG) with a single sink node named "entity" comprised of 74401 nodes and 75850 edges after processing.
+
+Looking at partial graph representations of the WordNet graph induced by nodes present in ImageNet classes reveals the underlying structure of the concepts in a much smaller 1860-node subgraph with 1937 remaining edges. To visualize it, I assembled the DAG from the node and edge text dumps available on seemingly long-forgotten GitHub repositories. In the coming figures, I swapped arrows to point to descendents instead of ancestors in order to convey the more intuitive idea "is a subset of" as opposed to "is a superset of". Moreover I pruned nodes that did not have any leaves that are part of ImageNet's one thousand classes. There is no point rendering the whole subgraph in this post, as the figure would not fit anyway, but producing a whole PDF of it is possible. <a data-figure-ref="fig-entity-to-dog"></a> and <a data-figure-ref="fig-root-depth-4"></a> show such visual excerpts of the graph: all paths leading to metaclass "dog" on one hand and all accessible metaclass nodes from the root within 4 steps (final ImageNet class leaves were stripped).
+
+<figure id="fig-entity-to-dog" class="figure-wide" style="width: min(480px, 100%); margin-inline: auto;">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1782216872/subgraph_r5cbre.svg"}
+		alt="Overview of the whole process to compute concepts, and prototype images with intermediary steps"
+		loading="lazy"
+		style="width: 100%; height: auto; object-fit: contain;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Subgraph view of WordNet's hierarchy with all paths leading to subcategory "domestic dog"
+	</figcaption>
+</figure>
+
+
+<figure id="fig-root-depth-4" class="figure-wide">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1782230600/entity_to_depth_4_qhvegg.svg"}
+		alt="Overview of the whole process to compute concepts, and prototype images with intermediary steps"
+        loading="lazy"
+        style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Partial view of WordNet's hierarchy with all metaclass nodes accessible from the root up to depth 4
+	</figcaption>
+</figure>
+
+
+
+## Condensing the WordNet structure onto ImageNet categories
+
+Graph-based data enable interesting analysis levers. Graphs condense information in a discrete structure that can incidentally be converted to vectors via [spectral analysis](https://en.wikipedia.org/wiki/Spectral_graph_theory), to produce embeddings. 
+
+
+### From DAG to secondary complete graph
+In order to proceed in that direction, I first contracted transitory nodes (nodes with just one ancestor and one decendant) from the whole WordNet DAG. Although these may encode existing category subdivisions, they actually add noise to the graph structure for computations like distance between nodes and spectral analysis without serving a true branching purpose. So, I contracted them. That leaves us with only 1416 nodes (416 of which are consequently intermediary metaclasses) and 1489 edges.
+
+Secondly, since we're more interested in the final 1000 WordNet categories that are ImageNet classes--in order to perform downstream computer vision-based analysis with that graph prior at hand--, embeddings of the remaining intermediary metaclasses are useless to compute.
+
+
+So, how could one produce embeddings of the leaves of a DAG alone? Well, I came up with the idea of treating the DAG as an elaborate proxy for a simpler similarity matrix. In other words, it is about deriving a comparison metric kernel based on the DAG to compute an equivalent complete weighted graph between leaves. The underlying hypothesis is that the more similar class nodes are, the closer they are clustered together in the hierarchical graph. The same goes for leaves. So I wrote a function that computes the pairwise lowest common ancestor (LCA) of any two given leaves of the DAG. Then I derived the similarity metric by stating
+
+$$
+\text{Similarity} = \frac{1}{1 + \text{Distance}}
+$$
+which emulates a complete graph with loop edges on nodes (the original DAG is fully connected, so every pair of leaves has a LCA).
+The resulting matrix of similarity $S \in \mathbb{R}^{1000 \times 1000}$ is symmetric with positive entries and can be reused at will for computing embeddings.
+
+
+### Spectral embeddings
+Spectral embeddings, usually leverage a normalized version of the [Laplacian matrix](https://en.wikipedia.org/wiki/Laplacian_matrix) $L=D-A$ of the graph where $D$ is the diagonal matrix of degrees of nodes, and $A$ is the adjacency matrix of the graph. As a side note about numerical computations, extracting eigenelements of a 1000 by 1000 matrix is definitely getting into the "not trivial anymore" territory of numerical linear algebra (because of numerical stability), but it remains completely tractable with modern libraries, especially as we don't need the whole spectrum. At first, I set out to compute eigenvectors corresponding to the largest eigenvalues using Scipy's `scipy.sparse.linalg.eigsh` on the manually preprocessed Laplacian but I ended up using SkLearn's `sklearn.manifold.SpectralEmbedding` with the `affinity="precomputed"` flag as an easier API reference.
+
+So I computed embeddings in 3D for the artificial subgraph made up from the affinity metric on ImageNet's 1000 classes, which amounts to creating three attribution metrics and yielding three numbers for every node, which can be then normalized and converted to RGB colors.
+
+### Results
+
+The resulting colormap is interesting but predictable: similar classes end up with almost the same color. All dog species appear in bright yellow and orange shades. Fruits and vegetables get brown. Inert objects range across a wide blue and green palette whereas a lot animals are featured in pink and fushia. Refer to  <a data-figure-ref="fig-root-depth-4"></a>.
+
+
+<figure id="fig-root-depth-4" class="figure-wide">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1782234404/imagenet_multicolor_cfqgga.webp"}
+		alt="Overview of the whole process to compute concepts, and prototype images with intermediary steps"
+        loading="lazy"
+        style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Partial view of WordNet's hierarchy induced by ImageNet categories. The latter are colored according to the 3D spectral embedding of their similarity matrix mapped onto RGB values, while metaclasses are set to light grey.
+	</figcaption>
+</figure>
+
+
+
+
+## The DINOv3 hierarchy
+
+In contrast with the preceeding elements which were all about discrete textual hierarchy, the DINOv3 vision model family of neural networks is trained on the LVD-1689M dataset [@simeoni2025dinov3] to produce continuous visual latent representations, which means their outputs are embeddings in a dense high-dimensional space rather than class logits. That makes those models closer to a generic image feature extractor than to a conventional classifier. The resulting latent spaces range from 384 to 4096 dimensions depending on the backbone and model size. Of course, those embeddings can be reused for downstream tasks such as classification at a later stage, but I'm not interested in that directly.
+
+
+### Assessing the match
+Now, the fact that the categories of the ImageNet dataset are part of a larger knowledge graph with known metaclass dependencies makes it particularly interesting to use as a prior for the image data. **So, it stands as an interesting question to me whether the ImageNet class hierarchy we unveiled earlier translates to the unsupervised embeddings of that dataset through a completely independent model.** It is, at heart, about testing whether language hiararchies are consistent with visual hierarchies obtained by means of an automated, emergent learning system[^note-emergence].
+
+
+[^note-emergence]: In the first DINO paper, the authors explicitely described that their learning student-teacher networks featured emergent properties by learning embeddings with no labels at all, driven only by crops and partial views.
+
+#### Via dimensionality reduction
+
+To test the above hypothesis, I ran a 2D UMAP dimensionality reduction on the CLS tokens of 250000 unaltered random ImageNet samples (about a fifth of the total dataset size) through DINOv3 ConvNeXt Tiny variant (see <a data-figure-ref="fig-umap-imagenet"></a>), and I colored the points depending in their label with the RGB colormap derived from the aforementioned similarity spectral embedding.
+
+The conclusion is already clear: at least on this very model, at least to some extent, the CLS token embeddings _does_ reflect the language-built prior structure provided by WordNet. Pretty neat, isn't it?
+
+<figure id="fig-umap-imagenet" class="figure-wide" style="width: min(480px, 100%); margin-inline: auto;">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1782239565/umap__rjozo5.png"}
+		alt="Overview of the whole process to compute concepts, and prototype images with intermediary steps"
+        loading="lazy"
+        style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		UMAP embeddings of ImageNet samples colored by class; similar classes as per the WordNet structure get similar colors
+	</figcaption>
+</figure>
+
+
+
+## Conclusion
+This was a fun experiment bridging together research results that are more than 20 years apart. I had heard about the Platonic Representation Hypothesis [@huh2024platonicrepresentationhypothesis] suggesting that all deep learning models converge to representations that share a common structure. This small-scale experiment supports a claim that is not very bold, but it confirms that modern vision models have captured representations that roughly follow the same preconceptions as humans, under plausible metrics. I might want to try and extend the testing with more elaborate language embeddings like Word2Vec [@word2vec] or even LLMs one day.
+
+## References
+
+[^ref]
