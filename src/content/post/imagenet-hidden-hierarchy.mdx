@@ -105,7 +105,9 @@ Now, the fact that the categories of the ImageNet dataset are part of a larger k
 
 #### Via dimensionality reduction
 
-To test the above hypothesis, I ran a 2D UMAP dimensionality reduction on the CLS tokens of 250000 unaltered random ImageNet samples (about a fifth of the total dataset size) through DINOv3 ConvNeXt Tiny variant (see <a data-figure-ref="fig-umap-imagenet"></a>), and I colored the points depending in their label with the RGB colormap derived from the aforementioned similarity spectral embedding. The conclusion is already clear: at least on this very model, at least to some extent, the CLS token embeddings _does_ reflect the language-built prior structure provided by WordNet. Pretty neat, isn't it?
+To test the above hypothesis, I ran a 2D UMAP dimensionality reduction on the CLS tokens of 250000 unaltered random ImageNet samples (about a fifth of the total dataset size) through DINOv3 ConvNeXt Tiny variant (see <a data-figure-ref="fig-umap-imagenet"></a>), and I colored the points depending in their label with the RGB colormap derived from the aforementioned similarity spectral embedding.
+
+The conclusion is already clear: at least on this very model, at least to some extent, the CLS token embeddings _does_ reflect the language-built prior structure provided by WordNet. Pretty neat, isn't it?
 
 <figure id="fig-umap-imagenet" class="figure-wide" style="width: min(480px, 100%); margin-inline: auto;">
 	<img
