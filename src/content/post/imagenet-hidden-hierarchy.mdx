@@ -57,12 +57,15 @@ In order to proceed in that direction, I first contracted transitory nodes (node
 Secondly, since we're more interested in the final 1000 WordNet categories that are ImageNet classes--in order to perform downstream computer vision-based analysis with that graph prior at hand--, embeddings of the remaining intermediary metaclasses are useless to compute.
 
 
-So, how could one produce embeddings of the leaves of a DAG alone? Well, I came up with the idea of treating the DAG as an elaborate proxy for a simpler similarity matrix. In other words, it is about deriving a comparison metric kernel based on the DAG to compute an equivalent complete weighted graph between leaves. The underlying hypothesis is that the more similar class nodes are, the closer they are clustered together in the hierarchical graph. The same goes for leaves. So I wrote a function that computes the pairwise lowest common ancestor (LCA) of any two given leaves of the DAG. Then I derived the similarity metric by stating
+So, how could one produce embeddings of the leaves of a DAG alone? Well, I came up with the idea of treating the DAG as an elaborate proxy for a simpler similarity matrix. In other words, it is about deriving a comparison metric kernel based on the DAG to compute an equivalent complete weighted graph between leaves. The underlying hypothesis is that the more similar class nodes are, the closer they are clustered together in the hierarchical graph. The same goes for leaves. So I wrote a function that calls `networkx.single_source_shortest_path_length` on every leaf and derives the lowest-common-ancestor-based distance between any two given leaves of the DAG. Then I derived the similarity metric by stating for any two leaves $u,v$ of the DAG:
 
 $$
-\text{Similarity} = \frac{1}{1 + \text{Distance}}
+\text{Similarity}(u, v) = \frac{1}{1 + \text{Distance}(u, v)}
 $$
-which emulates a complete graph with loop edges on nodes (the original DAG is fully connected, so every pair of leaves has a LCA).
+
+where $\text{Distance}(u, v)$ is effectively the sum of distances from the LCA to each of the two leaves: $d_{\text{LCA} \rightarrow u} + d_{\text{LCA} \rightarrow v}$.
+
+The fully formed matrix of similarities for every pair of leaves emulates the representation of a complete graph with weighted edges and nodes looping onto themselves (the original DAG is fully connected, so every pair of leaves has a LCA).
 The resulting matrix of similarity $S \in \mathbb{R}^{1000 \times 1000}$ is symmetric with positive entries and can be reused at will for computing embeddings.
 
 
