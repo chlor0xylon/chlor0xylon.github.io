@@ -14,10 +14,14 @@ import partytown from "@astrojs/partytown";
 import remarkDirective from "remark-directive";
 import remarkMath from "remark-math";
 import { rehypeBasePath } from "./src/plugins/rehype-base-path";
+import { rehypeLinkCitationUrls } from "./src/plugins/rehype-link-citation-urls";
+import { remarkAlgorithm } from "./src/plugins/remark-algorithm";
 import { remarkAdmonitions } from "./src/plugins/remark-admonitions";
+import { remarkFigureReferences } from "./src/plugins/remark-figure-references";
 import { remarkReadingTime } from "./src/plugins/remark-reading-time";
 
 import rehypeExternalLinks from "rehype-external-links";
+import rehypeCitation from "rehype-citation";
 import rehypeKatex from "rehype-katex";
 import rehypeUnwrapImages from "rehype-unwrap-images";
 
@@ -97,6 +101,15 @@ export default defineConfig({
 			// doesn't rewrite anchors inside katex's emitted DOM.
 			rehypeKatex,
 			[
+				rehypeCitation,
+				{
+					bibliography: "src/content/references.bib",
+					csl: "apa",
+					linkCitations: true,
+				},
+			],
+			rehypeLinkCitationUrls,
+			[
 				rehypeExternalLinks,
 				{
 					rel: ["nofollow, noreferrer"],
@@ -104,7 +117,14 @@ export default defineConfig({
 				},
 			],
 		],
-		remarkPlugins: [remarkReadingTime, remarkDirective, remarkAdmonitions, remarkMath],
+		remarkPlugins: [
+			remarkReadingTime,
+			remarkDirective,
+			remarkAlgorithm,
+			remarkAdmonitions,
+			remarkMath,
+			remarkFigureReferences,
+		],
 		remarkRehype: {
 			footnoteLabelProperties: {
 				className: [""],

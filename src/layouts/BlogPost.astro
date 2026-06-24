@@ -14,16 +14,20 @@ import { Schema } from "astro-seo-schema";
 
 interface Props {
 	post: CollectionEntry<"post">;
+	headings?: { depth: number; slug: string; text: string }[];
 }
 
-const { post } = Astro.props;
+type Heading = NonNullable<Props["headings"]>[number];
+type TocHeading = Heading & { label: string };
+
+const { post, headings = [] } = Astro.props;
 
 const sortedAll = sortMDByDate(await getAllPosts());
 const idx = sortedAll.findIndex((p) => p.id === post.id);
 const newerPost = idx > 0 ? sortedAll[idx - 1] : undefined;
 const olderPost = idx >= 0 && idx < sortedAll.length - 1 ? sortedAll[idx + 1] : undefined;
 const {
-	data: { coverImage, description, ogImage, publishDate, title, updatedDate, tags, draft },
+	data: { coverImage, description, ogImage, publishDate, title, updatedDate, tags, draft, toc },
 	id: slug,
 } = post;
 const socialImage = ogImage ?? `/og-image/${slug}.png`;
@@ -44,6 +48,36 @@ const bylineDate = formatBylineDate(publishDate);
 // Prefer remark plugin's value; fall back to "".
 const readingTime: string =
 	(remarkPluginFrontmatter as { minutesRead?: string })?.minutesRead ?? "";
+
+const sectionCounters = [0, 0, 0];
+const numberedHeadings = headings.reduce<TocHeading[]>((acc, heading) => {
+	if (heading.depth < 2 || heading.depth > 3) return acc;
+	if (heading.slug === "footnote-label") return acc;
+
+	const counterIndex = heading.depth - 2;
+	sectionCounters[counterIndex] += 1;
+	for (let i = counterIndex + 1; i < sectionCounters.length; i += 1) {
+		sectionCounters[i] = 0;
+	}
+
+	acc.push({
+		...heading,
+		label: sectionCounters.slice(0, counterIndex + 1).join("."),
+	});
+
+	return acc;
+}, []);
+const tocHeadings = numberedHeadings;
+const hasTableOfContents = toc && tocHeadings.length >= 2;
+const escapeCssString = (value: string) => value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+const headingNumberStyles = toc
+	? numberedHeadings
+			.map(
+				({ depth, label, slug }) =>
+					`.post-article h${depth}[id="${escapeCssString(slug)}"]::before{content:"${escapeCssString(label)}";}`,
+			)
+			.join("")
+	: "";
 
 // Custom giscus themes only in prod: the giscus.app iframe can't fetch CSS from localhost / private IPs.
 const giscusThemes = import.meta.env.PROD
@@ -70,6 +104,8 @@ const giscusThemes = import.meta.env.PROD
 		description: description,
 	}}
 />
+
+{headingNumberStyles && <style is:inline set:html={headingNumberStyles} />}
 
 <BaseLayout meta={{ articleDate, description, ogImage: socialImage, title }}>
 	<div class="reading-progress" id="reading-progress" aria-hidden="true"></div>
@@ -123,6 +159,23 @@ const giscusThemes = import.meta.env.PROD
 			)}
 
 			<article class="post-article">
+				{
+					hasTableOfContents && (
+						<nav class="table-of-contents" aria-labelledby="toc-title">
+							<h2 id="toc-title">Contents</h2>
+							<ol>
+								{tocHeadings.map((heading) => (
+									<li class={`toc-depth-${heading.depth}`}>
+										<a href={`#${heading.slug}`}>
+											<span class="toc-number">{heading.label}</span>
+											<span>{heading.text}</span>
+										</a>
+									</li>
+								))}
+							</ol>
+						</nav>
+					)
+				}
 				<slot />
 			</article>
 
@@ -435,6 +488,73 @@ const giscusThemes = import.meta.env.PROD
 		color: hsl(var(--theme-text));
 	}
 
+	.post-article .table-of-contents {
+		max-width: var(--reading-width);
+		margin: 0 0 34px;
+		padding: 0 0 24px;
+		border-bottom: 1px solid var(--hairline);
+	}
+	.post-article .table-of-contents h2 {
+		font-family: var(--font-mono);
+		font-size: 11px;
+		font-weight: 500;
+		letter-spacing: 0.14em;
+		line-height: 1.4;
+		text-transform: uppercase;
+		color: hsl(var(--theme-text) / 0.58);
+		margin: 0 0 14px;
+	}
+	.post-article .table-of-contents ol {
+		columns: 2;
+		column-gap: 28px;
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		max-width: none;
+	}
+	.post-article .table-of-contents li {
+		break-inside: avoid;
+		margin: 0;
+		padding: 0;
+		font-family: var(--font-mono);
+		font-size: 12.5px;
+		line-height: 1.45;
+		color: hsl(var(--theme-text-muted));
+		overflow-wrap: anywhere;
+	}
+	.post-article .table-of-contents li + li {
+		margin-top: 7px;
+	}
+	.post-article .table-of-contents li::before {
+		content: none;
+	}
+	.post-article .table-of-contents .toc-depth-3 {
+		padding-left: 14px;
+		font-size: 12px;
+		color: hsl(var(--theme-text) / 0.58);
+	}
+	.post-article .table-of-contents a {
+		display: inline-flex;
+		gap: 8px;
+		color: inherit;
+		text-decoration: none;
+		text-decoration-color: transparent;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 3px;
+	}
+	.post-article .table-of-contents .toc-number {
+		flex: 0 0 auto;
+		min-width: 2.4ch;
+		color: hsl(var(--theme-accent) / 0.78);
+		font-variant-numeric: tabular-nums;
+		font-feature-settings: "tnum";
+	}
+	.post-article .table-of-contents a:hover {
+		color: hsl(var(--theme-accent));
+		text-decoration: underline;
+		text-decoration-color: hsl(var(--theme-accent));
+	}
+
 	.post-article > p {
 		font-size: 17.5px;
 		line-height: 1.75;
@@ -489,12 +609,27 @@ const giscusThemes = import.meta.env.PROD
 		overflow-wrap: anywhere;
 	}
 	.post-article h4 {
-		font-family: var(--font-serif);
-		font-weight: 500;
-		font-size: 17.5px;
-		line-height: 1.35;
+		font-family: var(--font-sans);
+		font-weight: 600;
+		font-size: 17px;
+		line-height: 1.75;
 		color: hsl(var(--theme-text));
-		margin: 30px 0 12px;
+		margin: 24px 0 4px;
+	}
+	.post-article h2::before,
+	.post-article h3::before {
+		display: inline-block;
+		font-family: var(--font-mono);
+		font-style: normal;
+		font-weight: 500;
+		letter-spacing: 0.08em;
+		line-height: inherit;
+		color: hsl(var(--theme-accent) / 0.78);
+		font-variant-numeric: tabular-nums;
+		font-feature-settings: "tnum";
+		margin-right: 0.55em;
+		font-size: 1em;
+		vertical-align: baseline;
 	}
 
 	.post-article a {
@@ -547,6 +682,111 @@ const giscusThemes = import.meta.env.PROD
 	/* expressive-code wrapper safety */
 	.post-article .expressive-code {
 		margin: 28px 0;
+	}
+
+	.post-article .code-collapsible {
+		margin: 28px 0;
+		border-radius: 4px;
+	}
+
+	.post-article .code-collapsible > summary {
+		display: flex;
+		align-items: center;
+		width: 100%;
+		height: 28px;
+		padding: 0 10px;
+		border: 1px solid var(--hairline);
+		border-radius: 4px;
+		background: var(--paper);
+		color: hsl(var(--theme-text) / 0.62);
+		cursor: pointer;
+		list-style: none;
+		transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+	}
+
+	.post-article .code-collapsible[open] > summary {
+		border-bottom-color: transparent;
+		border-radius: 4px 4px 0 0;
+	}
+
+	.post-article .code-collapsible > summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.post-article .code-collapsible > summary::before {
+		content: "";
+		width: 7px;
+		height: 7px;
+		border-right: 1.5px solid currentColor;
+		border-bottom: 1.5px solid currentColor;
+		margin-left: 2px;
+		transform: translateY(-1px) rotate(45deg);
+		transition: transform 0.2s ease;
+	}
+
+	.post-article .code-collapsible[open] > summary::before {
+		transform: translateY(1px) rotate(225deg);
+	}
+
+	.post-article .code-collapsible > summary:hover,
+	.post-article .code-collapsible > summary:focus-visible {
+		border-color: hsl(var(--theme-accent) / 0.45);
+		background: color-mix(in srgb, var(--paper) 94%, hsl(var(--theme-accent)));
+		color: hsl(var(--theme-accent));
+	}
+
+	.post-article .code-collapsible > summary:focus-visible {
+		outline: 2px solid hsl(var(--theme-accent) / 0.28);
+		outline-offset: 2px;
+	}
+
+	.post-article .code-collapsible > .code-collapsible-body > .expressive-code,
+	.post-article .code-collapsible > .code-collapsible-body > pre {
+		margin: 0;
+	}
+
+	.post-article .code-collapsible[open] > .code-collapsible-body > .expressive-code,
+	.post-article .code-collapsible[open] > .code-collapsible-body > pre {
+		border-top-left-radius: 0;
+		border-top-right-radius: 0;
+	}
+
+	.post-article table {
+		width: 100%;
+		max-width: var(--reading-width);
+		margin: 0 0 28px;
+		border-collapse: collapse;
+		table-layout: fixed;
+		font-size: 15.5px;
+		line-height: 1.6;
+		color: hsl(var(--theme-text));
+	}
+	.post-article th,
+	.post-article td {
+		padding: 10px 12px;
+		border-top: 1px solid var(--hairline);
+		vertical-align: top;
+		text-align: left;
+		overflow-wrap: anywhere;
+		word-break: break-word;
+	}
+	.post-article thead th {
+		border-top: 0;
+		border-bottom: 1px solid var(--hairline);
+		font-family: var(--font-mono);
+		font-size: 12px;
+		font-weight: 600;
+		line-height: 1.45;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: hsl(var(--theme-text) / 0.72);
+	}
+	.post-article tbody tr:last-child td {
+		border-bottom: 1px solid var(--hairline);
+	}
+	.post-article td > code,
+	.post-article th > code {
+		white-space: break-spaces;
 	}
 
 	.post-article ul {
@@ -608,6 +848,16 @@ const giscusThemes = import.meta.env.PROD
 		font-size: 14px;
 	}
 
+	@media (max-width: 720px) {
+		.post-article .table-of-contents {
+			margin-bottom: 30px;
+			padding-bottom: 20px;
+		}
+		.post-article .table-of-contents ol {
+			columns: 1;
+		}
+	}
+
 	.post-article .footnotes {
 		max-width: var(--reading-width);
 		margin: 48px 0 0;
@@ -625,6 +875,10 @@ const giscusThemes = import.meta.env.PROD
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 		color: hsl(var(--theme-text) / 0.72);
+	}
+	.post-article .footnotes h2::before {
+		content: none !important;
+		display: none;
 	}
 	.post-article .footnotes ol {
 		list-style: decimal;
@@ -654,6 +908,39 @@ const giscusThemes = import.meta.env.PROD
 		font-family: var(--font-mono);
 		font-size: 0.85em;
 		text-decoration: none;
+	}
+
+	.post-article #refs,
+	.post-article .references {
+		max-width: var(--reading-width);
+		margin: 0 0 36px;
+		color: hsl(var(--theme-text-muted));
+		counter-reset: citation;
+	}
+	.post-article .csl-entry {
+		position: relative;
+		margin: 0 0 16px;
+		padding-left: 30px;
+		font-size: 15.5px;
+		line-height: 1.65;
+		overflow-wrap: anywhere;
+		counter-increment: citation;
+	}
+	.post-article .csl-entry::before {
+		content: counter(citation) ".";
+		position: absolute;
+		left: 0;
+		top: 0.08em;
+		min-width: 20px;
+		font-family: var(--font-mono);
+		font-size: 12.5px;
+		line-height: 1.7;
+		color: hsl(var(--theme-accent));
+		text-align: right;
+	}
+	.post-article .csl-entry a {
+		color: hsl(var(--theme-accent));
+		text-decoration-color: hsl(var(--theme-accent) / 0.45);
 	}
 
 	.post-article li > p {
@@ -743,6 +1030,129 @@ const giscusThemes = import.meta.env.PROD
 		margin-bottom: 12px;
 	}
 
+	.post-article .inline-box {
+		--inline-box-color: hsl(var(--theme-accent));
+		--inline-box-border: var(--hairline);
+		margin: 34px auto;
+		padding: 18px 22px 20px;
+		max-width: min(100%, 42rem);
+		border: 1px solid var(--inline-box-border);
+		border-radius: 6px;
+		background: var(--paper);
+		color: hsl(var(--theme-text));
+		box-shadow: 0 0 0 1px hsl(var(--theme-bg) / 0.35) inset;
+	}
+	.post-article .inline-box > :first-child {
+		margin-top: 0;
+	}
+	.post-article .inline-box > :last-child {
+		margin-bottom: 0;
+	}
+	.post-article .inline-box > p:first-of-type {
+		margin: 0 0 12px;
+		font-family: var(--font-mono);
+		font-size: 13px;
+		font-weight: 600;
+		line-height: 1.45;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		text-align: center;
+		color: var(--inline-box-color);
+	}
+	.post-article .inline-box pre,
+	.post-article .inline-box ul,
+	.post-article .inline-box ol,
+	.post-article .inline-box table {
+		margin: 0 0 12px;
+		max-width: none;
+	}
+	.post-article .inline-box pre {
+		padding: 0;
+		border: 0;
+		background: transparent;
+		font-size: 13px;
+		line-height: 1.58;
+		white-space: pre-wrap;
+		word-break: normal;
+	}
+	.post-article .inline-box code {
+		font-family: var(--font-mono);
+		font-size: inherit;
+	}
+	.post-article .inline-box p:not(:first-of-type) {
+		font-family: var(--font-serif);
+		font-size: 15px;
+		line-height: 1.6;
+		text-align: left;
+	}
+
+	.post-article .algorithm-box {
+		margin: 34px auto;
+		max-width: min(100%, 42rem);
+	}
+	.post-article .algorithm-caption {
+		display: block;
+		margin: 0 0 10px;
+		font-family: var(--font-serif);
+		font-style: italic;
+		font-size: 15px;
+		line-height: 1.45;
+		text-align: center;
+		color: hsl(var(--theme-text));
+	}
+	.post-article .algorithm-body {
+		margin: 0;
+		padding: 18px 22px 20px;
+		border: 1px solid var(--hairline);
+		border-radius: 6px;
+		background: var(--paper);
+		box-shadow: 0 0 0 1px hsl(var(--theme-bg) / 0.35) inset;
+		font-size: 14px;
+	}
+	.post-article .algorithm-line {
+		display: flex;
+		gap: 12px;
+		align-items: flex-start;
+		padding-left: calc(var(--algorithm-depth, 0) * 1.5rem);
+		margin: 0 0 8px;
+		font-family: var(--font-mono);
+		font-size: inherit;
+		line-height: 1.55;
+	}
+	.post-article .algorithm-line:last-child {
+		margin-bottom: 0;
+	}
+	.post-article .algorithm-keyword {
+		font-weight: 700;
+		color: hsl(var(--theme-text));
+		flex: 0 0 auto;
+		min-width: 6ch;
+	}
+	.post-article .algorithm-comment {
+		color: hsl(var(--theme-text-muted));
+		font-style: italic;
+	}
+	.post-article .algorithm-blank {
+		height: 0.4rem;
+	}
+	.post-article .algorithm-body :global(.katex) {
+		font-size: 1em;
+	}
+	.post-article .algorithm-math {
+		margin: 8px 0 10px;
+		padding-left: calc(var(--algorithm-depth, 0) * 1.5rem);
+		overflow-x: auto;
+	}
+	.post-article .algorithm-math :global(pre) {
+		margin: 0;
+		background: transparent;
+		border: 0;
+		padding: 0;
+	}
+	.post-article .algorithm-math :global(.katex-display) {
+		margin: 0;
+	}
+
 	/* Predictable sizing prevents CLS */
 	.post-article figure {
 		margin: 36px 0;
@@ -820,6 +1230,37 @@ const giscusThemes = import.meta.env.PROD
 	.post-article figure img {
 		width: 100%;
 	}
+	.post-article .figure-narrow {
+		max-width: min(100%, 400px);
+		margin-left: auto;
+		margin-right: auto;
+	}
+	.post-article .figure-grid {
+		width: 100%;
+		max-width: 100%;
+	}
+	.post-article .figure-grid-images {
+		display: grid;
+		width: 100%;
+		gap: 10px;
+		align-items: start;
+	}
+	.post-article .figure-grid-four .figure-grid-images {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
+	.post-article .figure-grid-three .figure-grid-images {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+	.post-article .figure-grid-two .figure-grid-images {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.post-article .figure-grid-images img {
+		aspect-ratio: 1 / 1;
+		object-fit: contain;
+	}
+	.post-article .figure-grid figcaption {
+		max-width: var(--reading-width);
+	}
 	.post-article figcaption {
 		font-family: var(--font-serif);
 		font-style: italic;
@@ -828,7 +1269,12 @@ const giscusThemes = import.meta.env.PROD
 		margin-top: 12px;
 		line-height: 1.5;
 	}
+	.post-article figcaption p {
+		display: inline;
+		margin: 0;
+	}
 	.post-article figcaption .label {
+		display: inline;
 		font-family: var(--font-mono);
 		font-style: normal;
 		font-size: 11px;
@@ -836,6 +1282,7 @@ const giscusThemes = import.meta.env.PROD
 		text-transform: uppercase;
 		color: hsl(var(--theme-text-muted));
 		margin-right: 8px;
+		white-space: nowrap;
 	}
 
 	.post-article table {
@@ -883,6 +1330,7 @@ const giscusThemes = import.meta.env.PROD
 		}
 		.post-article h2 { font-size: 23px; margin: 44px 0 16px; }
 		.post-article h3 { font-size: 18.5px; margin: 30px 0 12px; }
+		.post-article h4 { font-size: 17px; margin: 22px 0 4px; }
 		.post-article :not(pre) > code { font-size: 13.5px; }
 		.post-article figure { margin: 28px 0; }
 	}
@@ -895,9 +1343,13 @@ const giscusThemes = import.meta.env.PROD
 		}
 		.post-article h2 { font-size: 20px; margin: 36px 0 14px; }
 		.post-article h3 { font-size: 17px; margin: 26px 0 10px; }
+		.post-article h4 { font-size: 16px; margin: 20px 0 4px; }
 		.post-article ul { padding-left: 0; }
 		.post-article ul li { padding-left: 18px; }
 		.post-article blockquote { padding-left: 16px; font-size: 16.5px; }
+		.post-article .figure-grid-two .figure-grid-images { grid-template-columns: 1fr; }
+		.post-article .figure-grid-three .figure-grid-images { grid-template-columns: 1fr; }
+		.post-article .figure-grid-four .figure-grid-images { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 		.post-article figcaption { font-size: 13.5px; }
 	}
 
@@ -1016,4 +1468,37 @@ const giscusThemes = import.meta.env.PROD
 			});
 			h.prepend(btn);
 		});
+
+	const codeLineThreshold = 24;
+	const countCodeLines = (block: HTMLElement, pre: HTMLPreElement) => {
+		const renderedLineCount = block.querySelectorAll(".ec-line").length;
+		if (renderedLineCount > 0) return renderedLineCount;
+
+		const source = pre.querySelector("code")?.textContent ?? pre.textContent ?? "";
+		return source.trimEnd().split("\n").length;
+	};
+
+	document.querySelectorAll<HTMLElement>(".post-article .expressive-code, .post-article pre").forEach((block) => {
+		if (block.matches("pre") && block.closest(".expressive-code")) return;
+		if (block.closest(".code-collapsible")) return;
+
+		const pre = block.matches("pre") ? (block as HTMLPreElement) : block.querySelector<HTMLPreElement>("pre");
+		if (!pre) return;
+
+		const lineCount = countCodeLines(block, pre);
+		if (lineCount < codeLineThreshold) return;
+
+		const details = document.createElement("details");
+		details.className = "code-collapsible";
+
+		const summary = document.createElement("summary");
+		summary.setAttribute("aria-label", "Toggle code block");
+
+		const body = document.createElement("div");
+		body.className = "code-collapsible-body";
+
+		block.parentNode?.insertBefore(details, block);
+		body.append(block);
+		details.append(summary, body);
+	});
 </script>
