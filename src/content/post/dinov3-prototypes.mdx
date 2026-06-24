@@ -24,11 +24,11 @@ One of Distill's foundational articles is called _Feature Visualization_ [@olah2
 
 [^note-older-feature-viz]: Even in 2017, visualizing features by creating images to maximize activations wasn't exactly new. The numerous papers cited in Distill's _Feature Visualization_ is evidence of those previous attempts, some as early as 2009, even before [AlexNet](https://en.wikipedia.org/wiki/AlexNet)'s breakthrough.
 
-I think it's safe to say the work carried out by Distill's authors has inspired many mechanistic interpretability endeavors in computer vision following the developments in convolutional neural networks. Other interesting works worth looking at on Distill include exploring ever more specialized vision mechanisms such as curve detectors [@cammarata2020curveDetectors] or spacial frequency edge detectors [@schubert2021highLowFrequencyDetectors] and differentiable image parametrizations [@mordvintsev2018differentiableParameterizations].
+I think it's safe to say the work carried out by Distill's authors has inspired many mechanistic interpretability endeavors in computer vision following the developments in convolutional neural networks. Other interesting works worth looking at on Distill include exploring ever more specialized vision mechanisms such as curve detectors [@cammarata2020curveDetectors] or spatial frequency edge detectors [@schubert2021highLowFrequencyDetectors] and differentiable image parametrizations [@mordvintsev2018differentiableParameterizations].
 
 
 
-## Feature visialization
+## Feature visualization
 
 
 To _visualize_ features in the context of machine learning research, means to synthesize images with patterns that maximize some given activations or outputs of a neural network (the said features), in order to gain insights about what the model perceives and how it "interprets" the inputs. In other words it's about finding _prototypical_ images that make particular neuron groups fire in a certain way[^note-on-fire-modes]. The proper mathematical term is _preimage_, but it has nothing to do with actual images made of pixels in the general sense, so to avoid that ambiguity I will henceforth refer to such artificial images simply as _prototypes_ in the remaining of this post, to stick to the literature's coined terminology.
@@ -177,7 +177,7 @@ Anyway, my personal impression is that computer vision as a domain now elicits f
 
 I think an indicative example of that trend is the renowned [Transformer Circuits Thread](https://transformer-circuits.pub/), which has shifted from computer vision to NLP since its inception. It seems that vision models have now become a commodity taken for granted, that gets incorporated in all major new image-text model released out there, while the new _El Dorado_ of language processing took control of the AI race monopolizing all the attention (pun intended). Prototypes seem to be the remnants of a forgotten experiment. Mechanistic interpretability now focuses on other means of breaking down neural networks.
 
-### A hypothesis on the quality of latent representation
+### A hypothesis on the quality of latent representations
 I hypothesize that with more robust representations, proper regularization, increased generalization and denser datasets compacted into the latent space, come better model calibration and smoother gradients to backpropagate, possibly. This is a hunch I get from reading @sensitivity2018 performing a sensitivity analysis on the MNIST dataset. They show that gradients of the last layers of the network are smoother and less noisy near training points. MNIST is particular in that it's a tiny, minuscule dataset with a handful of extremely repetitive patterns. But cramming representations for billions of diverse images into a few hundred dimensions with proper data curation ensuring balance and representativeness should yield latent spaces covering the manifold of natural images more densely and smoothly. I have no proof of it, but I like to speculate about such hypotheses and this one sounds plausible to me.
 
 Another sensible way of phrasing that hunch would be the following: formerly, classification-trained discriminative models had the possibility to take hacky shortcuts in order to cut through the visual patterns and return the correct label. For example, early convolutional neural networks are typically known to rely on texture information [@imagenet2018texturebias], or at least local shapes [@burgert2026imagenettrained], which isn't a bad proxy anyway, but limits the so-called "global understanding" of a scene, which Transformers excel at by comparing each patch with one another.
@@ -567,7 +567,7 @@ My idea is to train the dictionary on the latents obtained from views of images 
 	/>
 	<figcaption>
 		<span class="label"></span>
-		128-by-128 crops to total image surface area ratio distribution for ImageNet
+		Distribution of 128-by-128-square-crop to total-image-resolution ratio for the ImageNet dataset
 	</figcaption>
 </figure>
 
@@ -576,7 +576,7 @@ The second stage consists of running the dictionary learning script on the persi
 
 
 
-### Examining the concept latents
+### Examining the latent concepts
 The third stage is about querying the produced dictionary for relevant metrics to ensure it is well-formed. To do so, I evaluated the codes of unaltered images from the same dataset with a sparsity constraint in order to gauge the bottleneck of the learned dictionary.
 
 
@@ -733,7 +733,7 @@ As a sanity check it can be interesting to observe how the regularization hyperp
 
 ## Sequel
 
-Next, I'll analyze more extensively the obtained concepts and I'll visualize the learned concepts of the dictionary with input image optimization. Coming soon... 
+Next, I'll analyze more extensively the dictionary concepts and I'll try to visualize them with through input optimization. Coming soon... 
 
 
 ## References
