@@ -11,11 +11,11 @@ This post is about a small experiment involving a 1-year-old SOTA vision model, 
 
 ## The WordNet hierarchy
 
-In practice, ImageNet-1K contains 1.4 million images split into 1000 categorie. These categories also happen to be a small subset of a much larger hierarchy called [WordNet](https://wordnet.princeton.edu/), which is a 2005 project compiling a lexical database of 82000+ modelling the semantic relationships between English words, expressions, and textual concepts.
+In practice, ImageNet-1K contains 1.4 million images split into 1000 categories. These categories also happen to belong to a much larger set organized into a hierarchy called [WordNet](https://wordnet.princeton.edu/), which is a 2005 project compiling a lexical database modelling the semantic relationships between 82000+ English words, expressions, and textual concepts.
 
-The classes in the ImageNet dataset are diverse but a lot of them are variants or specialized versions of broader species, objects, or concepts. For example, there are dozens of different dog species. A full list can be found [here](https://deeplearning.cms.waikato.ac.nz/user-guide/class-maps/IMAGENET/). Any two entities of the WordNet hierarchy related by a subset-ordering relation are linked in the graph by a directed edge. The whole WordNet takes the form of a **direct, acyclic graph** (DAG) with a single sink node named "entity" comprised of 74401 nodes and 75850 edges after processing.
+The 1000 ImageNet classes are diverse but a lot of them are in fact variants or specialized versions of broader common species, objects, or concepts. A full list can be found [here](https://deeplearning.cms.waikato.ac.nz/user-guide/class-maps/IMAGENET/). For example, there are dozens of different dog species. Any two entities of the WordNet hierarchy related by a subset-ordering relation are linked in the graph by a directed edge going from a concept to its parent. Thus, the whole WordNet takes the form of a **direct, acyclic graph** (DAG) whose single sink node is named "entity", and is comprised of 74401 nodes and 75850 edges.
 
-Looking at partial graph representations of the WordNet graph induced by nodes present in ImageNet classes reveals the underlying structure of the concepts in a much smaller 1860-node subgraph with 1937 remaining edges. To visualize it, I assembled the DAG from the node and edge text dumps available on seemingly long-forgotten GitHub repositories. In the coming figures, I inverted arrows to point to descendents instead of ancestors in order to convey the more intuitive idea "is a subset of" as opposed to "is a superset of". Moreover I pruned nodes that did not have any leaves that are part of ImageNet's one thousand classes. There is no point rendering the whole subgraph in this post, as the figure would not fit anyway, but producing a whole PDF of it is possible. <a data-figure-ref="fig-entity-to-dog"></a> and <a data-figure-ref="fig-root-depth-4"></a> show such visual excerpts of the graph: all paths leading to metaclass "dog" on one hand and all accessible metaclass nodes from the root within 4 steps (final ImageNet class leaves were stripped).
+Looking at partial graph representations of the WordNet graph induced by the nodes that are present in ImageNet classes reveals a much smaller underlying structure comprising 1860 nodes and 1937 remaining edges. To visualize it, I assembled the DAG from the node and edge text dumps available on seemingly long-forgotten GitHub repositories. In the coming figures, I inverted arrows to point to descendents instead of ancestors in order to convey the more intuitive idea "is a subset of" as opposed to "is a superset of". Moreover I pruned nodes that did not have any leaves that are part of ImageNet's one thousand classes. There is no point rendering the whole subgraph in this post, as the figure would not fit anyway, but producing a whole PDF of it is possible. <a data-figure-ref="fig-entity-to-dog"></a> and <a data-figure-ref="fig-root-depth-4"></a> show such visual excerpts of the graph: all paths leading to metaclass "dog" on one hand and all accessible metaclass nodes from the root within 4 steps (final ImageNet class leaves were stripped).
 
 <figure id="fig-entity-to-dog" class="figure-wide" style="width: min(480px, 100%); margin-inline: auto;">
 	<img
@@ -48,7 +48,7 @@ Looking at partial graph representations of the WordNet graph induced by nodes p
 
 ## Condensing the WordNet structure onto ImageNet categories
 
-Graph-based data enable interesting analysis levers. Graphs condense information in a discrete structure that can incidentally be converted to vectors via [spectral analysis](https://en.wikipedia.org/wiki/Spectral_graph_theory), to produce embeddings. 
+Graph-based data enable an interesting analysis potential. Graphs condense information in a discrete structure that can incidentally be converted to vectors via [spectral analysis](https://en.wikipedia.org/wiki/Spectral_graph_theory), to produce embeddings. 
 
 
 ### From DAG to secondary complete graph
@@ -128,7 +128,7 @@ The conclusion is already clear: at least on this very model, at least to some e
 
 
 ## Conclusion
-This was a fun experiment bridging together research results that are more than 20 years apart. I had heard about the Platonic Representation Hypothesis [@huh2024platonicrepresentationhypothesis] suggesting that all deep learning models converge to representations that share a common structure. This small-scale experiment supports a claim that is not very bold, but it confirms that modern vision models have captured representations that roughly follow the same preconceptions as humans, under plausible metrics. I might want to try and extend the testing with more elaborate language embeddings like Word2Vec [@word2vec] or even LLMs one day.
+This was a fun experiment bridging together research data and models that are more than 20 years apart. I had heard about the Platonic Representation Hypothesis [@huh2024platonicrepresentationhypothesis] suggesting that all deep learning models converge to representations that share a common structure. This small-scale experiment supports a claim that may not be very groundbreaking, but it confirms that modern vision models have captured representations that roughly follow the same preconceptions as humans put on language, according to plausible metrics. I might want to try and extend the testing with more elaborate language embeddings like Word2Vec [@word2vec] or even LLMs one day.
 
 ## References
 
