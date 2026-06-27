@@ -332,7 +332,13 @@ In an extended journal version of the paper [@JMLRv11mairal10a], the authors als
 
 [^note-nmf]: That's where we can learn, among other things, that non-negative matrix factorization for sparse coding seems to date back as early as 2001.
 
-They mention the alternative constraint set $\mathcal{C}^\prime = \{\mathbf{D}\in \mathbb{R}^{m\times k}, \forall j \in \llbracket 1, k \rrbracket, \mathbf{d}_j^\top \mathbf{d}_j \le 1 \text{ and } \mathbf{d}_j \ge 0\}$ for $\mathbf{D}$, as well as the eventuality of also constraining $\alpha \ge 0$ independently. More importantly, they mention the simplest problem featuring the same objective solely with positivity constraints on $\mathbf{D}$ and $\alpha$ (no norm constraints on the atoms $\mathbf{d}_j$), thus amounting to solve $\arg\min_{\mathbf{D}, \alpha} \|\mathbf{X} - \mathbf{D} \alpha \|_F^2 + \lambda \|\alpha\|_{1,1}$ such that $\mathbf{D}, \alpha \ge 0$. One comment about this particular variant is interesting: 
+They mention the alternative constraint set
+
+$$
+\mathcal{C}^\prime = \{\mathbf{D}\in \mathbb{R}^{m\times k}, \forall j \in \llbracket 1, k \rrbracket, \mathbf{d}_j^\top \mathbf{d}_j \le 1 \text{ and } \mathbf{d}_j \ge 0\}
+$$
+
+that applies to $\mathbf{D}$, as well as the eventuality of also constraining $\alpha \ge 0$ independently. More importantly, they mention the simplest problem featuring the same objective solely with positivity constraints on $\mathbf{D}$ and $\alpha$ (no norm constraints on the atoms $\mathbf{d}_j$), thus amounting to solve $\arg\min_{\mathbf{D}, \alpha} \|\mathbf{X} - \mathbf{D} \alpha \|_F^2 + \lambda \|\alpha\|_{1,1}$ such that $\mathbf{D}, \alpha \ge 0$. One comment about this particular variant is interesting: 
  
  > "When $\lambda = 0$, this formulation is equivalent to NMF. The only difference with the dictionary learning
 problem is that non-negativity constraints are imposed on $\mathbf{D}$ and the vectors $\alpha_i$. A simple modification of our algorithm (...) allows us to handle these constraints, while guaranteeing to find a stationary point of the optimization problem."
