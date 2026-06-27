@@ -110,7 +110,7 @@ Another remarkable result of the spectral embeddings based on the previous specu
 
 ## The DINOv3 hierarchy
 
-In contrast with the preceeding elements which were all about discrete textual hierarchy, the DINOv3 vision model family of neural networks is trained on the LVD-1689M dataset [@simeoni2025dinov3] to produce continuous visual latent representations, which means their outputs are embeddings in a dense high-dimensional space rather than class logits. That makes those models closer to a generic image feature extractor than to a conventional classifier. The resulting latent spaces range from 384 to 4096 dimensions depending on the backbone and model size. Of course, those embeddings can be reused for downstream tasks such as classification at a later stage, but I'm not interested in that directly.
+In contrast with the previously presented discrete hierarchy built upon textual elements, the DINOv3 vision model family of neural networks is trained on the LVD-1689M dataset [@simeoni2025dinov3] to produce continuous latent representations based on visual elements such as images. Their outputs are embeddings in a dense high-dimensional space. That makes those models very good generic image feature extractors. The resulting latent spaces range from 384 to 4096 dimensions depending on the backbone and model size. Of course, those embeddings can be reused for downstream tasks such as classification at a later stage, but we're not interested in that for now.
 
 
 ### Assessing the match
