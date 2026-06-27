@@ -40,7 +40,7 @@ Looking at partial graph representations of the WordNet graph induced by the nod
 	/>
 	<figcaption>
 		<span class="label"></span>
-		Partial view of WordNet's hierarchy with all metaclass nodes accessible from the root up to depth 4
+		Partial view of WordNet's hierarchy with all metaclass nodes accessible from the root up to depth 4 (attainable final classes have been stripped)
 	</figcaption>
 </figure>
 
@@ -76,7 +76,7 @@ So I computed embeddings in 3D for the artificial subgraph made up from the affi
 
 ### Results
 
-The resulting colormap is interesting but predictable: similar classes end up with almost the same color. Canines appear in bright yellow and orange shades. Fruits and vegetables get brown. Inert objects range across a wide blue and green palette whereas a lot animals are featured in pink and fushia. Refer to  <a data-figure-ref="fig-complete-graph-with-colormap"></a>.
+The resulting colormaps are interesting: with three spectral embedding dimensions and thus three color components, a few predictable groups appear. The aforementioned prominent meta-classes end up with almost the same color. For example, canines appear in bright yellow and orange shades. Fruits and vegetables get brown. Inert objects range across a wide blue and green palette whereas a lot of animals receive in pink and fushia colors. Refer to  <a data-figure-ref="fig-complete-graph-with-colormap"></a>.
 
 
 <figure id="fig-complete-graph-with-colormap" class="figure-wide">
@@ -93,18 +93,31 @@ The resulting colormap is interesting but predictable: similar classes end up wi
 </figure>
 
 
+Another remarkable result of the spectral embeddings based on the previous speculated similarity metric is that they are able to successfully summarize coarser, unexpected aspects already contained in the WordNet. With one spectral embedding dimension instead of three, and visualized with a red-blue colormap, a clear boundary materializes and seems to consistently separate living from inert entities, with mainly food items lying on ambiguous neutral ground (<a data-figure-ref="fig-bicolor-hierarchy"></a>). This, in my opinion, is a bit more surprising since the top-level splits from the original DAG (<a data-figure-ref="fig-root-depth-4"></a>) do not explicitly encode or suggest the "alive" characteristic until depth 4 with "organism, being", and yet it resurfaces from the finer, deeper subdivisions of the DAG as a main spectral direction.
 
+<figure id="fig-bicolor-hierarchy" class="figure-wide" style="width: min(420px, 100%); margin-inline: auto;">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1782579118/bicolor_hierarchy_sample_spqd6y.svg"}
+		alt="Overview of the whole process to compute concepts, and prototype images with intermediary steps"
+        loading="lazy"
+        style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		A selection of 8% randomly sampled ImageNet categories ranked along a single unidimensional spectral embedding axis, with a blue-red color scale (category labels stripped)
+	</figcaption>
+</figure>
 
 ## The DINOv3 hierarchy
 
-In contrast with the preceeding elements which were all about discrete textual hierarchy, the DINOv3 vision model family of neural networks is trained on the LVD-1689M dataset [@simeoni2025dinov3] to produce continuous visual latent representations, which means their outputs are embeddings in a dense high-dimensional space rather than class logits. That makes those models closer to a generic image feature extractor than to a conventional classifier. The resulting latent spaces range from 384 to 4096 dimensions depending on the backbone and model size. Of course, those embeddings can be reused for downstream tasks such as classification at a later stage, but I'm not interested in that directly.
+In contrast with the previously presented discrete hierarchy built upon textual elements, the DINOv3 vision model family of neural networks is trained on the LVD-1689M dataset [@simeoni2025dinov3] to produce continuous latent representations based on visual elements such as images. Their outputs are embeddings in a dense high-dimensional space. That makes those models very good generic image feature extractors. The resulting latent spaces range from 384 to 4096 dimensions depending on the backbone and model size. Of course, those embeddings can be reused for downstream tasks such as classification at a later stage, but we're not interested in that for now.
 
 
 ### Assessing the match
 The fact that the categories of the ImageNet dataset are part of a larger knowledge graph with known metaclass dependencies makes it particularly interesting to use as a prior for the image data. **So, it stands as an interesting question to me whether the ImageNet class hierarchy we unveiled earlier translates to the unsupervised embeddings of that dataset through a completely independent model.** It is, at heart, about testing whether language hiararchies are consistent with visual hierarchies obtained by means of an automated, emergent learning system[^note-emergence].
 
 
-[^note-emergence]: In the first DINO paper, the authors explicitely described that their learning student-teacher networks featured emergent properties by learning embeddings with no labels at all, driven only by crops and partial views.
+[^note-emergence]: In the first DINO paper, the authors ecplicitly described that their learning student-teacher networks featured emergent properties by learning embeddings with no labels at all, driven only by crops and partial views.
 
 #### Via dimensionality reduction
 
