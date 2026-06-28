@@ -15,7 +15,7 @@ In practice, ImageNet-1K contains 1.4 million images split into 1000 categories.
 
 The 1000 ImageNet classes are diverse but a lot of them are in fact variants or specialized versions of broader common species, objects, or concepts. A full list can be found [here](https://deeplearning.cms.waikato.ac.nz/user-guide/class-maps/IMAGENET/). For example, there are dozens of different dog species. Any two entities of the WordNet hierarchy related by a subset-ordering relation are linked in the graph by a directed edge going from a concept to its parent. Thus, the whole WordNet takes the form of a **direct, acyclic graph** (DAG) whose single sink node is named "entity", and is comprised of 74401 nodes and 75850 edges.
 
-Looking at partial graph representations of the WordNet graph induced by the nodes that are present in ImageNet classes reveals a much smaller underlying structure comprising 1860 nodes and 1937 remaining edges. To visualize it, I assembled the DAG from the node and edge text dumps available on seemingly long-forgotten GitHub repositories. In the coming figures, I inverted arrows to point to descendents instead of ancestors in order to convey the more intuitive idea "is a subset of" as opposed to "is a superset of". Moreover I pruned nodes that did not have any leaves that are part of ImageNet's one thousand classes. There is no point rendering the whole subgraph in this post, as the figure would not fit anyway, but producing a whole PDF of it is possible. <a data-figure-ref="fig-entity-to-dog"></a> and <a data-figure-ref="fig-root-depth-4"></a> show such visual excerpts of the graph: all paths leading to metaclass "dog" on one hand and all accessible metaclass nodes from the root within 4 steps (final ImageNet class leaves were stripped).
+Looking at partial graph representations of the WordNet graph induced by the nodes that are present in ImageNet classes reveals a much smaller underlying structure comprising 1860 nodes and 1937 remaining edges. To visualize it, I assembled the DAG from the node and edge text dumps available on seemingly long-forgotten GitHub repositories. In the coming figures, I inverted arrows to point to descendents instead of ancestors in order to convey the more intuitive idea "is a subset of" as opposed to "is a superset of". Moreover I pruned nodes that did not have any leaves that are part of ImageNet's one thousand classes. There is no point rendering the whole subgraph in this post, as the figure would not fit anyway, but producing a whole PDF of it is possible. <a data-figure-ref="fig-entity-to-dog"></a> and <a data-figure-ref="fig-root-depth-4"></a> show such visual excerpts of the graph: all paths leading to metaclass "dog" on one hand and all reachable metaclass nodes from the root within 4 steps (final ImageNet class leaves were stripped).
 
 <figure id="fig-entity-to-dog" class="figure-wide" style="width: min(480px, 100%); margin-inline: auto;">
 	<img
@@ -40,7 +40,7 @@ Looking at partial graph representations of the WordNet graph induced by the nod
 	/>
 	<figcaption>
 		<span class="label"></span>
-		Partial view of WordNet's hierarchy with all metaclass nodes accessible from the root up to depth 4 (attainable final classes have been stripped)
+		Partial view of WordNet's hierarchy with all metaclass nodes reachable from the root up to depth 4 (attainable final classes have been stripped)
 	</figcaption>
 </figure>
 
