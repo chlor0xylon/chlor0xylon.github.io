@@ -118,8 +118,8 @@ The DINOv3 ViT-backbone uses $14\times 14$-pixel patches with a stride of 14, wh
 	</div>
 	<figcaption>
 		<span class="label"></span>
-		Front-end first 36 input filters for ResNet-18 & DINOv3 ConvNeXt Tiny
-		convolutions, and DINOv3 ViT Small patch embeddings (from left to right).
+		Front-end first 36 input convolutional filters for: ResNet-18 and DINOv3 ConvNeXt Tiny
+		convolutions (leftmost images), and DINOv3 ViT Small patch embeddings (rightmost image).
 	</figcaption>
 </figure>
 
@@ -412,7 +412,7 @@ class InputImageBatch:
 ## Dictionary learning: technical aspects
 The numerical computations of dictionary learning rely heavily on vectorized operations and linear algebra, so they are a natural fit for [Jax](https://docs.jax.dev/en/latest/). Unlike Pytorch, Jax provide first-class compiled loop operations for the target hardware. This is especially handy for iterative algorithms to solve linear algebra problems. Before this project I was familiar with PyTorch but I had never used Jax so it was a good incentive to test it.
 
-In the code, I kept the original notations with $\mathbf{W} \in \mathbb{R}^{p \times r}$ and $\mathbf{U} \in \mathbb{R}^{n \times r}$. However, since $\mathbf{U}$ is conceptually reserved for the full dataset codes, and is never materialized in memory, so I named its batched counterpart $\mathbf{H} \in \mathbb{R}^{b\times r}$ where $b$ is the batch size with obviously $b < n$. At any step, we draw $\mathbf{X} \in \mathbb{R}^{b\times n}$ and apply the above algorithm.
+In the code, I kept the original notations with $\mathbf{W} \in \mathbb{R}^{p \times r}$ and $\mathbf{U} \in \mathbb{R}^{n \times r}$. However, since $\mathbf{U}$ is conceptually reserved for the full dataset codes, and is never materialized in memory, I named its batched counterpart $\mathbf{H} \in \mathbb{R}^{b\times r}$ where $b$ is the batch size with obviously $b < n$. At any step, we draw $\mathbf{X} \in \mathbb{R}^{b\times n}$ and apply the above algorithm.
 
 Thus the main training loop looks like this:
 
