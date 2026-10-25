@@ -6,12 +6,12 @@ description: "A short experiment showing ImageNet's class hierarchy with DINOv3"
 tags: [machine learning, computer vision]
 ---
 
-This post is about a small experiment involving a 1-year-old SOTA vision model, a 10-year-old legacy computer vision dataset, and a 20-year-old natural language structure research database. To recall what ImageNet is and why it mattered so much in the early days of computer vision research, ImageNet-1K [@imagenet1k2012] is a large-scale image classification benchmark made up of 1000 classes, derived from the broader ImageNet ontology [@imagenet2009], that became a defining benchmark for progress in visual recognition in the early 2010s.
+ImageNet-1K is a substantial dataset of deep computer vision. It paved the way for visual recognition progress in the early 2010s. This post is about setting up a small experiment to test the outputs of a more recent SOTA vision model on the images of that dataset, and take advantage of the fact that there is a known structure to the labels to visualize the results.
 
 
 ## The WordNet hierarchy
 
-In practice, ImageNet-1K contains 1.4 million images split into 1000 categories. These categories also happen to belong to a much larger set organized into a hierarchy called [WordNet](https://wordnet.princeton.edu/), which is a 2005 project compiling a lexical database modelling the semantic relationships between 82000+ English words, expressions, and textual concepts.
+So, ImageNet-1K [@imagenet1k2012] contains 1.4 million images split into 1000 categories. These categories also happen to belong to a much larger set organized into a hierarchy called [WordNet](https://wordnet.princeton.edu/), which is a 2005 project compiling a lexical database modelling the semantic relationships between 82000+ English words, expressions, and textual concepts [@imagenet2009].
 
 The 1000 ImageNet classes are diverse but a lot of them are in fact variants or specialized versions of broader common species, objects, or concepts. A full list can be found [here](https://deeplearning.cms.waikato.ac.nz/user-guide/class-maps/IMAGENET/). For example, there are dozens of different dog species. Any two entities of the WordNet hierarchy related by a subset-ordering relation are linked in the graph by a directed edge going from a concept to its parent. Thus, the whole WordNet takes the form of a **direct, acyclic graph** (DAG) whose single sink node is named "entity", and is comprised of 74401 nodes and 75850 edges.
 
