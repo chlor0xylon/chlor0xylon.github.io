@@ -1,0 +1,84 @@
+version: "3"
+
+# Run `task` (no args) to list everything.
+# Run from the project root. Node version comes from .nvmrc (fnm).
+
+tasks:
+  default:
+    desc: List available tasks
+    silent: true
+    cmds:
+      - task --list
+
+  node:
+    desc: Switch this shell's Node to the version pinned in .nvmrc (run `fnm use` manually; tasks can't change your shell)
+    silent: true
+    cmds:
+      - |
+        echo "wanted: $(cat .nvmrc)  active: $(node -v)"
+        echo "if different, run: fnm install && fnm use"
+
+  install:
+    desc: Install dependencies from the lockfile (like `uv sync`)
+    cmds:
+      - pnpm install --frozen-lockfile
+
+  update:
+    desc: Install dependencies and allow the lockfile to change
+    cmds:
+      - pnpm install
+
+  dev:
+    desc: Dev server with live reload at http://localhost:4321 (Ctrl+C to stop; search won't work here)
+    cmds:
+      - pnpm dev
+
+  dev:lan:
+    desc: Same as dev, but reachable from other devices on your network (e.g. phone)
+    cmds:
+      - pnpm dev --host
+
+  build:
+    desc: Production build into dist/ (type-check + build + search index). Same as CI
+    cmds:
+      - pnpm build
+
+  preview:
+    desc: Serve the existing dist/ build at http://localhost:4321 (run `task build` first)
+    preconditions:
+      - sh: test -d dist
+        msg: "dist/ not found. Run `task build` first."
+    cmds:
+      - pnpm preview
+
+  view:
+    desc: Fresh build, then serve it (static snapshot, no live reload)
+    cmds:
+      - task: build
+      - task: preview
+
+  check:
+    desc: Type-check Astro/TypeScript and frontmatter only, no build output
+    cmds:
+      - pnpm check
+
+  lint:
+    desc: Lint the code (Biome)
+    cmds:
+      - pnpm lint
+
+  format:
+    desc: Auto-format code and imports (modifies files)
+    cmds:
+      - pnpm format
+
+  clean:
+    desc: Delete build output and caches (dist/, .astro/). node_modules is kept
+    cmds:
+      - rm -rf dist .astro
+
+  reset:
+    desc: Delete node_modules and reinstall from lockfile (use if things are weird)
+    cmds:
+      - rm -rf node_modules
+      - task: install
