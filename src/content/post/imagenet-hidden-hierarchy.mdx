@@ -197,11 +197,11 @@ It turns out that such a procedure is, as I understood it, roughly what runs alg
 
 To circumvent this annoying limitation, there are several ideas worth exploiting. First, the reference vectors can be used to eliminate irrelevant pairs whose cosine similarity is too low, by only considering a sparse subset of the edges for the $N$ points considered. In other words, performing a $k$-NN search which yields a sparse graph $(V,E)$ with $|V| = N$ (the total number of points) and $|E| = o(N)$. Fortunately, people far smarter than me have already put a great deal of effort implementing fast algorithms to do that, including GPU-accelerated versions such as [Nvidia's CuVS Neighbors](https://docs.nvidia.com/cuvs/api-reference/python-api-neighbors). Secondly, the kernel trick might be handy.
 
-
+#### Kernel in the original space
 So, according to the figures above, the primary comparison kernel in the model's normed embeddings $({x_i})_{1 \le i \le N}$ space should reward meaningful cosine similarities: the affinity on an edge $e = (i, j)$ is defined as follows:
 
 $$
-\alpha_{i,j} =
+\alpha_e =
 \begin{cases}
 \exp\left(1 - \langle x_i, x_j \rangle\right) & \text{if } (i,j) \in E, \\
 0 & \text{otherwise.}
@@ -215,9 +215,11 @@ $$
 with  $Y = \sum_{e} \alpha_{e}$.
 
 
+#### Kernel in the target space
+
 The secondary kernel $\kappa$ for the target embeddings in $\mathcal{S}^3 \subset \mathbb{R}^3$. In the target space, that secondary comparison kernel $\kappa$ has to make it possible to compute $Z = \sum_e \kappa_e$ over *all* $\frac{N(N-1)}{2}$ edges without ever materializing the full matrix of pairwise comparisons $[\kappa_{i,j}]_{1 \le i,j \le N}$ in the VRAM, in order to compute
 $$
-q_{i,j} = \frac{\kappa_e}{Z}
+q_e = \frac{\kappa_e}{Z}
 $$
 
 
@@ -231,7 +233,13 @@ $$
 
 The second sum can be further expanded to $- \left( \sum_e p_e \log \kappa_e \right) + \log Z$. Removing terms inside $Z$ removes repulsion terms between each embedded datapoint on the sphere, since increasing any $\kappa_e$ increases the loss. So, the full $\log Z$ encourages points to spread over the whole surface of the sphere. A subset of these repulsive effects might supposedly result in a suboptimal solution.
 
-A valid kernel possibility to make it easy to compute $Z$ is, for example, any affine-bilinear kernel like $(x,y) \mapsto \frac{1 + \langle x, y\rangle}{2}$, because then in the target space
+A valid kernel possibility to make it easy to compute $Z$ is, for example, any affine-bilinear kernel like $(x,y) \mapsto 1 + \langle x, y\rangle$ fits the bill, so that
+
+$$
+\kappa_e = \frac{1 + \langle x_i, x_j \rangle}{2}
+$$
+
+because then in the target space
 $$
 Z = \sum_{1 \le i, j \le N} \frac{1 + \langle x_i, x_j\rangle}{2} = \frac{N^2}{2} + \frac{1}{2} \left\| \sum_{i=1}^N x_i \right\|^2
 $$
