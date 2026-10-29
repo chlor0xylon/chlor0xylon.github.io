@@ -186,8 +186,8 @@ Cosine similarities, on the other hand, tend to convey much more information, so
 As I said, I want to embed the points on a periodic manifold, more specifically, a simple 3D sphere, instead of relying on handy [Nvidia's GPU-accelerated manifold implementations](https://docs.nvidia.com/cuml/latest/api/cuml.manifold/) like UMAP, that only produce embeddings in the 2D plane. My intuition is that the procedure should allow the points should reach an equilibrium by crowding in a finite, periodic space and self-organize so as to make similar points group together, and dissimilar points repulse away from each other. A bit like laying a network of springs and joints stabilize itself on the sphere.
 
 In order to proceed, I imagined the following.
-- First, define a comparison kernel in the original space
-- Define a comparison kernel in the embedding space
+- Define a non-negative comparison kernel in the original space
+- Define a non-negative comparison kernel in the target space
 - Train the embeddings in the target space to maximize agreement between the two pairwise similarity matrices
 
 At first I wan't exactly sure about how to implement the third task, and what it would mean to maximize agreement. After a bit of digging, I found out that the most idiomatic way was to derive probability a distribution over the edges of the complete graph of similarity measures from the kernel, do that for both spaces and minimize the KL divergence between both distributions while training the target embeddings.
@@ -195,20 +195,53 @@ At first I wan't exactly sure about how to implement the third task, and what it
 
 It turns out that such a procedure is, as I understood it, roughly what runs algorithms like UMAP or t-SNE. Dimensionality is our ennemy since the number of pairs grows quadratically with the number of elements. The Imagenet dataset, however, is  Figure <a data-figure-ref="fig-umap-imagenet"></a> above contains $N=250000$ points. That's over 62 billion entries in the comparison matrix, which does not fit in a consumer grade GPU.
 
-To circumvent this annoying limitation, there are several ideas worth exploiting. First, the reference vectors can be used to eliminate irrelevant pairs whose cosine similarity is too low, by only considering a sparse subset of the edges for the $N$ points considered. In other words, performing a $k$-NN search. Fortunately, people far smarter than me have already put a great deal of effort implementing fast algorithms to do that, including GPU-accelerated versions such as [Nvidia's CuVS Neighbors](https://docs.nvidia.com/cuvs/api-reference/python-api-neighbors). Secondly, the kernel trick might be handy.
+To circumvent this annoying limitation, there are several ideas worth exploiting. First, the reference vectors can be used to eliminate irrelevant pairs whose cosine similarity is too low, by only considering a sparse subset of the edges for the $N$ points considered. In other words, performing a $k$-NN search which yields a sparse graph $(V,E)$ with $|V| = N$ (the total number of points) and $|E| = o(N)$. Fortunately, people far smarter than me have already put a great deal of effort implementing fast algorithms to do that, including GPU-accelerated versions such as [Nvidia's CuVS Neighbors](https://docs.nvidia.com/cuvs/api-reference/python-api-neighbors). Secondly, the kernel trick might be handy.
 
 
-So, according to the figures above, the comparison kernel in the model's normed embeddings ${x_i}_{i}$ space should reward meaningful cosine similarities: the affinity on an edge $e_{i,j} = (x_i, x_j)$ is defined as follows:
+So, according to the figures above, the primary comparison kernel in the model's normed embeddings $({x_i})_{1 \le i \le N}$ space should reward meaningful cosine similarities: the affinity on an edge $e = (i, j)$ is defined as follows:
 
 $$
-a_{e_{i,j}} = \exp (1 - \langle x_i, x_j \rangle)
+\alpha_{i,j} =
+\begin{cases}
+\exp\left(1 - \langle x_i, x_j \rangle\right) & \text{if } (i,j) \in E, \\
+0 & \text{otherwise.}
+\end{cases}
 $$
 
-Affinities are only computed on edges of the sparse graph from the $k$-NN reduction. The artificial probability distribution $P$ results from it by normalizing so all edges weights sum to 1: $p_e = \frac{a_e}{Z}$ with  $Z = \sum_{e^\prime} a_{e^\prime}$. In practice it can be stored in a sparse Torch tensor.
+Affinities are only computed on edges of the sparse graph from the $k$-NN reduction indices of the sparse matrix of nearest neighbors. In practice it can is stored in a sparse Torch tensor and. The artificial probability distribution $P$ results from it by normalizing so all edges weights sum to 1:
+$$
+p_e = \frac{\alpha_e}{Y}
+$$
+with  $Y = \sum_{e} \alpha_{e}$.
+
+
+The secondary kernel $\kappa$ for the target embeddings in $\mathcal{S}^3 \subset \mathbb{R}^3$. In the target space, that secondary comparison kernel $\kappa$ has to make it possible to compute $Z = \sum_e \kappa_e$ over *all* $\frac{N(N-1)}{2}$ edges without ever materializing the full matrix of pairwise comparisons $[\kappa_{i,j}]_{1 \le i,j \le N}$ in the VRAM, in order to compute
+$$
+q_{i,j} = \frac{\kappa_e}{Z}
+$$
 
 
 
+The final objective is $\mathcal{L} = KL(P\|Q)$.
 
+Why do we need to sum over all comparisons for $\kappa$ anyway? This escaped my understanding at first. Researching showed the following. Expanding the KL divergence yields
+$$
+\mathcal{L} = \sum_e p_e \log \frac{p_e}{q_e} = \left( \sum_e p_e \log p_e \right) - \left( \sum_e p_e \log q_e \right)
+$$
+
+The second sum can be further expanded to $- \left( \sum_e p_e \log \kappa_e \right) + \log Z$. Removing terms inside $Z$ removes repulsion terms between each embedded datapoint on the sphere, since increasing any $\kappa_e$ increases the loss. So, the full $\log Z$ encourages points to spread over the whole surface of the sphere. A subset of these repulsive effects might supposedly result in a suboptimal solution.
+
+A valid kernel possibility to make it easy to compute $Z$ is, for example, any affine-bilinear kernel like $(x,y) \mapsto \frac{1 + \langle x, y\rangle}{2}$, because then in the target space
+$$
+Z = \sum_{1 \le i, j \le N} \frac{1 + \langle x_i, x_j\rangle}{2} = \frac{N^2}{2} + \frac{1}{2} \left\| \sum_{i=1}^N x_i \right\|^2
+$$
+
+consequently summing over all edges
+$$
+Z = \sum_{1 \le i < j \le N} \frac{1 + \langle x_i, x_j\rangle}{2} = \frac{N(N-2)}{4} + \frac{1}{4} \left\| \sum_{i=1}^N x_i \right\|^2
+$$
+
+and performing the reduction $\sum_{i=1}^N x_i$ is doable in $O(N)$ steps.
 
 ## Conclusion
 This was a fun experiment bridging together research data and models that are more than 20 years apart. I had heard about the Platonic Representation Hypothesis [@huh2024platonicrepresentationhypothesis] suggesting that all deep learning models converge to representations that share a common structure. This small-scale experiment supports a claim that may not be very groundbreaking, but it confirms that modern vision models have captured representations that roughly follow the same preconceptions as humans put on language, according to plausible metrics. I might want to try and extend the testing with more elaborate language embeddings like Word2Vec [@word2vec] or even LLMs one day.
