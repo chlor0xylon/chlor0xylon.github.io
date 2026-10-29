@@ -20,7 +20,7 @@ Looking at partial graph representations of the WordNet graph induced by the nod
 <figure id="fig-entity-to-dog" class="figure-wide" style="width: min(480px, 100%); margin-inline: auto;">
 	<img
 		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1782216872/subgraph_r5cbre.svg"}
-		alt="Overview of the whole process to compute concepts, and prototype images with intermediary steps"
+		alt="Directed graph of WordNet showing all paths from the root 'entity' down to the subcategory 'domestic dog'"
 		loading="lazy"
 		style="width: 100%; height: auto; object-fit: contain;"
 	/>
@@ -34,7 +34,7 @@ Looking at partial graph representations of the WordNet graph induced by the nod
 <figure id="fig-root-depth-4" class="figure-wide">
 	<img
 		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1782230600/entity_to_depth_4_qhvegg.svg"}
-		alt="Overview of the whole process to compute concepts, and prototype images with intermediary steps"
+		alt="Tree-like graph of WordNet metaclass nodes reachable from the root within four steps"
         loading="lazy"
         style="aspect-ratio: auto;"
 	/>
@@ -82,7 +82,7 @@ The resulting colormaps are interesting: with three spectral embedding dimension
 <figure id="fig-complete-graph-with-colormap" class="figure-wide">
 	<img
 		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1782234404/imagenet_multicolor_cfqgga.webp"}
-		alt="Overview of the whole process to compute concepts, and prototype images with intermediary steps"
+		alt="Large rendering of the WordNet hierarchy induced by ImageNet classes, with leaf categories colored by a 3D spectral embedding mapped to RGB and metaclasses in light grey"
         loading="lazy"
         style="aspect-ratio: auto;"
 	/>
@@ -98,7 +98,7 @@ Another remarkable result of the spectral embeddings based on the previous specu
 <figure id="fig-bicolor-hierarchy" class="figure-wide" style="width: min(420px, 100%); margin-inline: auto;">
 	<img
 		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1782579118/bicolor_hierarchy_sample_spqd6y.svg"}
-		alt="Overview of the whole process to compute concepts, and prototype images with intermediary steps"
+		alt="Sample of ImageNet categories ordered along a single spectral embedding axis, colored on a blue-to-red scale"
         loading="lazy"
         style="aspect-ratio: auto;"
 	/>
@@ -119,7 +119,7 @@ The fact that the categories of the ImageNet dataset are part of a larger knowle
 
 [^note-emergence]: In the first DINO paper, the authors ecplicitly described that their learning student-teacher networks featured emergent properties by learning embeddings with no labels at all, driven only by crops and partial views.
 
-#### With a simple dimensionality reduction
+#### With a planar dimensionality reduction technique
 
 To test the above hypothesis, I ran a 2D UMAP dimensionality reduction on the CLS tokens of 250000 unaltered random ImageNet samples (about a fifth of the total dataset size) through DINOv3 ConvNeXt Tiny variant (see <a data-figure-ref="fig-umap-imagenet"></a>), and I colored the points depending in their label with the RGB colormap derived from the aforementioned similarity spectral embedding.
 
@@ -128,7 +128,7 @@ The conclusion is already clear: at least on this very model, at least to some e
 <figure id="fig-umap-imagenet" class="figure-wide" style="width: min(480px, 100%); margin-inline: auto;">
 	<img
 		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1782239565/umap__rjozo5.png"}
-		alt="Overview of the whole process to compute concepts, and prototype images with intermediary steps"
+		alt="2D UMAP projection of DINOv3 embeddings of ImageNet images, with points colored by class label using the WordNet-derived colormap"
         loading="lazy"
         style="aspect-ratio: auto;"
 	/>
