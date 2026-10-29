@@ -139,6 +139,45 @@ The conclusion is already clear: at least on this very model, at least to some e
 </figure>
 
 
+#### With a manual embedding procedure
+Ok, UMAP was straightforward and easy but planar dimensionality reduction techniques have always bugged me for redcucing embeddings from a neural network, because in high dimension, distance becomes nearly meaningless and vectors, and direction is what mainly encodes semantic meaning. 
+
+<figure id="fig-umap-imagenet" class="figure-wide" style="width: min(480px, 100%); margin-inline: auto;">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1793282928/latent_distance_histogram_u7qqht.svg"}
+		alt="Distribution of pairwise distances between ImageNet image embeddings from DINOv3 ConvNeXt backbone"
+        loading="lazy"
+        style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Distribution of pairwise distances between ImageNet image embeddings from DINOv3 ConvNeXt backbone
+	</figcaption>
+</figure>
+
+
+Moreover, neural networks such as DINO are well-trained and well-calibrated to output vectors in a reduced vicinity of the origin. In other words, those vectors mainly exist around a hypersphere. That is the reason why t-SNE and UMAP often "wrap" representations around and tear apart similar points to opposite ends of the figure, even though they may be closer than suggested in the original space. It does not seem to have been particularly the case in the above UMAP, but still, I set out to instead embed the points on a periodic manifold, more specifically, a simple 3D sphere, instead of relying on handy [Nvidia's GPU-accelerated manifold implementations](https://docs.nvidia.com/cuml/latest/api/cuml.manifold/) like UMAP, that only produce embeddings in the 2D plane. My intuition is that the procedure should allow the points should reach an equilibrium by crowding in a finite space and self-organize so as to make similar points group together, and dissimilar points repulse away from each other.
+
+In order to proceed, I imagined the following.
+- First, define a comparison kernel in the original space
+- Define a comparison kernel in the embedding space
+- Train the embeddings in the target space to maximize agreement between the two pairwise similarity matrices
+
+At first I wan't exactly sure about how to implement the third task, and what it would mean to maximize agreement. After a bit of digging, I found out that the most idiomatic way was to derive probability a distribution over the edges of the complete graph of similarity measures from the kernel, do that for both spaces and minimize the KL divergence between both distributions while training the target embeddings.
+It turns out that such a procedure is, as I understood it, roughly what runs algorithms like UMAP or t-SNE. Dimensionality is our ennemy since pairwise comparisons grow quadratically with the number of elements. Figure <a data-figure-ref="fig-umap-imagenet"></a> above contains $N=250000$ points. That's over 62 billion entries in the comparison matrix, which does not fit in a consumer grade GPU.
+
+To circumvent this dreadful situation, there are several ideas worth exploiting. First, the reference vectors can be used to filter out irrelevant pairs, by only considering a sparse subset of the edges for the $N$ points considered. Fortunately, prople far smarter than me have already put a great deal of effort implementing fast algorithms to do that, including GPU-accelerated versions such as [Nvidia's CuVS Neighbors](https://docs.nvidia.com/cuvs/api-reference/python-api-neighbors). Secondly, the kernel trick might be handy.
+
+
+So, I chose to consider the following kernel in the input space:
+
+$$
+k(x_i, x_j) = \exp (\langle x_i, x_j \rangle)
+$$
+in order to dampen the effect of negatively correlated pairs and exaggerate high correlations.
+
+
+
 
 ## Conclusion
 This was a fun experiment bridging together research data and models that are more than 20 years apart. I had heard about the Platonic Representation Hypothesis [@huh2024platonicrepresentationhypothesis] suggesting that all deep learning models converge to representations that share a common structure. This small-scale experiment supports a claim that may not be very groundbreaking, but it confirms that modern vision models have captured representations that roughly follow the same preconceptions as humans put on language, according to plausible metrics. I might want to try and extend the testing with more elaborate language embeddings like Word2Vec [@word2vec] or even LLMs one day.
