@@ -60,7 +60,7 @@ const dataUrl = withBase("/imagenet-graph.json");
 	const graph = new Graph({ type: "directed" });
 	const byLabel = new Map<string, string>();
 	for (const [id, label, x, y, color, isClass] of nodes) {
-		graph.addNode(String(id), { label, isClass, x, y, color, size: isClass ? 4 : 6 });
+		graph.addNode(String(id), { label, isClass, x, y, color, size: isClass ? 5 : 3 });
 		byLabel.set(label, String(id));
 		labels.append(new Option(label));
 	}
