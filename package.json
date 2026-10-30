@@ -34,6 +34,7 @@
 		"astro-seo-schema": "^5.2.0",
 		"astro-webmanifest": "^1.0.0",
 		"cssnano": "^7.1.9",
+		"graphology": "^0.26.0",
 		"hastscript": "^9.0.1",
 		"katex": "^0.16.45",
 		"mdast-util-directive": "^3.1.0",
@@ -48,6 +49,7 @@
 		"satori-html": "^0.3.2",
 		"schema-dts": "^1.1.5",
 		"sharp": "^0.34.5",
+		"sigma": "^3.0.3",
 		"unified": "^11.0.5",
 		"unist-util-visit": "^5.1.0"
 	},
