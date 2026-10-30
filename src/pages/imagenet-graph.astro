@@ -42,6 +42,7 @@ const dataUrl = withBase("/imagenet-graph.json");
 <script>
 	import Graph from "graphology";
 	import Sigma from "sigma";
+	import { drawDiscNodeHover } from "sigma/rendering";
 
 	type Payload = {
 		nodes: [number, string, number, number, string, boolean][];
@@ -59,7 +60,7 @@ const dataUrl = withBase("/imagenet-graph.json");
 	const graph = new Graph({ type: "directed" });
 	const byLabel = new Map<string, string>();
 	for (const [id, label, x, y, color, isClass] of nodes) {
-		graph.addNode(String(id), { label, x, y, color, size: isClass ? 4 : 6 });
+		graph.addNode(String(id), { label, isClass, x, y, color, size: isClass ? 4 : 6 });
 		byLabel.set(label, String(id));
 		labels.append(new Option(label));
 	}
@@ -67,9 +68,25 @@ const dataUrl = withBase("/imagenet-graph.json");
 		graph.addEdge(String(source), String(target), { color: "#9998", size: 1 });
 	}
 
+	let hovered: string | null = null;
 	const renderer = new Sigma(graph, container, {
 		labelColor: { color: textColor },
 		labelRenderedSizeThreshold: 8,
+		// Sigma always draws the hover box in white, so force a dark label on it.
+		defaultDrawNodeHover: (context, data, settings) =>
+			drawDiscNodeHover(context, data, { ...settings, labelColor: { color: "#000" } }),
+		// Only terminal nodes (the ImageNet classes) keep a permanent label; the others show it on hover.
+		nodeReducer: (node, data) =>
+			node === hovered || data.isClass ? data : { ...data, label: null },
+	});
+
+	renderer.on("enterNode", ({ node }) => {
+		hovered = node;
+		renderer.refresh();
+	});
+	renderer.on("leaveNode", () => {
+		hovered = null;
+		renderer.refresh();
 	});
 
 	search.addEventListener("change", () => {
