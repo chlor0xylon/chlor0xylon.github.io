@@ -148,7 +148,7 @@ Ok, UMAP was straightforward and easy but planar dimensionality reduction techni
 
 The curse of dimensionality is that in high dimension, distance becomes nearly meaningless because points tend to be very far apart each other due to the sheer number of dimensions.
 
-Cosine similarities, on the other hand, tend to convey much more information, so direction is what mainly encodes semantic meaning. Of course, angle separation and distance are related by identity $\|x - y\|_2 = \|x\| + \|y\| - 2 \cos (\theta)\|x\|  \|y\|$ so both concepts are not entirely uncoupled. But it is a well-known fact that in a $d$-dimensional space, there can fit as many as $2^{\Theta (\epsilon^2 d)}$ unit vectors with all pairwise inner products $\le \epsilon$. Almost all statistical learning courses introduce one formulation of that fact or another. <a data-figure-ref="fig-pairwise-theoretical-cosine"></a> is a plot of the probability density function for the random variable measuring the cosine similarity between two points drawn at random on the surface of a hypersphere in dimension $d=768$ (the embedding dimension of the ConvNeXt architecture). For reference, this random variable is $C = 2B - 1$ where $B \sim \mathcal{B}(\frac{d-1}{2}, \frac{d-1}{2})$ (the beta law). It is incredibly narrow for large values of $d$. So, comparing cosine distances of well-calibrated neural networks (networks whose marginal output vector elements are not skewed) make any value above beyond any majority percentile very significant. Computing the value for the 99.5th percentile of the theoretical distribution `scipy.special.beta(383.5, 383.5, loc=-1, scale=2).ppf(0.995)` yields $0.0928$, so any pair of embeddings below $-0.0928$ or above $0.0928$ are in either tail of the distribution. 
+Cosine similarities, on the other hand, tend to convey much more information, so direction is what mainly encodes semantic meaning. Of course, angle separation and distance are related by identity $\|x - y\|_2 = \|x\| + \|y\| - 2 \cos (\theta)\|x\|  \|y\|$ so both concepts are not entirely uncoupled. But it is a well-known fact that in a $d$-dimensional space, there can fit as many as $2^{\Theta (\epsilon^2 d)}$ unit vectors with all pairwise inner products $\le \epsilon$. Almost all statistical learning courses introduce a formulation of that fact one way or another. <a data-figure-ref="fig-pairwise-theoretical-cosine"></a> is a plot of the probability density function for the random variable measuring the cosine similarity between two points drawn at random on the surface of a hypersphere in dimension $d=768$ (the embedding dimension of the ConvNeXt architecture). For reference, this random variable is $C = 2B - 1$ where $B \sim \mathcal{B}(\frac{d-1}{2}, \frac{d-1}{2})$ (the beta law). It is incredibly narrow for large values of $d$. So, comparing cosine distances of well-calibrated neural networks (networks whose marginal output mean vector is near 0) make any value above beyond any majority percentile very significant. Computing the value for the 99.5th percentile of the theoretical distribution `scipy.special.beta(383.5, 383.5, loc=-1, scale=2).ppf(0.995)` yields $0.0928$, so any pair of embeddings below $-0.0928$ or above $0.0928$ are in either tail of the distribution. 
 
 
 
@@ -195,12 +195,12 @@ In order to proceed, I imagined the following.
 At first I wan't exactly sure about how to implement the third task, and what it would mean to maximize agreement. After a bit of digging, I found out that the most idiomatic way was to derive probability a distribution over the edges of the complete graph of similarity measures from the kernel, do that for both spaces and minimize the KL divergence between both distributions while training the target embeddings.
 
 
-It turns out that such a procedure is, as I understood it, roughly what runs algorithms like UMAP or t-SNE. Dimensionality is our ennemy since the number of pairs grows quadratically with the number of elements. The Imagenet dataset, however, is  Figure <a data-figure-ref="fig-umap-imagenet"></a> above contains $N=250000$ points. That's over 62 billion entries in the comparison matrix, which does not fit in a consumer grade GPU.
+It turns out that such a procedure is, as I understood it, roughly what runs algorithms like UMAP or t-SNE. Dimensionality is our ennemy since the number of pairs grows quadratically with the number of elements. The Imagenet dataset, however, is  Figure <a data-figure-ref="fig-umap-imagenet"></a> above contains $N=250000$ points. That's over 62 billion entries in the comparison matrix, which sadly, does not fit in a consumer grade GPU.
 
 To circumvent this annoying limitation, there are several ideas worth exploiting. First, the reference vectors can be used to eliminate irrelevant pairs whose cosine similarity is too low, by only considering a sparse subset of the edges for the $N$ points considered. In other words, performing a $k$-NN search which yields a sparse graph $(V,E)$ with $|V| = N$ (the total number of points) and $|E| = o(N)$. Fortunately, people far smarter than me have already put a great deal of effort implementing fast algorithms to do that, including GPU-accelerated versions such as [Nvidia's CuVS Neighbors](https://docs.nvidia.com/cuvs/api-reference/python-api-neighbors). Secondly, the kernel trick might be handy.
 
 #### Kernel in the original space
-So, according to the figures above, the primary comparison kernel in the model's normed embeddings $({x_i})_{1 \le i \le N}$ space should reward meaningful cosine similarities: the affinity on an edge $e = (i, j)$ is defined as follows:
+So, according to the figures above, the primary comparison kernel in the model's normed embeddings $\{x_i\}_{1 \le i \le N} \subset \mathbb{R}^{768}$ space should reward meaningful cosine similarities: the affinity on an edge $e = (i, j)$ is defined as follows:
 
 $$
 \alpha_e =
@@ -219,7 +219,7 @@ with  $Y = \sum_{e} \alpha_{e}$.
 
 #### Kernel in the target space
 
-The secondary kernel $\kappa$ for the target embeddings in $\mathcal{S}^3 \subset \mathbb{R}^3$. In the target space, that secondary comparison kernel $\kappa$ has to make it possible to compute $Z = \sum_e \kappa_e$ over *all* $\frac{N(N-1)}{2}$ edges without ever materializing the full matrix of pairwise comparisons $[\kappa_{i,j}]_{1 \le i,j \le N}$ in the VRAM, in order to compute
+The secondary kernel $\kappa$ for the target embeddings in $\mathcal{S}^3 \subset \mathbb{R}^3$. In this target space, that secondary comparison kernel $\kappa$ has to make it possible to compute $Z = \sum_e \kappa_e$ over *all* $\frac{N(N-1)}{2}$ edges without ever materializing the full matrix of pairwise comparisons $[\kappa_{i,j}]_{1 \le i,j \le N}$ in the VRAM, in order to compute
 $$
 q_e = \frac{\kappa_e}{Z}
 $$
@@ -260,7 +260,7 @@ Anyway, once these kernel details are sorted out, the rest is up to a simple PyT
 
 
 #### Results
-
+So I ran the procedure described above with 150000 datapoints, sourcing the sparse graph from observing $k=25$ closest neighbors for each point, and I trained the projection with the aforementioned objective. The training showed a very fast and effective convergence that rapidly hit a floor.
 <a data-figure-ref="fig-spherical-aitoff"></a> shows the resulting spherical embeddings flattened with an Aitoff projection, colored with the same WordNet-derived colormap as before. <a data-figure-ref="fig-spherical-globe-views"></a> shows the same 3D spherical embeddings as a series of globe views.
 
 <figure id="fig-spherical-aitoff" class="figure-wide">
@@ -289,10 +289,10 @@ Anyway, once these kernel details are sorted out, the rest is up to a simple PyT
 	</figcaption>
 </figure>
 
-Overall, the spherical projection looks quite close to the one obtained with UMAP in <a data-figure-ref="fig-umap-imagenet"></a>. THe grouping of similar colors checks out as per the WordNet structure, and it seems that the manual optimization with custom-chosen kernels yield that same filament structure of the embeddings. It's indicative that the Imagenet dataset exists in a somewhat limited subspace of the ConvNeXt semantic space trained with the DINOv3 loss. We can see a large Atlantic ocean of unpopulated, white space. Provided the complete repulsion terms have been retained as explained above, this too hints a some strong self-similarity in the dataset (heralded by the shift towards positive cosine similarities in <a data-figure-ref="fig-pairwise-imagenet-cosine"></a>).
+Overall, the spherical projection looks quite close to the one obtained with UMAP in <a data-figure-ref="fig-umap-imagenet"></a>. "The visible clusters of similar colors are consistent with the WordNet structure, and it seems that the manual optimization with custom-chosen kernels results in the same filament-like structure as in the UMAP projection. It's indicative that the Imagenet dataset exists in a somewhat limited subspace of the ConvNeXt semantic space trained with the DINOv3 loss. We can see a large Atlantic ocean of unpopulated, white space. Provided the complete repulsion terms have been retained as explained above, this too hints a some strong self-similarity in the dataset (heralded by the shift towards positive cosine similarities in <a data-figure-ref="fig-pairwise-imagenet-cosine"></a>).
 
 ## Conclusion
-This was a fun experiment bridging together research data and models that are more than 20 years apart. This small-scale experiment supports a claim that may not be very groundbreaking, but it confirms that modern vision models have captured representations that roughly follow the same preconceptions as humans put on language 20 years ago when the WordNet hierarchy was produced. I might want to try and extend the testing with more elaborate language embeddings like Word2Vec [@word2vec] or even LLMs one day to test the Platonic Representation Hypothesis [@huh2024platonicrepresentationhypothesis].
+This was a fun experiment bridging together research data and models that are more than 20 years apart. This small-scale experiment supports a claim that may not be very groundbreaking, but it confirms that modern vision models have captured representations that roughly follow the same preconceptions as humans put on language 20 years ago when the WordNet hierarchy was produced. I might want to try and extend the experiment with more elaborate language embeddings like Word2Vec in its time [@word2vec], or even LLMs one day to test the Platonic Representation Hypothesis [@huh2024platonicrepresentationhypothesis].
 
 ## References
 
