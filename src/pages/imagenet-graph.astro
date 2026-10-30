@@ -1,18 +1,19 @@
 ---
+import { getEntry, render } from "astro:content";
 import PageLayout from "@/layouts/Base.astro";
 import { withBase } from "@/utils/path";
+
+const entry = await getEntry("page", "imagenet-graph");
+if (!entry) throw new Error("Missing src/content/page/imagenet-graph.mdx");
+const { Content } = await render(entry);
 
 const dataUrl = withBase("/imagenet-graph.json");
 ---
 
-<PageLayout meta={{ title: "ImageNet hierarchy graph", description: "Interactive view of the WordNet hierarchy condensed onto the 1000 ImageNet classes." }}>
+<PageLayout meta={{ title: entry.data.title, description: entry.data.description }}>
 	<section aria-labelledby="graph-title">
-		<h1 id="graph-title">ImageNet hierarchy graph</h1>
-		<p>
-			The WordNet hierarchy condensed onto the 1000 ImageNet classes. Drag to pan, scroll to zoom,
-			hover a node to see its label. Node colors come from the spectral embedding described in
-			<a href={withBase("/posts/imagenet-hidden-hierarchy/")}>the article</a>.
-		</p>
+		<h1 id="graph-title">{entry.data.title}</h1>
+		<Content />
 		<input id="graph-search" type="search" list="graph-labels" placeholder="Find a node…" />
 		<datalist id="graph-labels"></datalist>
 		<div id="graph" data-src={dataUrl} role="img" aria-label="Interactive ImageNet hierarchy graph"></div>
