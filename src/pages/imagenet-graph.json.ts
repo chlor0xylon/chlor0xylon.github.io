@@ -4,7 +4,7 @@ import raw from "@/assets/figures/imagenet_hierarchy.json";
 // The Graphviz layout is a top-down tree about 68:1 wide. It is turned into a left-to-right one
 // (root on the left, leaves stacked vertically so labels read horizontally), and the rank axis is
 // stretched (less than needed for a square) so the result is taller than wide.
-const RANK_STRETCH = 25;
+const RANK_STRETCH = 30;
 
 interface RawNode {
 	_gvid: number;
