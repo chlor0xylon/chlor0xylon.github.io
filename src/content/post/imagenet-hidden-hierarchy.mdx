@@ -259,6 +259,34 @@ Anyway, once these kernel details are sorted out, the rest is up to a simple PyT
 
 #### Results
 
+<a data-figure-ref="fig-spherical-aitoff"></a> shows the resulting spherical embeddings flattened with an Aitoff projection, colored with the same WordNet-derived colormap as before. <a data-figure-ref="fig-spherical-globe-views"></a> shows the same 3D spherical embeddings as a series of globe views.
+
+<figure id="fig-spherical-aitoff" class="figure-wide">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1793356847/spherical_projection_aitoff_czcg8j.png"}
+		alt="Aitoff projection of the spherical embeddings of ImageNet samples, colored by class using the WordNet-derived colormap"
+		loading="lazy"
+		style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Aitoff projection of the spherical embeddings of 150000 ImageNet samples
+	</figcaption>
+</figure>
+
+<figure id="fig-spherical-globe-views" class="figure-wide">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1793356855/spherical_globe_views_isakay.png"}
+		alt="Series of globe views of the 3D spherical embeddings of ImageNet samples, colored by class using the WordNet-derived colormap"
+		loading="lazy"
+		style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Globe views of the same 3D spherical embeddings of 150000 ImageNet samples
+	</figcaption>
+</figure>
+
 ## Conclusion
 This was a fun experiment bridging together research data and models that are more than 20 years apart. I had heard about the Platonic Representation Hypothesis [@huh2024platonicrepresentationhypothesis] suggesting that all deep learning models converge to representations that share a common structure. This small-scale experiment supports a claim that may not be very groundbreaking, but it confirms that modern vision models have captured representations that roughly follow the same preconceptions as humans put on language, according to plausible metrics. I might want to try and extend the testing with more elaborate language embeddings like Word2Vec [@word2vec] or even LLMs one day.
 
