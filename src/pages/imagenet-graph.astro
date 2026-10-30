@@ -54,10 +54,20 @@ const dataUrl = withBase("/imagenet-graph.json");
 	const search = document.getElementById("graph-search") as HTMLInputElement;
 	const labels = document.getElementById("graph-labels") as HTMLDataListElement;
 
+	// Canvas can't parse the template's `--theme-text` triplet directly, so let the browser resolve it
+	// to a plain `rgb(...)` color.
+	function readTextColor(): string {
+		const probe = document.createElement("span");
+		probe.style.color = "hsl(var(--theme-text))";
+		document.body.append(probe);
+		const color = getComputedStyle(probe).color;
+		probe.remove();
+		return color;
+	}
+
 	async function main() {
 	const { nodes, edges }: Payload = await (await fetch(container.dataset.src as string)).json();
 
-	const textColor = `hsl(${getComputedStyle(document.documentElement).getPropertyValue("--theme-text")})`;
 	const graph = new Graph({ type: "directed" });
 	const byLabel = new Map<string, string>();
 	for (const [id, label, x, y, color, isClass] of nodes) {
@@ -71,7 +81,7 @@ const dataUrl = withBase("/imagenet-graph.json");
 
 	let hovered: string | null = null;
 	const renderer = new Sigma(graph, container, {
-		labelColor: { color: textColor },
+		labelColor: { color: readTextColor() },
 		labelRenderedSizeThreshold: 8,
 		// Sigma always draws the hover box in white, so force a dark label on it.
 		defaultDrawNodeHover: (context, data, settings) =>
@@ -80,6 +90,11 @@ const dataUrl = withBase("/imagenet-graph.json");
 		nodeReducer: (node, data) =>
 			node === hovered || data.isClass ? data : { ...data, label: null },
 	});
+
+	// Follow the light/dark toggle (it sets `data-theme` on <html>).
+	new MutationObserver(() => {
+		renderer.setSetting("labelColor", { color: readTextColor() });
+	}).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
 	renderer.on("enterNode", ({ node }) => {
 		hovered = node;
