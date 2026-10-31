@@ -235,20 +235,20 @@ $$
 
 The non-constant term can be further expanded to $\log Z - \sum_e p_e \log \kappa_e$. Removing terms inside $Z$ removes repulsion terms between each embedded datapoint on the sphere, since increasing any $\kappa_e$ increases the loss. So, the full $\log Z$ encourages points to spread over the whole surface of the sphere. A subset of these repulsive effects might supposedly result in a suboptimal solution.
 
-A valid kernel possibility to make it easy to compute $Z$ is, for example, any affine-bilinear kernel like $(x,y) \mapsto 1 + \langle x, y\rangle$ fits the bill, so that
+A valid kernel possibility to make it easy to compute $Z$ is, for example, any affine-bilinear kernel like $(x,y) \mapsto 1 + \langle x, y\rangle$ fits the bill, for example:
 
 $$
-\kappa_e = \frac{1 + \langle x_i, x_j \rangle}{2}
+\kappa_e = 1 + \langle x_i, x_j \rangle
 $$
 
 because then in the target space
 $$
-Z = \sum_{1 \le i, j \le N} \frac{1 + \langle x_i, x_j\rangle}{2} = \frac{N^2}{2} + \frac{1}{2} \left\| \sum_{i=1}^N x_i \right\|^2
+\sum_{1 \le i, j \le N} 1 + \langle x_i, x_j\rangle = N^2 +  \left\| \sum_{i=1}^N x_i \right\|^2
 $$
 
 consequently summing over all edges
 $$
-Z = \sum_{1 \le i < j \le N} \frac{1 + \langle x_i, x_j\rangle}{2} = \frac{N(N-2)}{4} + \frac{1}{4} \left\| \sum_{i=1}^N x_i \right\|^2
+Z = \sum_{1 \le i < j \le N} 1 + \langle x_i, x_j\rangle = \frac{N(N-2)}{2} + \frac{1}{2} \left\| \sum_{i=1}^N x_i \right\|^2
 $$
 
 and performing the reduction $\sum_{i=1}^N x_i$ is doable in $O(N)$ steps.
