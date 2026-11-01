@@ -215,32 +215,31 @@ $$
 \arg\min_{\mathbf{U}\in \mathbb{R}^{n\times r}, \, \mathbf{W}\in \mathbb{R}^{p\times r}} \|\mathbf{X} - \mathbf{UW}^\top \|_F^2 \quad \text{s.t.} \quad \mathbf{W}, \mathbf{U} \ge 0
 $$
 
-where $\mathbf{W}$ is the _dictionary of concepts_ onto which the dataset is projected and $\mathbf{U}$ is the dataset decomposition, i.e. the assignments of each data point to each of the $r$ concepts. For dictionary learning to mean anything, $r$ and $n$ must be chosen so that $r < n$.
+where $\mathbf{W}$ is the _dictionary of concepts_ onto which the dataset is projected and $\mathbf{U}$ is the dataset decomposition, i.e. the assignments of each data point to each of the $r$ concepts. For dictionary learning to be meaningful, $r$ and $n$ must be chosen such that $r < n$.
 
 Note that $\mathbf{U}$ and $\mathbf{W}$ are required to belong to the positive orthant of matrices with **non-negative entries**. That constraint is a deliberate modeling choice. Note that the solution space is convex, but the search is made arduous because positivity prevents the use of off-the-shelf linear algebra results. This formulated problem  is known as the **Non-Negative Least Squares problem** (NNLS), and I first encountered during my Master's Thesis in the context of beamforming in transmission-related problems.
 
 
 ### Naïve solving procedure
-Solving the above mathematical problem can be approached in at least a few different manners. In Fel's PhD thesis manuscript [@fel2025sparksexplainabilityrecentadvancements], in section C.1.3 along with the implementation details of CRAFT, they explain that they used a method called alternating direction method of multipliers (ADMM for short), which I also encountered during my Master's Thesis, because it arises a lot in the literature about applied mathematical optimization problems with cumbersome constraints such as non-negativity. There is no point explaining ADMM here, as it is better stated and presented throughout numerous papers, articles and posts, and I will not make use of it anyway.
+Solving the above mathematical problem can be approached in at least a few different manners. In Fel's PhD thesis [@fel2025sparksexplainabilityrecentadvancements], section C.1.3 of the manuscript along the implementation details of CRAFT, they explain that they used a method called alternating direction method of multipliers (ADMM for short), which I also encountered during my Master's Thesis, because it arises a lot in the literature about applied mathematical optimization problems with cumbersome constraints such as non-negativity. There is no point outlining ADMM int his post, as it is better explained in numerous other papers, articles and posts freely available, and I won't use it anyway.
 
 
 ### Toward a more holistic approach
-@holistic2023fel published the results of the CRAFT method on an interactive website called the [Lens Project](https://serre-lab.github.io/Lens/) that allows to navigate and visualize them. There only retain a few major concepts per class which sums to quite a large pool, but they did not actually compute them across the whole dataset at once. Rather, the dictionary is computed on a per-class basis and is low-rank from the start to only retain a handful of concepts per class (they take 10). In a later stage, their attribution method yields the contribution scores to the class, and they are compared against one another.
+@holistic2023fel published an implementation of the CRAFT method resulting in an interactive website called the [Lens Project](https://serre-lab.github.io/Lens/) that allows to navigate and visualize them. They only retain a few major concepts per class which sums to quite a large pool, but they did not actually compute them across the whole dataset at once, as far as I understand. Rather, the dictionary is computed on a per-class basis and is low-rank from the start to only retain a handful of concepts per class (they take 10). In a later stage, their attribution method yields the contribution scores to each class.
 
 
-On one hand, this significantly lowers the numerical complexity requirements since it cuts by a factor of 1000 the effective dataset size (remember that ImageNet has a thousand classes). The resulting concepts are then aggregated and compared with each other. On the other hand, this approach explicitly relies on the data being labelled, and it may considerably waste energy by recomputing shared concepts present across the different classes of the dataset.
+On one hand, this significantly lowers the numerical complexity requirements since it cuts by a factor of 1000 the effective dataset size (remember that ImageNet has a thousand classes). The resulting concepts are then aggregated together from all classes and compared with each other. On the other hand, this approach explicitly relies on the data being labelled, and it may considerably waste energy by recomputing shared concepts present across the different classes of the dataset.
 
-I wanted to try a more holistic--and perhaps more ambitious--approach, to make a dictionary with possibly orders of magnitude more concepts computed at once, regardless of there being labels available or not. The clear drawback of the paper's leveraged ADMM algorithm is that it requires storing the complete explained dataset (as well as the dictionary) in memory during the solving procedure. Even more, the ADMM algorithm needs duplicating the variables to account for the separation of optimization objective and constraint enforcement.
+And this is the crux of the matter: I wanted to try a more holistic--and perhaps more ambitious--approach, to make a dictionary with all concepts computed at once on the whole dataset, regardless of there being labels available or not. The clear drawback of the paper's leveraged ADMM algorithm is that it requires storing the complete explained dataset, i.e. the attributions (a.k.a. codes) in memory during the solving procedure. To make matters worse, the ADMM algorithm needs duplicating the variables to account for the separation of optimization objective and constraint enforcement.
 
+This may be feasible on each individual label slice of approximately 1,200 images, even on a beefy laptop because it's separable, but ADMM does not scale particularly well beyond that milestone. If we were to extend it to the full 1.2-million-image dataset $X$, storing as many latents over 384 dimensions in FP32 numbers already consumes about 2GB in memory. The codes array $U$ would be of the same order of magnitude, yet smaller (since $r < n$). Probably manageable even on most modern laptops even on a 8GB GPU, but we're on the edge: any $\times 4$ scaling on the dataset would probably becomes a dealbreaker on consumer hardware.
 
-Because of that, the ADMM does not scale particularly well. For example, the full ImageNet dataset contains 1.3 million images, so coding as many latents over 384 dimensions in FP32 numbers would take up about 2GB in memory. Probably manageable even on most modern laptops even in the VRAM, but we're nearly on the edge: any $\times 5$ scaling of dataset and memory IO would probably becomes a seriously limiting factor. 
-
-So we need a computationally more manageable algorithm, even if it means sacrifying convergence speed or even exactness. 
+My point is that we need a more tractable algorithm, even if it means sacrifying convergence speed or even exactness. Wee need to *stream the dataset and dispose of the codes*. That in itself, is a novelty to the experiment.
 
 ### Online solving procedure
 
 #### Decomposability of dictionary learning
-In hindsight, we are only really interested in the final dictionary $\mathbf{W}$ solution, _not_ the full transient decompositions $\mathbf{U}$ of the dataset, which can be recomputed at will once $\mathbf{W}$ is learned and frozen. The problem is separable in terms of the training data, thanks to the following equality:
+In hindsight, all we are intereseted in is the final dictionary $\mathbf{W}$ solution, _not_ the full transient decompositions $\mathbf{U}$ of the dataset, which can be recomputed at will once $\mathbf{W}$ is learned and frozen. The problem is separable in terms of the training data, thanks to the following equality:
 
 $$
 \|\mathbf{X} - \mathbf{UW}^\top \|_F^2 = \sum_{i=1}^{n} \| \mathbf{X}_{[i,:]} - \mathbf{U}_{[i,:]} \mathbf{W}\|_2^2
@@ -249,9 +248,9 @@ which goes to show that $\mathbf{W}$ could be conceptually updated by only consi
 
 
 #### Online Non-Negative Matrix Factorization
-So I began looking for an algorithm meeting that criterion. That in itself, is a small experiment to try. To my knowledge it hasn't been attempted on this scale in computer vision research on SOTA models latents.
+So I began looking for an algorithm meeting that criterion. To my knowledge it hasn't been attempted on this scale in computer vision research on SOTA models latents.
 
-It turns out that this problem is addressed in the literature. I found a paper about exactly that [@onlinelearning2009] exposing a procedure for online dictionary learning. By the way, Julien Mairal is also a credited author of the three DINO papers. Small world. They address the following problem:
+It turns out that this problem is addressed in the literature. I found a paper about exactly that [@onlinelearning2009] exposing a procedure for online dictionary learning. By the way, Julien Mairal is also a credited author in all three DINO papers. Small world. They address the following problem:
 
 $$
 \arg\min_{\mathbf{D} \in \mathbb{R}^{m\times k}, \alpha \in \mathbb{R}^{k\times n}} \|\mathbf{X} - \mathbf{D} \alpha \|_F^2 + \lambda \|\alpha\|_{1,1} \quad \text{s.t.} \quad \mathbf{D} \in \mathcal{C}
@@ -259,19 +258,21 @@ $$
 where $\mathcal{C}$ is the convex set of matrices whose column vectors belong to the unit ball for the $L_2$ Euclidian norm: $\mathcal{C} = \{\mathbf{D}\in \mathbb{R}^{m\times k}, \forall j \in \llbracket 1, k \rrbracket, \mathbf{d}_j^\top \mathbf{d}_j \le 1\}$.
 
 :::note
-For the sake of clarity, I adopted their notations, but here are equivalences between their conventions and the ones above:
+For the sake of clarity, I momentarily adopted their original notations, but here are equivalences between their conventions and the ones earlier:
 
-- $k \longleftrightarrow r$ is the rank (or dictionary size)
-- $m \longleftrightarrow p$ is the data dimensionality
-- $n \longleftrightarrow n$ is the dataset size
-- $\mathbf{D} \in \mathbb{R}^{m \times k} \longleftrightarrow \mathbf{W} \in \mathbb{R}^{p \times r}$ is the dictionary (or learned weights of interest)
-- $\alpha \in \mathbb{R}^{k \times n} \longleftrightarrow \mathbf{U}^\top \in \mathbb{R}^{r \times n} $ are the assignments (or codes)
-- $\mathbf{X} \in \mathbb{R}^{m \times n} \longleftrightarrow \mathbf{X} \in \mathbb{R}^{n \times p}$
+| Meaning | @onlinelearning2009 | Above |
+| --- | --- | --- |
+| Rank (or dictionary size) | $k$ | $r$ |
+| Data dimensionality | $m$ | $p$ |
+| Dataset size | $n$ | $n$ |
+| Dictionary (or learned weights of interest) | $\mathbf{D} \in \mathbb{R}^{m \times k}$ | $\mathbf{W} \in \mathbb{R}^{p \times r}$ |
+| Assignments (or codes) | $\alpha \in \mathbb{R}^{k \times n}$ | $\mathbf{U}^\top \in \mathbb{R}^{r \times n}$ |
+| Data matrix | $\mathbf{X} \in \mathbb{R}^{m \times n}$ | $\mathbf{X} \in \mathbb{R}^{n \times p}$ |
 :::
 
-The main two differences are the search space and the regularization term. To begin  with, they use the unit ball for the $\|\cdot\|_{2,\infty}$ column-wise norm in lieu of the orthant of poitwise non-negative elements, and they regularize the assignments $\alpha$ with the $L_1$ norm to favor sparse solutions. Regularizing the weights also avoids degeneracy in the solutions due to the degree of freedom of rescaling recoprocally $\alpha$ and $\mathbf{W}$.
+The two main differences with our objective are the search space and the regularization term. To begin  with, they use the unit ball for the $\|\cdot\|_{2,\infty}$ column-wise norm in lieu of the orthant of poitwise non-negative elements, and they regularize the assignments $\alpha$ with the $L_1$ norm to favor sparse solutions. Regularizing the weights also avoids degeneracy in the solutions due to the degree of freedom of rescaling recoprocally $\alpha$ and $\mathbf{W}$.
 
-They come up with an algorithm with proven convergence for solving that problem. The said algorithm has been reproduced below:
+They come up with an algorithm with proven convergence. The said algorithm is reproduced below:
 
 
 ```algorithm
@@ -337,21 +338,9 @@ Wonderful. This is exactly the setup we're looking for. The implications here af
 The paper describes a framework where the dictionary can be learned by only streaming one dataset element at a time, but the algorithm trivially generalizes to batch sizes above 1. 
 
 
-## Whole process overview
+## Methodology & implementation details
 
-In this section, I'm introducing the main steps of happening throughout the process of computing prototypes.
-<figure id="fig-online-dictionary-learning-svg" class="figure-wide">
-	<img
-		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781601482/overview-process_oworri.svg"}
-		width="357"
-		height="256"
-		alt="Overview of the whole process to compute concepts, and prototype images with intermediary steps"
-	/>
-	<figcaption>
-		<span class="label"></span>
-		Overview of this post's experiments
-	</figcaption>
-</figure>
+In this section, I'm introducing the main steps of happening throughout the process of computing prototypes as well as some implementation details.
 
 
 In order to get concepts and visualize them altogether according to the approach proposed by @holistic2023fel, I wrote several Python scripts that given a Hugging Face model and a dataset, perform in turn the following steps:
@@ -397,7 +386,20 @@ class InputImageBatch:
     - reloading images from the disk then replaying their transformations and finally displaying them.
 
 
-## Dictionary learning: implementation details
+<figure id="fig-online-dictionary-learning-svg" class="figure-wide">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781601482/overview-process_oworri.svg"}
+		width="357"
+		height="256"
+		alt="Overview of the whole process to compute concepts, and prototype images with intermediary steps"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Overview of this post's experiments
+	</figcaption>
+</figure>
+
+### Dictionary learning hot path
 The numerical computations of dictionary learning rely heavily on vectorized operations and linear algebra, so they are a natural fit for [Jax](https://docs.jax.dev/en/latest/). Unlike Pytorch, Jax provide first-class compiled loop operations for the target hardware. This is especially handy for iterative algorithms to solve linear algebra problems. Before this project I was familiar with PyTorch but I had never used Jax so it was a good incentive to test it.
 
 In the code, I kept the original notations with $\mathbf{W} \in \mathbb{R}^{p \times r}$ and $\mathbf{U} \in \mathbb{R}^{n \times r}$. However, since $\mathbf{U}$ is conceptually reserved for the full dataset codes, and is never materialized in memory, I named its batched counterpart $\mathbf{H} \in \mathbb{R}^{b\times r}$ where $b$ is the batch size with obviously $b < n$. At any step, we draw $\mathbf{X} \in \mathbb{R}^{b\times n}$ and apply the above algorithm.
@@ -412,17 +414,17 @@ def train_step(
     X: jnp.ndarray,   # (BATCH_SIZE, DATA_DIM)
     H0: jnp.ndarray,  # (BATCH_SIZE, DICT_SIZE)
     T: int,           # global step counter
-    lam: float,
+    lam: float,       # regularization weight
 ):
     H = nonnegative_lasso_fista(W=W, X=X, lam=lam, H0=H0)
     W, A, B = update_dictionary(W=W, H=H, X=X, A=A, B=B, T=T)
     return W, A, B
 ```
 
-### Non-negative LASSO sparse coding step
-The modified sparse positive coding step to compute $\alpha_t = \arg\min_{\alpha \in \mathbb{R}^k} \frac{1}{2}\|\mathbf{x}_t - \mathbf{D}_{t-1}\alpha\|_2^2 + \lambda \|\alpha\|_1$ is a procedure in and of itself. One could in principle simply call a generic convex optimization solver for this kind of problem, but such solvers almost all run on the CPU--apart from maybe some recent progress toward primal-dual hybrid gradient (PDHG) algorithms that can execute on GPUs. Calling a solver on the CPU at every step already induces a bad enough PCIE transfer latency penalty if we intend to use the CUDA backend for the subsequent dictionary update step and stats aggregation in Jax. And solely assembling the matrix of constraints and the objective term also represents very expensive operations from a memory standpoint since the solver won't share Jax arrays in memory anyway. This makes generic solver calls a poor fit for sustaining several dictionary-update iterations per second.
+#### Non-negative LASSO sparse coding step
+The modified sparse positive coding step to compute $\alpha_t = \arg\min_{\alpha \in \mathbb{R}^k} \frac{1}{2}\|\mathbf{x}_t - \mathbf{D}_{t-1}\alpha\|_2^2 + \lambda \|\alpha\|_1$ is a procedure in and of itself. In principle, onc could simply call a generic convex optimization solver for this kind of problem, but such solvers almost all run on the CPU--apart from maybe some recent progress toward primal-dual hybrid gradient (PDHG) algorithms that can execute on GPUs, but that's irrelevant. Calling a generic solver at every step is a poor fit indeed for this setting, for two obvious reasons. First, as I said, the solver would run on the CPU, while the dictionary update and the statistics aggregation run on the CUDA device in Jax. Every iteration would therefore pay a slow PCIe transfer in both directions. Second, the interoperability of generic MILP solvers with Jax is nonexistent. Just assembling the constraint matrix and the objective term would mean copying large buffers, which is expensive in memory. Together, these costs would make it hard to sustain several exact dictionary-update iterations per second.
 
-So, we're better off using an iterative, approximate algorithm to solve the non-negative LASSO step. Thanks to the magic of LLMs nowadays, I got to know that there exists a respectable algorithm that lends itself well to the NN-LASSO problem, called Fast Iterative Shrinkage-Thresholding Algorithm (FISTA) [@teboulle09fista]. To be honest, I wasn't particularly interested in the details of this minor technicality in the broader scheme of dictionary learning, so I gladly let Codex do the research and work out the Jax function for it (which I could then use as a coding reference for the next step). The only relevant practicality to be aware of is that it involves an iterative procedure of its own, so fine-tuning the tolerance and/or an iteration cap is a thing to look out for. Below is the code for reference.
+So, we're better off using an iterative, approximate algorithm to solve the non-negative LASSO step. Thanks to the magic of LLMs nowadays, I got to know that there exists an algorithm that lends itself well to the NN-LASSO problem, called Fast Iterative Shrinkage-Thresholding Algorithm (FISTA) [@teboulle09fista]. To be honest, I wasn't particularly interested in the details of this minor technicality in the broader scheme of dictionary learning, so I gladly let Codex do the research and work out the Jax function for it. The only relevant practicality to be aware of is that it involves an iterative procedure of its own, so fine-tuning the tolerance and/or an iteration cap is a thing to look out for. Below is the code for reference.
 
 ```python
 def nonnegative_lasso_fista(
@@ -480,7 +482,7 @@ def nonnegative_lasso_fista(
     return H
 ```
 
-### Dictionary update step
+#### Dictionary update step
 
 The dictionary update step is pretty much about following the  instructions from the above algorithm to the letter, with the additional projection to enforce non-negative values for the new dictionary columns. Also, instead of simply accumulating the statistics, I averaged them with the online average update formula to avoid overflow. I kept the original columnn-wise $L_2$ unit ball constraint for stability of the dictionary atoms[^note-proj-l2-lasso-fista], and  obviously, I added the projection onto the set of positively-valued vectors. Below is the Jax code for reference.
 
@@ -540,7 +542,7 @@ def update_dictionary(
 ```
 
 
-## Protocol & design choices
+## Protocol design choices
 
 Let's outline some global design choices of the dictionary learning method (see also <a data-figure-ref="fig-online-dictionary-learning-svg"></a>). The values below are preliminary settings meant to be explored and to illustrate their impact on the statistics of the resulting concepts; they are not necessarily the final values I retained.
 
