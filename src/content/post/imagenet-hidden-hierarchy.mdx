@@ -205,7 +205,7 @@ So, according to the figures above, the primary comparison kernel in the model's
 $$
 \alpha_e =
 \begin{cases}
-\exp\left(1 - \langle x_i, x_j \rangle\right) & \text{if } (i,j) \in E, \\
+\exp\left(1 - \langle x_i, x_j \rangle\right) \ge 0 & \text{if } (i,j) \in E, \\
 0 & \text{otherwise.}
 \end{cases}
 $$
@@ -238,7 +238,7 @@ The non-constant term can be further expanded to $\log Z - \sum_e p_e \log \kapp
 A valid kernel possibility to make it easy to compute $Z$ is, for example, any affine-bilinear kernel like $(x,y) \mapsto 1 + \langle x, y\rangle$ fits the bill, for example:
 
 $$
-\kappa_e = 1 + \langle x_i, x_j \rangle
+\kappa_e = 1 + \langle x_i, x_j \rangle \ge 0, \quad \forall (i,j)
 $$
 
 because then in the target space
