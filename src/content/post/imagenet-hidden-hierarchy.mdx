@@ -316,7 +316,7 @@ for step in range(steps):
 	with torch.no_grad():
 		embeddings_params.copy_(torch.nn.functional.normalize(embeddings_params, dim=1))
 ```
-	is up to a simple PyTorch training loop optimizing the array of embeddings, a single array of $\mathbb{R}^{N \times 3}$ with the projected gradient algorithm.
+and results in a single array of $\mathbb{R}^{N \times 3}$ after the procedure, once the embeddings are stabilized.
 
 
 #### Results
