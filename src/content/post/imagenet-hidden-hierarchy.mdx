@@ -208,7 +208,7 @@ To circumvent this annoying limitation, there are several ideas worth exploiting
 ```python
 @dataclass
 class SparseDistanceMatrix:
-    """A sparse (N, N) array on the GPU, in its COO coordinates."""
+    """Sparse representation of (N, N) Cupy partial pairwise distance matrix."""
     rows: cupy.ndarray  # (E,)
     cols: cupy.ndarray  # (E,)
     vals: cupy.ndarray  # (E,)
@@ -236,7 +236,7 @@ From this stage on, computations are performed with PyTorch, which supports zero
 ```python
 @dataclass
 class EdgeAffinities:
-    """Affinities on the kNN edges, as aligned (E,) tensors."""
+    """Sparse representation of (N, N) Torch partial pairwise kernel values matrix."""
     rows: Tensor  # (E,) source point of each edge
     cols: Tensor  # (E,) neighbour point of each edge
     vals: Tensor  # (E,) affinity of each edge
