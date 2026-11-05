@@ -280,10 +280,10 @@ $$
 by means of the simple reduction $\sum_{i=1}^N x_i$ is doable in $O(N)$ steps.
 
 
-Consequently, the raw cosine kernel reads very straightforwardly
+Consequently, the raw cosine kernel reads:
 
 ```python
-def cosine_kernel(
+def kernel(
     points: Tensor, edge_rows: Tensor, edge_cols: Tensor
 ) -> tuple[Tensor, Tensor]:
     """Kernel 1 + cos >= 0: on the edges (E,)."""
@@ -295,7 +295,7 @@ def cosine_kernel(
 
 #### Training loop
 
-Anyway, once these kernel details are sorted out, the training process is straightforward to derive.
+Once the above is resolved, the training process is straightforward to derive.
 The conceptual projected gradient loop reads:
 
 ```python
@@ -307,7 +307,7 @@ optimizer = torch.optim.Adam([embeddings_params], lr=lr)
 for step in range(steps):
 	optimizer.zero_grad()
 	normalized = torch.nn.functional.normalize(embeddings_params, dim=1)
-	edge_kernel, total_weight = cosine_kernel(normalized, edge_rows, edge_cols)
+	edge_kernel, total_weight = kernel(normalized, edge_rows, edge_cols)
 	q_dist = edge_kernel / total_weight
 	loss = -(p_dist * q_dist.clamp_min(1e-12).log()).sum()
 	loss.backward()
