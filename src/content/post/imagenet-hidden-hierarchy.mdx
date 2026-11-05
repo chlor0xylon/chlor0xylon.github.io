@@ -116,7 +116,7 @@ In contrast with the previously presented discrete hierarchy built upon textual 
 
 
 ### Testing the hierarchy against the embeddings
-The fact that the categories of the ImageNet dataset are part of a larger knowledge graph with known metaclass dependencies makes it particularly interesting to use as a prior for the image data. **So, it stands as an interesting question to me whether the ImageNet class hierarchy we unveiled earlier translates to the unsupervised embeddings of that dataset through a completely independent model.** It is about testing whether language hiararchies are consistent with visual hierarchies obtained by means of an unsupervised, emergent learning strategy[^note-emergence].
+The fact that the categories of the ImageNet dataset are part of a larger knowledge graph with metaclass dependencies known in advance makes it particularly interesting to use as a prior for image data. **So, it stands as an interesting question to me whether the ImageNet class hierarchy we unveiled earlier translates to the unsupervised embeddings of that dataset through a completely independent model.** It is about testing whether language hiararchies are consistent with visual hierarchies obtained by means of an unsupervised, emergent learning strategy[^note-emergence].
 
 
 [^note-emergence]: In the first DINO paper, the authors ecplicitly described that their learning student-teacher networks featured emergent properties by learning embeddings with no labels at all, driven only by crops and partial views.
@@ -146,9 +146,9 @@ Ok, UMAP was straightforward and easy but planar dimensionality reduction techni
 
 The rationale for this idea is to preserve the geometry of embeddings, which concentrate on a thin shell around a hypersphere, probably because of the model's final LayerNorm.Plotting the $L_2$ norms of ImageNet-1K image CLS tokens shows that they lie in a narrow interval of high values, and no vector ends up close to the origin in $\mathbb{R}^{d}$. Projecting onto a 3D globe therefore seems more natural than flattening onto a Euclidean plane, to keep the spherical nature of the embeddings. Doing it properly means projecting in terms of angle, rather than distance.
 
-The curse of dimensionality states that in high dimension, distance becomes nearly meaningless because points tend to be very far from each other due to the sheer number of dimensions.
+In high dimension, the Euclidian distance becomes a nearly meaningless metric because points tend to be very far from each other due to the sheer number of dimensions adding up to the total. This phenomenon is sometimes referred to as the *curse of dimensionality*, or at least it's one of the phenomena that the phrase evokes.
 
-On the other hand, cosine similarities tend to convey much more information, so direction is what mainly encodes semantic meaning. Of course, angle separation and distance are related by identity $\|x - y\|_2 = \|x\| + \|y\| - 2 \cos (\theta)\|x\|  \|y\|$ so both concepts are not entirely uncoupled. But it is a well-known fact that in a $d$-dimensional space, there can fit as many as $2^{\Theta (\epsilon^2 d)}$ unit vectors with all pairwise inner products $\le \epsilon$. Almost all statistical learning courses introduce a formulation of that fact one way or another. <a data-figure-ref="fig-pairwise-theoretical-cosine"></a> is a plot of the probability density function for the random variable measuring the cosine similarity between two points drawn at random on the surface of a hypersphere in dimension $d=768$ (the embedding dimension of the ConvNeXt architecture). For reference, this random variable is $C = 2B - 1$ where $B \sim \mathcal{B}(\frac{d-1}{2}, \frac{d-1}{2})$ (the beta law). It is incredibly narrow for large values of $d$. So, comparing cosine distances of well-calibrated neural networks (networks whose marginal output mean vector is near 0) make any value above beyond any majority percentile very significant. Computing the value for the 99.5th percentile of the theoretical distribution `scipy.special.beta(383.5, 383.5, loc=-1, scale=2).ppf(0.995)` yields $0.0928$, so any pair of embeddings below $-0.0928$ or above $0.0928$ belong to the happy few significant in one tail of the distribution. 
+Fortunately, cosine similarities tend to convey more semantic significance. Of course, angle separation and distance are related by identity $\|x - y\|_2 = \|x\| + \|y\| - 2 \cos (\theta)\|x\|  \|y\|$ so both concepts are not entirely uncoupled. But it is a well-known fact that in a $d$-dimensional space, there can fit as many as $2^{\Theta (\epsilon^2 d)}$ unit vectors with all pairwise inner products $\le \epsilon$. Almost all statistical learning courses introduce a formulation of that fact one way or another. <a data-figure-ref="fig-pairwise-theoretical-cosine"></a> is a plot of the probability density function for the random variable measuring the cosine similarity between two points drawn at random on the surface of a hypersphere in dimension $d=768$ (the embedding dimension of the ConvNeXt architecture). For reference, this random variable is $C = 2B - 1$ where $B \sim \mathcal{B}(\frac{d-1}{2}, \frac{d-1}{2})$ (the beta law). It is incredibly narrow for large values of $d$. So, comparing cosine distances of well-calibrated neural networks (networks whose marginal output mean vector is near 0) make any value above beyond any majority percentile very significant. Computing the value for the 99.5th percentile of the theoretical distribution `scipy.special.beta(383.5, 383.5, loc=-1, scale=2).ppf(0.995)` yields $0.0928$, so any pair of embeddings below $-0.0928$ or above $0.0928$ belong to the happy few significant in one tail of the distribution. 
 
 
 
@@ -187,6 +187,12 @@ On the other hand, cosine similarities tend to convey much more information, so 
 
 As I said, I want to embed the points on a periodic manifold, more specifically, a simple 3D sphere, instead of relying on handy [Nvidia's GPU-accelerated manifold implementations](https://docs.nvidia.com/cuml/latest/api/cuml.manifold/) like UMAP, that only produce embeddings in the 2D plane. My intuition is that the procedure should allow the points should reach an equilibrium by crowding in a finite, periodic space and self-organize so as to make similar points group together, and dissimilar points repulse away from each other. A bit like laying a network of springs and joints stabilize itself on the sphere.
 
+So, we start off with 
+
+
+
+
+
 In order to proceed, I imagined the following.
 - Define a non-negative comparison kernel in the original space
 - Define a non-negative comparison kernel in the target space
@@ -197,10 +203,20 @@ At first I wan't exactly sure about how to implement the third task, and what it
 
 It turns out that such a procedure is, as I understood it, roughly what runs algorithms like UMAP or t-SNE. Dimensionality is our ennemy since the number of pairs grows quadratically with the number of elements. The Imagenet dataset, however, is  Figure <a data-figure-ref="fig-umap-imagenet"></a> above contains $N=250000$ points. That's over 62 billion entries in the comparison matrix, which sadly, does not fit in a consumer grade GPU.
 
-To circumvent this annoying limitation, there are several ideas worth exploiting. First, the reference vectors can be used to eliminate irrelevant pairs whose cosine similarity is too low, by only considering a sparse subset of the edges for the $N$ points considered. In other words, performing a $k$-NN search which yields a sparse graph $(V,E)$ with $|V| = N$ (the total number of points) and $|E| = o(N)$. Fortunately, people far smarter than me have already put a great deal of effort implementing fast algorithms to do that, including GPU-accelerated versions such as [Nvidia's CuVS Neighbors](https://docs.nvidia.com/cuvs/api-reference/python-api-neighbors). Secondly, the kernel trick might be handy.
+To circumvent this annoying limitation, there are several ideas worth exploiting. First, the reference vectors can be used to eliminate irrelevant pairs whose cosine similarity is too low, by only considering a sparse subset of the edges for the $N$ points considered. In other words, performing a $k$-NN search which yields a sparse graph $(V,E)$ with $|V| = N$ (the total number of points) and $|E| = o(N)$. Fortunately, people far smarter than me have already put a great deal of effort implementing fast algorithms to do that, including GPU-accelerated versions such as [Nvidia's CuVS Neighbors](https://docs.nvidia.com/cuvs/api-reference/python-api-neighbors), which yields a `cuvs.neighbors.all_neighbors.KnnResult` that we can convert to the following form:
+
+```python
+@dataclass
+class SparseDistanceMatrix:
+    """A sparse (N, N) array on the GPU, in its COO coordinates."""
+    rows: cupy.ndarray  # (E,)
+    cols: cupy.ndarray  # (E,)
+    vals: cupy.ndarray  # (E,)
+    csr_mat: cupyx.scipy.sparse._csr.csr_matrix
+```
 
 #### Kernel in the original space
-So, according to the figures above, the primary comparison kernel in the model's normed embeddings $\{x_i\}_{1 \le i \le N} \subset \mathbb{R}^{768}$ space should reward meaningful cosine similarities: the affinity on an edge $e = (i, j)$ is defined as follows:
+So, according to the figures above, the primary comparison kernel in the model's **normed** embeddings $\{x_i\}_{1 \le i \le N} \subset \mathbb{R}^{768}$ space should reward meaningful cosine similarities. So I defined the affinity on an edge $e = (i, j)$ as follows:
 
 $$
 \alpha_e =
@@ -216,6 +232,16 @@ p_e = \frac{\alpha_e}{Y}
 $$
 with  $Y = \sum_{e} \alpha_{e}$.
 
+From this stage on, computations are performed with PyTorch, which supports zero-copy acquisition of Cupy arrays on the GPU. After that, we have the 
+
+```python
+@dataclass
+class EdgeAffinities:
+    """Affinities on the kNN edges, as aligned (E,) tensors."""
+    rows: Tensor  # (E,) source point of each edge
+    cols: Tensor  # (E,) neighbour point of each edge
+    values: Tensor  # (E,) affinity of each edge
+```
 
 #### Kernel in the target space
 
@@ -254,9 +280,43 @@ $$
 by means of the simple reduction $\sum_{i=1}^N x_i$ is doable in $O(N)$ steps.
 
 
+Consequently, the raw cosine kernel reads very straightforwardly
+
+```python
+def cosine_kernel(
+    points: Tensor, edge_rows: Tensor, edge_cols: Tensor
+) -> tuple[Tensor, Tensor]:
+    """Kernel 1 + cos >= 0: on the edges (E,)."""
+    N_vec: int = points.shape[0]
+    edge_kernel: Tensor = 1.0 + (points[edge_rows] * points[edge_cols]).sum(-1)  # (E,)
+    total_weight: Tensor = N_vec * (N_vec - 2) + points.sum(dim=0).square().sum()
+    return edge_kernel, total_weight
+```
+
 #### Training loop
 
-Anyway, once these kernel details are sorted out, the rest is up to a simple PyTorch training loop optimizing the array of embeddings, a single array of $\mathbb{R}^{N \times 3}$ with the projected gradient algorithm.
+Anyway, once these kernel details are sorted out, the training process is straightforward to derive.
+The conceptual projected gradient loop reads:
+
+```python
+p_dist = edge_affinities.values / edge_affinities.values.sum()
+
+embeddings_params = torch.nn.Parameter(torch.randn(N_vec, 3))
+optimizer = torch.optim.Adam([embeddings_params], lr=lr)
+
+for step in range(steps):
+	optimizer.zero_grad()
+	normalized = torch.nn.functional.normalize(embeddings_params, dim=1)
+	edge_kernel, total_weight = cosine_kernel(normalized, edge_rows, edge_cols)
+	q_dist = edge_kernel / total_weight
+	loss = -(p_dist * q_dist.clamp_min(1e-12).log()).sum()
+	loss.backward()
+	optimizer.step()
+
+	with torch.no_grad():
+		embeddings_params.copy_(torch.nn.functional.normalize(embeddings_params, dim=1))
+```
+	is up to a simple PyTorch training loop optimizing the array of embeddings, a single array of $\mathbb{R}^{N \times 3}$ with the projected gradient algorithm.
 
 
 #### Results
