@@ -9,9 +9,7 @@ function isElement(node: unknown): node is Element {
 
 function classList(node: Element): string[] {
 	const className = node.properties?.className;
-	if (Array.isArray(className)) return className.map(String);
-	if (typeof className === "string") return className.split(/\s+/);
-	return [];
+	return Array.isArray(className) ? className.map(String) : [];
 }
 
 function isCitationReference(node: Element): boolean {

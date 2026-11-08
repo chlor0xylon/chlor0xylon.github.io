@@ -32,21 +32,21 @@ Click **Use this template** on GitHub, or clone directly:
 ```sh
 git clone https://github.com/AnjayGoel/astro-sienna.git my-site
 cd my-site
-pnpm install
-pnpm dev
+bun install
+bun run dev
 ```
 
 Open http://localhost:4321.
 
 ## Commands
 
-| Command        | What it does                                 |
-|----------------|----------------------------------------------|
-| `pnpm dev`     | Start the dev server with HMR                |
-| `pnpm build`   | Type-check, build, and run Pagefind indexing |
-| `pnpm preview` | Preview the production build locally         |
-| `pnpm format`  | Run Biome and Prettier                       |
-| `pnpm lint`    | Lint with Biome                              |
+| Command            | What it does                                 |
+|--------------------|-----------------------------------------------|
+| `bun run dev`      | Start the dev server with HMR                |
+| `bun run build`    | Type-check, build, and run Pagefind indexing |
+| `bun run preview`  | Preview the production build locally         |
+| `bun run format`   | Run Biome and Prettier                       |
+| `bun run lint`     | Lint with Biome                              |
 
 ## Configuration
 
@@ -125,7 +125,7 @@ Code-block themes are configured separately in `expressiveCodeOptions` in `site.
 ## Deploying
 
 Output is a static `dist/` directory that deploys anywhere serving files: Cloudflare Pages, Netlify, Vercel, GitHub
-Pages, S3 + CloudFront. Build command: `pnpm build`. Output directory: `dist`.
+Pages, S3 + CloudFront. Build command: `bun run build`. Output directory: `dist`.
 
 ### Base path
 
@@ -134,7 +134,7 @@ GitHub Pages **user** site. The whole site (links, assets, feeds, OG/canonical, 
 
 For a GitHub Pages **project** site (served from `/repo/`), the bundled `.github/workflows/deploy.yml` detects the
 subpath and configures it automatically; the only manual step is **Settings → Pages → Source: GitHub Actions**. For a
-subpath on any other host, build with `BASE_PATH=/sub pnpm build`.
+subpath on any other host, build with `BASE_PATH=/sub bun run build`.
 
 ## Pulling theme updates
 

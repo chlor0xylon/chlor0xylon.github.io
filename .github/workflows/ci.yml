@@ -16,13 +16,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
+      # Node stays installed because a Bun/JavaScriptCore bug breaks OG image
+      # generation (ultrahtml/satori-html). Bun delegates script execution to
+      # Node via the shebang in node_modules/.bin, as long as Node is in PATH.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
 
-      - run: pnpm build
+      - run: bun install --frozen-lockfile
+
+      - run: bun run build
