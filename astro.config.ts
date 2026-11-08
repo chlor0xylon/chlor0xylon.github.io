@@ -99,7 +99,7 @@ export default defineConfig({
 			[rehypeBasePath, { base: BASE_PATH }],
 			// rehype-katex must run before rehype-external-links so the latter
 			// doesn't rewrite anchors inside katex's emitted DOM.
-			rehypeKatex,
+			[rehypeKatex, { macros: { "\\mathds": "\\mathbf" } }],
 			[
 				rehypeCitation,
 				{
