@@ -183,6 +183,13 @@ def train_step(
     return W, A, B
 ```
 
+Overall, I parametrized a lot more than meets the eye in this example snippet, to make it possible to change a few hyperparameters:
+
+- maximum allowed radius of a concept vector
+- non-negativity constraint on the concept atoms (synced to incoming latent's negative entries clamping)
+- maximum number of passes and tolerance threshold for the FISTA to solve the LASSO
+- number of dictionary update steps 
+
 #### Non-negative LASSO sparse coding step
 The modified sparse positive coding step to compute $\alpha_t = \arg\min_{\alpha \in \mathbb{R}^k} \frac{1}{2}\|\mathbf{x}_t - \mathbf{D}_{t-1}\alpha\|_2^2 + \lambda \|\alpha\|_1$ is a procedure in and of itself. In principle, onc could simply call a generic convex optimization solver for this kind of problem, but such solvers almost all run on the CPU. Calling a generic solver at every step is a poor fit for this setting, for two obvious reasons. First, as I said, the solver would execute on the CPU, while the dictionary update and the statistics aggregation run on the CUDA device with Jax. Every iteration would therefore pay a slow PCIe transfer in both directions. Second, the interoperability of generic MILP solvers with Jax is nonexistent. Just assembling the constraint matrix and the objective term would mean copying large buffers, which is expensive in memory. Together, these costs would make it hard to sustain several exact dictionary-update iterations per second.
 
@@ -203,16 +210,30 @@ At a later stage prototyping and benchmarking my code on the GPU, I had also Cla
 
 
 
-## Protocol design choices
+## Protocol
 
-Let's outline some global design choices of the dictionary learning method (see also <a data-figure-ref="fig-online-dictionary-learning-svg"></a>). The values below are preliminary settings meant to be explored and to illustrate their impact on the statistics of the resulting concepts; they are not necessarily the final values I retained.
+Let's outline practical milestones about the dictionary learning process.
 
 
-### Obtaining crops
+### Sourcing training samples
 
-The first stage is to compute image embeddings from image crops of the dataset. I discarded images with width or height less than 128 pixels. Then I ran a script that extracts random crops of size $128 \times 128$ pixels from images of the dataset, runs them through the vision encoder, and persists the obtained latents on the disk. Other augmentations are of course possible (like geometry or colorimetry alterations) to capture more elaborate concepts about the model's internal representations, but I did not use any of these so far. Maybe another time. I ran several passes on the dataset with different seeds, to obtain different views of all images in the dataset.
+The first stage is about persisting image embeddings from *cropped images* of the dataset. I discarded images whose width or height was less than 128 pixels. Then I build a dataset comprised of CLS token latent vectors of a vision encoder variant in the DINOv3 family from random crops sized $128 \times 128$ pixels taken from images in ImageNet-1K, randomly flipped. Other augmentations could be of interest (like geometry or colorimetry alterations) to capture more elaborate concepts about the model's internal representations, but I did not go with that idea yet. I ran several passes on the dataset with different seeds, to obtain different views of all every in the dataset.
 
-My idea is to train the dictionary on the latents obtained from views of images that encapsulate extended local visual context compared to prior results from the literature. The 128 pixels size is arbitrary, but it remains somewhat consistent with the dataset's image width and height distribution: ImageNet contains many images of small resolution by modern image standards (see <a data-figure-ref="fig-imagenet-density"></a>). In @craft2023fel, 64-by-64-pixel patches are used, so  bumping it up to 128 seems like a sound middleground to extract local semantics all the while extending the field of view to a limited fraction of the image in the majority of cases (see <a data-figure-ref="fig-imagenet-crops-area-ratio-svg"></a>).
+<figure id="fig-imagenet-crops-area-ratio-svg" class="figure-narrow">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794140585/dinov3vits_crops128_seed42_tjijfw.webp"}
+		alt="Random crops of ImageNet-1K"
+		loading="lazy"
+		style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Some random 128-by-128 crops of ImageNet-1K
+	</figcaption>
+</figure>
+
+
+My idea is to train the dictionary on the latents obtained from ***local views*** of images that encapsulate limited visual context that is slightly larger than prior attempts from the literature, and then to benchmark the dictionary on latents from complete images. The 128 pixels size is somewhat arbitrary. For reference, the dataset contains many images of small resolution by modern image standards (see <a data-figure-ref="fig-imagenet-density"></a>), because it was sourced from a web crawl in the 2010's. In @craft2023fel, 64-by-64-pixel patches are used, but recall that they extracted concepts one class at a time, so bumping it up to 128 seems like a sound middleground to extract more generalized semantics all the while extending to a more diverse field of view that would not come close to the total image in the majority of cases (see <a data-figure-ref="fig-imagenet-crops-area-ratio-svg"></a>).
 
 
 <figure id="fig-imagenet-crops-area-ratio-svg" class="figure-narrow">
@@ -228,37 +249,56 @@ My idea is to train the dictionary on the latents obtained from views of images 
 	</figcaption>
 </figure>
 
-### Dictionary learning design choices
-The second stage consists of running the dictionary learning script on the persisted batches of latent vectors on a dictionary buffer of $k=512$ concepts, and execute the training algorithm in the above code, with LASSO sparse coding regularization weight $\lambda$ set to 0. At this point, the objective is not to get sparse codes as of yet, but rather to compute a dictionary from diverse, entangled concepts without a sparsity constraint, that's why I disabled the regularization entirely. The reason I went with 512 concepts for now is threefold: it is a power of two for memory alignment if anything; it is about half the number of classes in the ImageNet dataset--which may incidentally already form clusters in the model's latent space--so it safely avoids concepts collapsing onto trivial underlying vectors (possibly due to enlarging the crop size); and I hypothesize that it is close to the actual number of "independent" concepts, which features numerous inter-class concept similarities.
+
+
+### Decisive design choices
+
+#### Training
+Apart from solving hyperparameters under the hood of the solving procedure (which can be abstracted away from the declarative problem statement's point of view), only a few hyperparameters will decisively affect the dictionary:
+- the semantics of the sourced inputs, as stated above
+- the size of the learned dictionary $r$
+- the sparsity weight $\lambda$
+
+#### Inference
+
+Likewise, after concepts are frozen and we use the concepts to reconstruct some latents, actually deciding what procedure to retain to compute the codes from a vector is subject to discussion. We can name two directions:
+- solve the relaxed dense sparse LASSO problem again, which requires setting $\lambda$
+- solve a combinatorial sparse MIQP least squares problem, which requires setting the maximum allowed atom budget constraint
 
 
 
-### Examining the latent concepts
-The third stage is about querying the produced dictionary for relevant metrics to ensure it is well-formed. To do so, I evaluated the codes of unaltered images from the same dataset with a sparsity constraint in order to gauge the bottleneck of the learned dictionary.
+### Quality evaluation
+The third stage is about querying the produced dictionary for relevant metrics to ensure it is well-formed and descriptive. I'll use a few metrics to do that.
 
 
-### Results
+#### Hoyer sparsity
 
-#### Chosen metrics
-I'll use three metrics to get a get a sense of the produced concepts.
-
-First, a quick search revealed the _Hoyer sparsity measure_ [@nmf2004hoyer] at the scale of an individual concept vector $\mathbf{d}$ in dimension $n$:
+At the scale of an individual concept level, the _Hoyer sparsity measure_ [@nmf2004hoyer] for the corresponding latent vector $\mathbf{d}$ in dimension $n$ is defined as follows:
 $$
 \mathrm{Hoyer}(\mathbf{d})
 = \frac{\sqrt{n} - \frac{\|\mathbf{d}\|_1}{\|\mathbf{d}\|_2}}{\sqrt{n} - 1}
 $$
-Second, we can obviously evaluate the residues of the positive part of a given vector $\mathbf{x}$ once reconstructed by the dictionary:
-$$
-\text{Residue}(\mathbf{x}) = \||\mathbf{x}| - \mathbf{D} \alpha(\mathbf{x}) \|
-$$
-where $\alpha$ is the (approximate) reconstruction codes from the iterative procedure. The exact norm flavor is intentionally unspecified, it can be $L_2$ or $L_\infty$ in particular.
 
-Finally, given a reconstruction vector $\alpha$, given that the codes are non-negative, I was also curious to reinterpret it as a probability distribution over concepts. So came up with a normalized entropy score that acts like a measurement of density for the codes:
+#### Residues
+
+We can obviously evaluate the residues of a reconstructed latent to its reference given some constraints on the codes $\mathbf{D} \alpha(\mathbf{x})$:
+$$
+\text{Residue}(\mathbf{x}) = \| \mathbf{x} - \hat{\mathbf{x}} \|
+$$
+where $\alpha$ is the (approximate) reconstruction codes from the iterative procedure. The exact norm flavor is intentionally unspecified, it can be scaled $L_2$ (MSE), RMSE or even $L_\infty$ depending on the focus.
+
+
+#### Entropy
+Finally, given reconstruction codes $\alpha \ge 0$, we may reinterpret it as a probability distribution over concepts atoms. So I came up with a normalized entropy score that acts like a measurement of density for the codes:
 $$
 \text{let} \quad p = \frac{1}{\|\alpha\|_1}\mathbf{\alpha} \quad \text{so that} \quad \tilde{H}(\alpha) = \frac{1}{\log k}H(p)
 $$
 
 (recall that $k$ is the dictionary size, thus the dimension of $\alpha$ too).
+
+
+
+### Results
 
 
 
