@@ -78,9 +78,9 @@ $$
 where $\mathcal{C}$ is the convex set of matrices whose column vectors belong to the unit ball for the $L_2$ Euclidian norm: $\mathcal{C} = \{\mathbf{D}\in \mathbb{R}^{m\times k}, \forall j \in \llbracket 1, k \rrbracket, \mathbf{d}_j^\top \mathbf{d}_j \le 1\}$.
 
 :::note
-For the sake of clarity, I momentarily adopted their original notations, but here are equivalences between their conventions and the ones earlier:
+From this point on, I'll mix in the two research papers and mix in their ideas, focusing momentarily on some aspects of them both at the most opportune paragraph. For the sake of simplicity when citing either one, I'll probably switch interchangeably between both notations, because I've been too lazy to choose and stick to one of the frameworks, but to be perfectly clear here are equivalences between their conventions and the ones earlier:
 
-| Meaning | @onlinelearning2009 | Above |
+| Meaning | @onlinelearning2009 | @holistic2023fel |
 | --- | --- | --- |
 | Rank (or dictionary size) | $k$ | $r$ |
 | Data dimensionality | $m$ | $p$ |
@@ -191,7 +191,12 @@ Overall, I parametrized a lot more than meets the eye in this example snippet, t
 - number of dictionary update steps 
 
 #### Non-negative LASSO sparse coding step
-The modified sparse positive coding step to compute $\alpha_t = \arg\min_{\alpha \in \mathbb{R}^k} \frac{1}{2}\|\mathbf{x}_t - \mathbf{D}_{t-1}\alpha\|_2^2 + \lambda \|\alpha\|_1$ is a procedure in and of itself. In principle, onc could simply call a generic convex optimization solver for this kind of problem, but such solvers almost all run on the CPU. Calling a generic solver at every step is a poor fit for this setting, for two obvious reasons. First, as I said, the solver would execute on the CPU, while the dictionary update and the statistics aggregation run on the CUDA device with Jax. Every iteration would therefore pay a slow PCIe transfer in both directions. Second, the interoperability of generic MILP solvers with Jax is nonexistent. Just assembling the constraint matrix and the objective term would mean copying large buffers, which is expensive in memory. Together, these costs would make it hard to sustain several exact dictionary-update iterations per second.
+The modified sparse positive coding step to compute
+
+$$
+\alpha_t = \arg\min_{\alpha \in \mathbb{R}^k} \frac{1}{2}\|\mathbf{x}_t - \mathbf{D}_{t-1}\alpha\|_2^2 + \lambda \|\alpha\|_1
+$$
+at every step is a procedure in and of itself. In principle, onc could simply call a generic convex optimization solver for this kind of problem, but such solvers almost all run on the CPU. Calling a generic solver at every step is a poor fit for this setting, for two obvious reasons. First, as I said, the solver would execute on the CPU, while the dictionary update and the statistics aggregation run on the CUDA device with Jax. Every iteration would therefore pay a slow PCIe transfer in both directions. Second, the interoperability of generic MILP solvers with Jax is nonexistent. Just assembling the constraint matrix and the objective term would mean copying large buffers, which is expensive in memory. Together, these costs would make it hard to sustain several exact dictionary-update iterations per second.
 
 So, we're better off using an iterative, approximate algorithm to solve the non-negative LASSO step. With the help of an LLM, I found a respectable algorithm that lends itself well to the NN-LASSO problem, called Fast Iterative Shrinkage-Thresholding Algorithm (FISTA) [@teboulle09fista]. To be honest, I wasn't particularly interested in the details of this minor technicality in the broader scheme of dictionary learning, so I gladly let Codex do the research and work out the Jax function for it. The only relevant practicality to be aware of is that it involves an iterative procedure of its own, so we'll need to tuning the tolerance and iteration cap.
 
@@ -261,15 +266,23 @@ Apart from solving hyperparameters under the hood of the solving procedure (whic
 
 #### Inference
 
-Likewise, after concepts are frozen and we use the concepts to reconstruct some latents, actually deciding what procedure to retain to compute the codes from a vector is subject to discussion. We can name two directions:
-- solve the relaxed dense sparse LASSO problem again, which requires setting $\lambda$
-- solve a combinatorial sparse MIQP least squares problem, which requires setting the maximum allowed atom budget constraint
+Likewise, after concepts are frozen and we use the concepts to reconstruct some latents, actually deciding what procedure to retain to compute the codes from a vector is subject to discussion. There are two possibilities:
+- solve the relaxed dense sparse LASSO problem again, which requires setting the sparsity weight $\lambda \in \mathbb{R}_+$: it's the LASSO problem that has already been written numerous times above:
+$$
+\arg\min_{\alpha \in \mathbb{R}^k_+} \frac{1}{2}\|\mathbf{x} - \mathbf{D}\alpha\|_2^2 + \lambda \|\alpha\|_1
+$$
+- solve a combinatorial sparse MIQP least squares problem, which requires setting the atom budget sarsity budget $s \in \mathbb{N}$:
+$$
+\arg\min_{\alpha \in \mathbb{R}^k_+} \frac{1}{2}\|\mathbf{x} - \mathbf{D}\alpha\|_2^2 \quad \text{ s.t. } \quad \sum_{i=1}^k \|\alpha_i\|_0  \le s
+$$
+(the constraint counts the number of non-zero elements in $\alpha$)
+
+
 
 
 
 ### Quality evaluation
-The third stage is about querying the produced dictionary for relevant metrics to ensure it is well-formed and descriptive. I'll use a few metrics to do that.
-
+The third stage is about probing the produced dictionary with relevant metrics to test whether it is *meaningful* and *descriptive* enough, that is, whether the dictionary conveys a sense of *completeness* to describe the data.
 
 #### Hoyer sparsity
 
@@ -287,22 +300,26 @@ $$
 $$
 where $\alpha$ is the (approximate) reconstruction codes from the iterative procedure. The exact norm flavor is intentionally unspecified, it can be scaled $L_2$ (MSE), RMSE or even $L_\infty$ depending on the focus.
 
+The residues can be aggregated into a single normalized quantity in $[0,1]$ called the *fraction of variance unexplained*, which is just the complement of what a PCA does:
+
+$$
+\text{FVU} = \frac{\sum_i \|\mathbf{x}_i - \mathbf{D}\alpha_i\|_2^2}{\sum_i \|\mathbf{x}_i - \bar{\mathbf{x}}\|^2_2}
+$$
+
+For the sake of simplicity, since the last layers of DINOv3 models are `LayerNorm`, I'll consider that the space of all possible image latents is whitened and that their mean vector $\bar{\mathbf{x}}$ is zero (even though that of a specific dataset might not exactly be centered).
 
 #### Entropy
-Finally, given reconstruction codes $\alpha \ge 0$, we may reinterpret it as a probability distribution over concepts atoms. So I came up with a normalized entropy score that acts like a measurement of density for the codes:
+Finally, given reconstruction codes $\alpha \ge 0$, we may reinterpret it as a probability distribution over concepts atoms. So I came up with a normalized entropy score that acts like a soft measurement of dispersion for the codes:
 $$
 \text{let} \quad p = \frac{1}{\|\alpha\|_1}\mathbf{\alpha} \quad \text{so that} \quad \tilde{H}(\alpha) = \frac{1}{\log k}H(p)
 $$
-
-(recall that $k$ is the dictionary size, thus the dimension of $\alpha$ too).
-
-
+where $H$ is Shannon's entropy.
 
 ### Results
 
 
 
-#### Analyzing the concepts
+#### Concept vectors (a.k.a. "concepts")
 After launching the training script on a collection of $384$-dimensional CLS-tokens from the latent space of `facebook/dinov3-vits16-pretrain-lvd1689m` on random crops, I obtained a dictionary of $512$ concept vectors. The first sanity check is to inspect the dictionary itself. <a data-figure-ref="fig-dictionary-concept-value-distribution"></a> shows the distribution of positive concept components, while <a data-figure-ref="fig-dictionary-concept-diagnostics"></a> shows the pairwise cosine similarities of the concepts and the raw feature-by-concept weight matrix.
 
 <figure id="fig-dictionary-concept-value-distribution" class="figure-grid">
@@ -343,7 +360,7 @@ After launching the training script on a collection of $384$-dimensional CLS-tok
 
 The positive-value histogram summarizes the frequency distribution of strictly positive entries across all concept vectors after the positivity projection. The cosine-similarity heatmap is useful to ensure the dictionary has not collapsed into repeated atoms. The feature-over-concepts constellation heatmap shows how the positive weights are distributed across latent dimensions.
 
-#### Analyzing the codes
+#### Coding vectors (a.k.a. "codes")
 
 Then I evaluated how ImageNet latents decompose over the learned dictionary by solving the non-negative LASSO coding step. <a data-figure-ref="fig-dictionary-code-distributions"></a> reports the three summaries: normalized code entropy, Hoyer sparsity, and reconstruction residue norms for reconstructions for $\lambda = 0.5$. These plots depict the three chosen sparsity metrics aggregated over a pool of image samples from the ImageNet dataset. All three are unimodal distributions, which is a bit reassuring, in the sense that the contrary would probably raise questions about the stability of the iterative procedure. The residue norms typically lie in the range of a few units. To put that into perspective, we have to remember that it means the error spreads over the 384 latent dimensions of the model (`facebook/dinov3-vits16-pretrain-lvd1689m`), and compare it against the typical value range of the latents dimensions.
 
