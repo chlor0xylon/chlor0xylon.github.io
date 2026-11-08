@@ -220,13 +220,15 @@ class InputImageBatch:
 </figure>
 
 ### Dictionary learning hot path
-The numerical computations of dictionary learning rely heavily on vectorized operations and linear algebra, so they are a natural fit for [Jax](https://docs.jax.dev/en/latest/). Unlike Pytorch, Jax provide first-class compiled loop operations for the target hardware. This is especially handy for iterative algorithms to solve linear algebra problems. Before this project I was familiar with PyTorch but I had never used Jax so it was a good incentive to test it.
+The numerical computations of the dictionary learning rely heavily on vectorized operations and linear algebra but no differenciation is involved, so they are a straightforward fit for [Jax](https://docs.jax.dev/en/latest/) which provides first-class compilation for all sorts of hardware, incuding CUDA, of course. This is especially handy for this kind of iterative algorithms to solve linear algebra problems. Before this project I was familiar with PyTorch but I had never used Jax so it was a good incentive to try and learn.
 
-In the code, I kept the original notations with $\mathbf{W} \in \mathbb{R}^{p \times r}$ and $\mathbf{U} \in \mathbb{R}^{n \times r}$. However, since $\mathbf{U}$ is conceptually reserved for the full dataset codes, and is never materialized in memory, I named its batched counterpart $\mathbf{H} \in \mathbb{R}^{b\times r}$ where $b$ is the batch size with obviously $b < n$. At any step, we draw $\mathbf{X} \in \mathbb{R}^{b\times n}$ and apply the above algorithm.
+In my code, I kept the original notations with $\mathbf{W} \in \mathbb{R}^{p \times r}$ and $\mathbf{U} \in \mathbb{R}^{n \times r}$. However, since $\mathbf{U}$ is conceptually reserved for the full dataset codes, and is never materialized in memory, I named its batched counterpart $\mathbf{H} \in \mathbb{R}^{b\times r}$ where $b$ is the batch size with obviously $b < n$. At any step, we draw $\mathbf{X} \in \mathbb{R}^{b\times n}$ and apply the above update step with two stages.
 
-Thus the main training loop looks like this:
+Conceptually the main training loop looks like this:
 
 ```python
+# import jax.numpy as jnp
+
 def train_step(
     W: jnp.ndarray,   # (DATA_DIM, DICT_SIZE)
     A: jnp.ndarray,   # (DICT_SIZE, DICT_SIZE)
@@ -235,131 +237,30 @@ def train_step(
     H0: jnp.ndarray,  # (BATCH_SIZE, DICT_SIZE)
     T: int,           # global step counter
     lam: float,       # regularization weight
-):
+) -> tuple[jnp.ndarray, ...]:
     H = nonnegative_lasso_fista(W=W, X=X, lam=lam, H0=H0)
     W, A, B = update_dictionary(W=W, H=H, X=X, A=A, B=B, T=T)
     return W, A, B
 ```
 
 #### Non-negative LASSO sparse coding step
-The modified sparse positive coding step to compute $\alpha_t = \arg\min_{\alpha \in \mathbb{R}^k} \frac{1}{2}\|\mathbf{x}_t - \mathbf{D}_{t-1}\alpha\|_2^2 + \lambda \|\alpha\|_1$ is a procedure in and of itself. In principle, onc could simply call a generic convex optimization solver for this kind of problem, but such solvers almost all run on the CPU--apart from maybe some recent progress toward primal-dual hybrid gradient (PDHG) algorithms that can execute on GPUs, but that's irrelevant. Calling a generic solver at every step is a poor fit indeed for this setting, for two obvious reasons. First, as I said, the solver would run on the CPU, while the dictionary update and the statistics aggregation run on the CUDA device in Jax. Every iteration would therefore pay a slow PCIe transfer in both directions. Second, the interoperability of generic MILP solvers with Jax is nonexistent. Just assembling the constraint matrix and the objective term would mean copying large buffers, which is expensive in memory. Together, these costs would make it hard to sustain several exact dictionary-update iterations per second.
+The modified sparse positive coding step to compute $\alpha_t = \arg\min_{\alpha \in \mathbb{R}^k} \frac{1}{2}\|\mathbf{x}_t - \mathbf{D}_{t-1}\alpha\|_2^2 + \lambda \|\alpha\|_1$ is a procedure in and of itself. In principle, onc could simply call a generic convex optimization solver for this kind of problem, but such solvers almost all run on the CPU. Calling a generic solver at every step is a poor fit for this setting, for two obvious reasons. First, as I said, the solver would execute on the CPU, while the dictionary update and the statistics aggregation run on the CUDA device with Jax. Every iteration would therefore pay a slow PCIe transfer in both directions. Second, the interoperability of generic MILP solvers with Jax is nonexistent. Just assembling the constraint matrix and the objective term would mean copying large buffers, which is expensive in memory. Together, these costs would make it hard to sustain several exact dictionary-update iterations per second.
 
-So, we're better off using an iterative, approximate algorithm to solve the non-negative LASSO step. With the help of an LLM, I found a respectable algorithm that lends itself well to the NN-LASSO problem, called Fast Iterative Shrinkage-Thresholding Algorithm (FISTA) [@teboulle09fista]. To be honest, I wasn't particularly interested in the details of this minor technicality in the broader scheme of dictionary learning, so I gladly let Codex do the research and work out the Jax function for it. The only relevant practicality to be aware of is that it involves an iterative procedure of its own, so we'll need to tuning the tolerance and iteration cap. Below is the code for reference.
+So, we're better off using an iterative, approximate algorithm to solve the non-negative LASSO step. With the help of an LLM, I found a respectable algorithm that lends itself well to the NN-LASSO problem, called Fast Iterative Shrinkage-Thresholding Algorithm (FISTA) [@teboulle09fista]. To be honest, I wasn't particularly interested in the details of this minor technicality in the broader scheme of dictionary learning, so I gladly let Codex do the research and work out the Jax function for it. The only relevant practicality to be aware of is that it involves an iterative procedure of its own, so we'll need to tuning the tolerance and iteration cap.
 
-```python
-def nonnegative_lasso_fista(
-    W: jnp.ndarray, X: jnp.ndarray, lam: float, H0: jnp.ndarray
-) -> jnp.ndarray:
-    tol = 1e-4
-    eps = 1e-8
-    max_iter = 30
-    # Solve for nonnegative codes H with W held fixed:
-    #     min_{H >= 0} 0.5 * ||X - H W^T||_F^2 + lam * ||H||_1
-    #
-    # Row-major convention:
-    # X has shape (num_samples, data_dim),
-    # W has shape (data_dim, size_dict),
-    # H has shape (num_samples, size_dict),
-    # so X ~= H @ W.T.
+Also, instead of simply summing the statistics in matrices $A$ and $B$, which could blow up numerical accuracy with large numbers, I accumulated them using the online average update formula to avoid overflow. The update of every $j$-th column in the subsequent `for` loop is invariant to rescaling $A$ and $B$ by a common factor so it's fine.
 
-    # The scalar `lam` controls the L1 penalty on optimized H.
-    G = W.T @ W
-    B = X @ W
-
-    # Precompute the Gram matrix W^T W and the data term X W.
-    # The gradient of 0.5 * ||X - H W^T||_F^2 is H (W^T W) - X W.
-    L = jnp.linalg.norm(G, 2)
-    step = 1.0 / L
-
-    H = H0
-    Y = H0
-    t = 1.0
-
-    def cond_fn(state):
-        _, _, _, iter_idx, rel_change = state
-        return jnp.logical_and(iter_idx < max_iter, rel_change > tol)
-
-    def body_fn(state):
-        H, Y, t, iter_idx, _ = state
-
-        grad = Y @ G - B
-        # Because we also impose H >= 0, the proximal map of the L1 term
-        # becomes a positive soft-thresholding step:
-        # prox(z) = max(0, z - step * lam).
-        H_next = jnp.maximum(0.0, Y - step * (grad + lam))
-
-        # Standard FISTA momentum update.
-        t_next = 0.5 * (1.0 + jnp.sqrt(1.0 + 4.0 * t * t))
-        Y_next = H_next + ((t - 1.0) / t_next) * (H_next - H)
-
-        diff_norm = jnp.linalg.norm(H_next - H, ord="fro")
-        base_norm = jnp.maximum(jnp.linalg.norm(H, ord="fro"), eps)
-        rel_change = diff_norm / base_norm
-
-        return H_next, Y_next, t_next, iter_idx + 1, rel_change
-
-    H, _, _, _, _ = jax.lax.while_loop(cond_fn, body_fn, (H, Y, t, 0, jnp.inf))
-    return H
-```
 
 #### Dictionary update step
 
-The dictionary update step is pretty much about following the  instructions from the above algorithm to the letter, with the additional projection to enforce non-negative values for the new dictionary columns. Also, instead of simply accumulating the statistics, I averaged them with the online average update formula to avoid overflow. I kept the original columnn-wise $L_2$ unit ball constraint for stability of the dictionary atoms[^note-proj-l2-lasso-fista], and  obviously, I added the projection onto the set of positively-valued vectors. Below is the Jax code for reference.
+The dictionary update step is pretty much about following the  instructions from the above algorithm to the letter, with the additional projection to enforce non-negative values for the new dictionary columns. I kept the original columnn-wise $L_2$ unit ball constraint for stability of the dictionary atoms[^note-proj-l2-lasso-fista], and  obviously, I added the projection onto the set of positively-valued vectors.
 
 [^note-proj-l2-lasso-fista]: Without it, the concept vectors would explode and their norms would increase indefinitely in my tests.
 
-```python
-def update_dictionary(
-    W: jnp.ndarray,
-    H: jnp.ndarray,
-    X: jnp.ndarray,
-    A: jnp.ndarray,
-    B: jnp.ndarray,
-    T: int,
-) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
-    max_passes = 30
-    tol = 1e-4
-    eps = 1e-8
 
-    # Accumulate the surrogate statistics A and B
-    A = (1 - 1 / T) * A + 1 / T * H.T @ H
-    B = (1 - 1 / T) * B + 1 / T * X.T @ H
+At a later stage prototyping and benchmarking my code on the GPU, I had also Claude suggest using a vectorized Jacobi update scaling by $A$'s largest eigenvalue, instead of the proposed blocking Gauss-Seidel `for` loop.
 
-    def update_column(j: int, W_current: jnp.ndarray) -> jnp.ndarray:
-        # Extract a_j, b_j, and d_j
-        a_j = A[:, j]
-        b_j = B[:, j]
-        d_j = W_current[:, j]
-        a_jj = A[j, j]
 
-        # u_j <- (b_j - W a_j) / A[j, j] + d_j
-        safe_denom = jnp.where(a_jj > 0.0, a_jj, 1.0)
-        u_j = (b_j - W_current @ a_j) / safe_denom + d_j
-        u_j = jnp.where(a_jj > 0.0, u_j, d_j)
-
-        # d_j <- max(u_j, 0)
-        u_j = jnp.where(u_j > 0.0, u_j, 0.0)
-        # d_j <- u_j / max(||u_j||_2, 1)
-        norm_u = jnp.linalg.norm(u_j, ord=2)
-        u_j = u_j / jnp.maximum(norm_u, 1.0)
-        return W_current.at[:, j].set(u_j)
-
-    def cond_fn(state):
-        _, pass_idx, rel_change = state
-        return jnp.logical_and(pass_idx < max_passes, rel_change > tol)
-
-    def body_fn(state):
-        W_current, pass_idx, _ = state
-        # Update the j-th column for j = 0, ..., k - 1
-        W_next = jax.lax.fori_loop(0, W_current.shape[1], update_column, W_current)
-        diff_norm = jnp.linalg.norm(W_next - W_current, ord="fro")
-        base_norm = jnp.maximum(jnp.linalg.norm(W_current, ord="fro"), eps)
-        rel_change = diff_norm / base_norm
-        return W_next, pass_idx + 1, rel_change
-
-    W, _, _ = jax.lax.while_loop(cond_fn, body_fn, (W, 0, jnp.inf))
-    return W, A, B
-```
 
 
 ## Protocol design choices
