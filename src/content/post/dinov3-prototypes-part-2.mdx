@@ -203,7 +203,7 @@ $$
 $$
 at every step is a procedure in and of itself. In principle, onc could simply call a generic convex optimization solver for this kind of problem, but such solvers almost all run on the CPU. Calling a generic solver at every step is a poor fit for this setting, for two obvious reasons. First, as I said, the solver would execute on the CPU, while the dictionary update and the statistics aggregation run on the CUDA device with Jax. Every iteration would therefore pay a slow PCIe transfer in both directions. Second, the interoperability of generic MILP solvers with Jax is nonexistent. Just assembling the constraint matrix and the objective term would mean copying large buffers, which is expensive in memory. Together, these costs would make it hard to sustain several exact dictionary-update iterations per second.
 
-So, we're better off using an iterative, approximate algorithm to solve the non-negative LASSO step. With the help of an LLM, I found a respectable algorithm that lends itself well to the NN-LASSO problem, called Fast Iterative Shrinkage-Thresholding Algorithm (FISTA) [@teboulle09fista]. To be honest, I wasn't particularly interested in the details of this minor technicality in the broader scheme of dictionary learning, so I gladly let Codex do the research and work out the Jax function for it. The only relevant practicality to be aware of is that it involves an iterative procedure of its own, so we'll need to tuning the tolerance and iteration cap.
+So, we're better off using an iterative, approximate algorithm to solve the non-negative LASSO step. With the help of an LLM, I found a respectable algorithm that lends itself well to the NN-LASSO problem, called Fast Iterative Shrinkage-Thresholding Algorithm (FISTA) [@teboulle09fista]. To be honest, I wasn't particularly interested in the details of this minor technicality in the broader scheme of dictionary learning, so I gladly let Codex do the research and work out the Jax function for it. The FISTA procedure is an algorithm that projects a partial solution onto a convex set after every gradient step. The bundle of a gradient step followed by convex projection is called a "proximal operator". A relevant practicality to be aware of is that it involves an iterative procedure of its own, so it needs tuning, and a stopping criterion. A caveat is that the norm of the proximal gradient steps does not usually decrease monotonically, so setting a threshold on the step size is not the best of stopping criteria. However, because this iterative procedure is itself an intermediate result to the overall output of the dictionary learning problem, and because transient dictionary states constantly warm up the solution to the next batch and step, it barely matters anyway.
 
 Also, instead of simply summing the statistics in matrices $A$ and $B$, which could blow up numerical accuracy with large numbers, I accumulated them using the online average update formula to avoid overflow. The update of every $j$-th column in the subsequent `for` loop is invariant to rescaling $A$ and $B$ by a common factor so it's fine.
 
@@ -320,9 +320,29 @@ $$
 $$
 where $H$ is Shannon's entropy.
 
+
 ### Results
 
+#### Hyperparameters
+| Hyperparameter | Designation | Value |
+| --- | --- | --- |
+| Batch size | $b$ | 1024 |
+| Epochs | | 2 |
+| Rank (dictionary size) | $r$ | $256$ |
+| Sparsity weight | $\lambda$ | $0.5$ |
+| Concept non-negativity | boolean | True |
+| Fista solve maximum iteration number | | $50$ |
+| Fista solve stationarity relative tolerance | $\tau$ | $10^{-2}$ |
+| Dictionary update steps per batch | | $5$ |
+| Model HuggingFace identifier | | `facebook/dinov3-vits16-pretrain-lvd1689m` |
+| Crop size of training thumbnails | | $128 \times 128$ |
+| Data dimensionality | $p$ | $384$ |
+| Dataset size | $n$ | $1\,757\,184$ ($1716 \times 1024$) |
 
+In @onlinelearning2009, it is specified that in practice, less than a handful of dictionary update steps are needed for the convergence to happen properly (they mention 3 updates needed for experimental success). Following that idea, I set the loop to run a fixed number of times.
+
+
+Likewise, the FISTA loop to solve the sparse coding assignments in the first stage of a training step stops once the proximal gradient step barely moves the assignments anymore. The chosen criterion proxy is the ratio of Frobenius norms of the current proximal gradient norm to the initial proximal gradient norm in the batch step. As I stated earlier, it's not perfect, but it's a good enough heuristic for measuring the progress.
 
 #### Concept vectors (a.k.a. "concepts")
 After launching the training script on a collection of $384$-dimensional CLS-tokens from the latent space of `facebook/dinov3-vits16-pretrain-lvd1689m` on random crops, I obtained a dictionary of $512$ concept vectors. The first sanity check is to inspect the dictionary itself. <a data-figure-ref="fig-dictionary-concept-value-distribution"></a> shows the distribution of positive concept components, while <a data-figure-ref="fig-dictionary-concept-diagnostics"></a> shows the pairwise cosine similarities of the concepts and the raw feature-by-concept weight matrix.
