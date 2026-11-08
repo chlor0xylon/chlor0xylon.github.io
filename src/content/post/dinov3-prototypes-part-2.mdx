@@ -78,15 +78,20 @@ $$
 where $\mathcal{C}$ is the convex set of matrices whose column vectors belong to the unit ball for the $L_2$ Euclidian norm: $\mathcal{C} = \{\mathbf{D}\in \mathbb{R}^{m\times k}, \forall j \in \llbracket 1, k \rrbracket, \mathbf{d}_j^\top \mathbf{d}_j \le 1\}$.
 
 :::note
-From this point on, I'll mix in the two research papers and mix in their ideas, focusing momentarily on some aspects of them both at the most opportune paragraph. For the sake of simplicity when citing either one, I'll probably switch interchangeably between both notations, because I've been too lazy to choose and stick to one of the frameworks, but to be perfectly clear here are equivalences between their conventions and the ones earlier:
+From this point on, I'll momentarily mix and cite both papers formulas, depending on which one is the most relevant for each paragraph (also because I was too lazy to choose one over the other and I wanted to remain close to the source material). When quoting @onlinelearning2009 (its objective and its algorithm), I'll keep its notations, with data points and codes stored as columns. Everywhere else, I'll stick to the conventions introduced earlier, with data points stored as rows. The only symbol the two share is the code vector of a single data point $\mathbf{h}$, because a single vector looks the same in both conventions (namely it is a column of $\alpha$ on one side and a row of $\mathbf{U}$ on the other).
+
+I'm sorry for this mess. Notations are a hassle and papers love disagreeing and shuffling things around. Also, memory contiguity is a programming constraint thrown into the mix.
+
+For the sake of clarity I hereby lay out the equivalences so you don't have to:
 
 | Meaning | @onlinelearning2009 | @holistic2023fel |
 | --- | --- | --- |
 | Rank (or dictionary size) | $k$ | $r$ |
 | Data dimensionality | $m$ | $p$ |
 | Dataset size | $n$ | $n$ |
-| Dictionary (or learned weights of interest) | $\mathbf{D} \in \mathbb{R}^{m \times k}$ | $\mathbf{W} \in \mathbb{R}^{p \times r}$ |
+| Dictionary (learned weights of interest) | $\mathbf{D} \in \mathbb{R}^{m \times k}$ | $\mathbf{W} \in \mathbb{R}^{p \times r}$ |
 | Assignments (or codes) | $\alpha \in \mathbb{R}^{k \times n}$ | $\mathbf{U}^\top \in \mathbb{R}^{r \times n}$ |
+| Single code vector | $\mathbf{h} \in \mathbb{R}^{k}$ (column of $\alpha$) | $\mathbf{h} = \mathbf{U}_{[i,:]} \in \mathbb{R}^{r}$ |
 | Data matrix | $\mathbf{X} \in \mathbb{R}^{m \times n}$ | $\mathbf{X} \in \mathbb{R}^{n \times p}$ |
 :::
 
@@ -101,15 +106,15 @@ Require $\mathbf{x} \in \mathbb{R}^m \sim p(\mathbf{x})$, $\lambda \in \mathbb{R
 $\mathbf{A}_0 \in \mathbb{R}^{k \times k} \gets \mathbf{0}$, $\mathbf{B}_0 \in \mathbb{R}^{m \times k} \gets \mathbf{0}$
 For $t = 1$ to $T$
   Draw $\mathbf{x}_t$ from $p(\mathbf{x})$
-  State Sparse coding: compute $\alpha_t$ such that
+  State Sparse coding: compute $\mathbf{h}_t$ such that
     $$
-    \alpha_t \triangleq \arg\min_{\alpha \in \mathbb{R}^k} \frac{1}{2}\|\mathbf{x}_t - \mathbf{D}_{t-1}\alpha\|_2^2 + \lambda \|\alpha\|_1
+    \mathbf{h}_t \triangleq \arg\min_{\mathbf{h} \in \mathbb{R}^k} \frac{1}{2}\|\mathbf{x}_t - \mathbf{D}_{t-1}\mathbf{h}\|_2^2 + \lambda \|\mathbf{h}\|_1
     $$
-  $\mathbf{A}_t \gets \mathbf{A}_{t-1} + \alpha_t \alpha_t^T$
-  $\mathbf{B}_t \gets \mathbf{B}_{t-1} + \mathbf{x}_t \alpha_t^T$
+  $\mathbf{A}_t \gets \mathbf{A}_{t-1} + \mathbf{h}_t \mathbf{h}_t^T$
+  $\mathbf{B}_t \gets \mathbf{B}_{t-1} + \mathbf{x}_t \mathbf{h}_t^T$
   State Update dictionary $\mathbf{D}_t$ with $\mathbf{D}_{t-1}$ as a warm restart
     $$
-    \mathbf{D}_t \triangleq \arg\min_{\mathbf{D} \in \mathcal{C}} \frac{1}{t}\sum_{i=1}^t \left(\frac{1}{2}\|\mathbf{x}_i - \mathbf{D}\alpha_i\|_2^2 + \lambda \|\alpha_i\|_1\right) \\
+    \mathbf{D}_t \triangleq \arg\min_{\mathbf{D} \in \mathcal{C}} \frac{1}{t}\sum_{i=1}^t \left(\frac{1}{2}\|\mathbf{x}_i - \mathbf{D}\mathbf{h}_i\|_2^2 + \lambda \|\mathbf{h}_i\|_1\right) \\
 	= \arg\min_{\mathbf{D} \in \mathcal{C}} \frac{1}{t} \left( \frac{1}{2} \mathrm{Tr}(\mathbf{D}^\top \mathbf{DA}_t - \mathrm{Tr}(\mathbf{DB}_t) \right)
     $$
   Return $\mathbf{D}_T$
@@ -152,7 +157,7 @@ that applies to $\mathbf{D}$, as well as the eventuality of also constraining $\
  > "When $\lambda = 0$, this formulation is equivalent to NMF. The only difference with the dictionary learning
 problem is that non-negativity constraints are imposed on $\mathbf{D}$ and the vectors $\alpha_i$. A simple modification of our algorithm (...) allows us to handle these constraints, while guaranteeing to find a stationary point of the optimization problem."
 
-Wonderful. This is exactly the setup we're looking for. The implications here affect both steps of the overall procedure, namely the initial sparse coding solve step (by constraining additionally $\alpha$ to remain non-negative), and the projections in the dictionary update routine.
+Wonderful. This is exactly the setup we're looking for. The implications here affect both steps of the overall procedure, namely the initial sparse coding solve step (by constraining additionally $\mathbf{h}$ to remain non-negative), and the projections in the dictionary update routine.
 
 
 The paper describes a framework where the dictionary can be learned by only streaming one dataset element at a time, but the algorithm trivially generalizes to batch sizes above 1. 
@@ -194,7 +199,7 @@ Overall, I parametrized a lot more than meets the eye in this example snippet, t
 The modified sparse positive coding step to compute
 
 $$
-\alpha_t = \arg\min_{\alpha \in \mathbb{R}^k} \frac{1}{2}\|\mathbf{x}_t - \mathbf{D}_{t-1}\alpha\|_2^2 + \lambda \|\alpha\|_1
+\mathbf{h}_t = \arg\min_{\mathbf{h} \in \mathbb{R}^k} \frac{1}{2}\|\mathbf{x}_t - \mathbf{D}_{t-1}\mathbf{h}\|_2^2 + \lambda \|\mathbf{h}\|_1
 $$
 at every step is a procedure in and of itself. In principle, onc could simply call a generic convex optimization solver for this kind of problem, but such solvers almost all run on the CPU. Calling a generic solver at every step is a poor fit for this setting, for two obvious reasons. First, as I said, the solver would execute on the CPU, while the dictionary update and the statistics aggregation run on the CUDA device with Jax. Every iteration would therefore pay a slow PCIe transfer in both directions. Second, the interoperability of generic MILP solvers with Jax is nonexistent. Just assembling the constraint matrix and the objective term would mean copying large buffers, which is expensive in memory. Together, these costs would make it hard to sustain several exact dictionary-update iterations per second.
 
@@ -269,13 +274,13 @@ Apart from solving hyperparameters under the hood of the solving procedure (whic
 Likewise, after concepts are frozen and we use the concepts to reconstruct some latents, actually deciding what procedure to retain to compute the codes from a vector is subject to discussion. There are two possibilities:
 - solve the relaxed dense sparse LASSO problem again, which requires setting the sparsity weight $\lambda \in \mathbb{R}_+$: it's the LASSO problem that has already been written numerous times above:
 $$
-\arg\min_{\alpha \in \mathbb{R}^k_+} \frac{1}{2}\|\mathbf{x} - \mathbf{D}\alpha\|_2^2 + \lambda \|\alpha\|_1
+\arg\min_{\mathbf{h} \in \mathbb{R}^k_+} \frac{1}{2}\|\mathbf{x} - \mathbf{D}\mathbf{h}\|_2^2 + \lambda \|\mathbf{h}\|_1
 $$
 - solve a combinatorial sparse MIQP least squares problem, which requires setting the atom budget sarsity budget $s \in \mathbb{N}$:
 $$
-\arg\min_{\alpha \in \mathbb{R}^k_+} \frac{1}{2}\|\mathbf{x} - \mathbf{D}\alpha\|_2^2 \quad \text{ s.t. } \quad \sum_{i=1}^k \|\alpha_i\|_0  \le s
+\arg\min_{\mathbf{h} \in \mathbb{R}^k_+} \frac{1}{2}\|\mathbf{x} - \mathbf{D}\mathbf{h}\|_2^2 \quad \text{ s.t. } \quad \|\mathbf{h}\|_0 \le s
 $$
-(the constraint counts the number of non-zero elements in $\alpha$)
+(the constraint counts the number of non-zero elements in $\mathbf{h}$)
 
 
 
@@ -294,24 +299,24 @@ $$
 
 #### Residues
 
-We can obviously evaluate the residues of a reconstructed latent to its reference given some constraints on the codes $\mathbf{D} \alpha(\mathbf{x})$:
+We can obviously evaluate the residues of a reconstructed latent to its reference given some constraints on the codes $\mathbf{D} \mathbf{h}(\mathbf{x})$:
 $$
 \text{Residue}(\mathbf{x}) = \| \mathbf{x} - \hat{\mathbf{x}} \|
 $$
-where $\alpha$ is the (approximate) reconstruction codes from the iterative procedure. The exact norm flavor is intentionally unspecified, it can be scaled $L_2$ (MSE), RMSE or even $L_\infty$ depending on the focus.
+where $\mathbf{h}$ is the (approximate) reconstruction codes from the iterative procedure. The exact norm flavor is intentionally unspecified, it can be scaled $L_2$ (MSE), RMSE or even $L_\infty$ depending on the focus.
 
 The residues can be aggregated into a single normalized quantity in $[0,1]$ called the *fraction of variance unexplained*, which is just the complement of what a PCA does:
 
 $$
-\text{FVU} = \frac{\sum_i \|\mathbf{x}_i - \mathbf{D}\alpha_i\|_2^2}{\sum_i \|\mathbf{x}_i - \bar{\mathbf{x}}\|^2_2}
+\text{FVU} = \frac{\sum_i \|\mathbf{x}_i - \mathbf{D}\mathbf{h}_i\|_2^2}{\sum_i \|\mathbf{x}_i - \bar{\mathbf{x}}\|^2_2} \in [0, 1]
 $$
 
 For the sake of simplicity, since the last layers of DINOv3 models are `LayerNorm`, I'll consider that the space of all possible image latents is whitened and that their mean vector $\bar{\mathbf{x}}$ is zero (even though that of a specific dataset might not exactly be centered).
 
 #### Entropy
-Finally, given reconstruction codes $\alpha \ge 0$, we may reinterpret it as a probability distribution over concepts atoms. So I came up with a normalized entropy score that acts like a soft measurement of dispersion for the codes:
+Finally, given reconstruction codes $\mathbf{h} \ge 0$, we may reinterpret it as a probability distribution over concepts atoms. So I came up with a normalized entropy score that acts like a soft measurement of dispersion for the codes:
 $$
-\text{let} \quad p = \frac{1}{\|\alpha\|_1}\mathbf{\alpha} \quad \text{so that} \quad \tilde{H}(\alpha) = \frac{1}{\log k}H(p)
+\text{let} \quad p = \frac{1}{\|\mathbf{h}\|_1}\mathbf{h} \quad \text{so that} \quad \tilde{H}(\mathbf{h}) = \frac{1}{\log k}H(p)
 $$
 where $H$ is Shannon's entropy.
 
