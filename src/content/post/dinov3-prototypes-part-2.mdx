@@ -6,7 +6,7 @@ description: "Dictionary learning at scale on DINOv3 latents"
 tags: [machine learning, interpretability, computer vision]
 ---
 
-This is the second part of a series on reproducing recent advancements in computer vision interpretability. In the [first part](/posts/dinov3-prototypes/), I introduced the history of feature visualization. Here, I attempt to reproduce a dictionary learning approach on the DINOv3 model.
+This is the second part of a series on reproducing recent advancements in computer vision interpretability. In the [first part](/posts/dinov3-prototypes-part-1/), I introduced the history of feature visualization. Here, I attempt to reproduce a dictionary learning approach on the DINOv3 model.
 
 ## Dictionary learning: an introduction
 
@@ -329,7 +329,7 @@ where $H$ is Shannon's entropy.
 | Batch size | $b$ | 1024 |
 | Epochs | | 2 |
 | Rank (dictionary size) | $r$ | $256$ |
-| Sparsity weight | $\lambda$ | $0.5$ |
+| Sparsity weight | $\lambda$ | $0.0$ |
 | Concept non-negativity | boolean | True |
 | Fista solve maximum iteration number | | $50$ |
 | Fista solve stationarity relative tolerance | $\tau$ | $10^{-2}$ |
@@ -337,15 +337,21 @@ where $H$ is Shannon's entropy.
 | Model HuggingFace identifier | | `facebook/dinov3-vits16-pretrain-lvd1689m` |
 | Crop size of training thumbnails | | $128 \times 128$ |
 | Data dimensionality | $p$ | $384$ |
-| Dataset size | $n$ | $1\,757\,184$ ($1716 \times 1024$) |
+| Dataset size | $n$ | $1.7 \times 10^6$ |
 
 In @onlinelearning2009, it is specified that in practice, less than a handful of dictionary update steps are needed for the convergence to happen properly (they mention 3 updates needed for experimental success). Following that idea, I set the loop to run a fixed number of times.
 
 
-Likewise, the FISTA loop to solve the sparse coding assignments in the first stage of a training step stops once the proximal gradient step barely moves the assignments anymore. The chosen criterion proxy is the ratio of Frobenius norms of the current proximal gradient norm to the initial proximal gradient norm in the batch step. As I stated earlier, it's not perfect, but it's a good enough heuristic for measuring the progress.
+Likewise, the FISTA loop to solve the sparse coding assignments in the first stage of a training step stops once the proximal gradient step barely moves the assignments anymore. The chosen criterion proxy is the ratio of Frobenius norms of the current proximal gradient norm to the initial proximal gradient norm in the batch step. As I stated earlier, it's not perfect, but it's a good enough heuristic for measuring tracking convergence.
+
+And yes, this is not a typo, I did set $\lambda$ to 0 in the end. It helps producing orthogonal concepts.
+
+Remember that the whole point of a sparse decomposition is hypothesizing that the data lies in some lower-dimensional linear manifold of the latent space. That lead me to consider 256 atoms in the dictionary, about a quarter of the 1000 classes of ImageNet-1K. Since ImageNet-1K is very self-similar when seen through DINOv3 (see the distribution of pairwise cosine similarities figure from a [previous post](/posts/imagenet-hidden-hierarchy/#fig-pairwise-imagenet-cosine), it's computed on the ConvNeXt backbone version, but the argument holds for the ViT's: ImageNet-1K is not very diverse in the end), that seemed reasonable.
+
+
 
 #### Concept vectors (a.k.a. "concepts")
-After launching the training script on a collection of $384$-dimensional CLS-tokens from the latent space of `facebook/dinov3-vits16-pretrain-lvd1689m` on random crops, I obtained a dictionary of $512$ concept vectors. The first sanity check is to inspect the dictionary itself. <a data-figure-ref="fig-dictionary-concept-value-distribution"></a> shows the distribution of positive concept components, while <a data-figure-ref="fig-dictionary-concept-diagnostics"></a> shows the pairwise cosine similarities of the concepts and the raw feature-by-concept weight matrix.
+A few sanity checks on the dictionary are worthwile. <a data-figure-ref="fig-dictionary-concept-value-distribution"></a> shows the distribution of positive concept components across all concepts. <a data-figure-ref="fig-dictionary-concept-diagnostics"></a> shows the pairwise cosine similarities of the concepts and the raw feature-by-concept weight matrix.
 
 <figure id="fig-dictionary-concept-value-distribution" class="figure-grid">
 	<div class="figure-grid-images" style="grid-template-columns: minmax(0, 1fr);">
@@ -466,7 +472,7 @@ As a sanity check it can be interesting to observe how the regularization hyperp
 	</div>
 	<figcaption>
 		<span class="label"></span>
-		Hoyer sparsity and reconstruction residue Euclidian norms for $\lambda \in \{0.0, 0.2, 0.5, 1.0\}$
+		Hoyer sparsity and reconstruction residue Euclidian norms for a few values of the sparsity regularization term weight
 	</figcaption>
 </figure>
 
