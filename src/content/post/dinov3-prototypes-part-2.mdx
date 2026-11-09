@@ -299,7 +299,7 @@ $$
 
 #### Residuals
 
-We can obviously evaluate the residuals of a reconstructed latent to its reference given some constraints on the codes $\mathbf{D} \mathbf{h}(\mathbf{x})$:
+We can evaluate the residual between a latent $\mathbf{x}$ and its reconstruction $\hat{\mathbf{x}} = \mathbf{D}\mathbf{h}(\mathbf{x})$:
 $$
 \text{Residual}(\mathbf{x}) = \| \mathbf{x} - \hat{\mathbf{x}} \|
 $$
@@ -385,7 +385,7 @@ First, did it work at all? A few sanity checks on the dictionary are worthwhile.
 	</figcaption>
 </figure>
 
-It is clear that the atoms settled on meaningful visual cues of the dataset. Some appear obviously narrow, like colorful or speckled bird parts, while some others seem to have captured more abstract semantics, like concept  216, which encompasses the idea of tangled meshes or messy filamentary structures in objects as varied as grass tufts, porcupines or metallic nets. Although multisemantic concepts like 216 are not the majority, the mere fact that some exist is very good news and demonstrates at least a little bit of generalization capability for that specific dictionary.
+Undeniably, the atoms settled on meaningful visual cues of the dataset. Some appear obviously narrow, like colorful or speckled bird parts, while some others seem to have captured more abstract semantics, like concept  216, which encompasses the idea of tangled meshes or messy filamentary structures in objects as varied as grass tufts, porcupines or metallic nets. Although multisemantic concepts like 216 are not the majority, the mere fact that some exist is very good news and demonstrates at least a little bit of generalization capability for that specific dictionary.
 
 #### Concept vectors stats
 
@@ -467,7 +467,7 @@ Over a second phase I evaluated how ImageNet latents decompose over the learned 
 
 <a data-figure-ref="fig-dictionary-joint-diagnostics"></a> combines the same per-sample statistics into two-dimensional histograms for two combinations of the three possible metrics pairs. To my surprise, there was no clear correlation between Hoyer sparsity and reconstruction RMS for a given $\lambda$, although it does seem like there is a Pareto frontier beyond which further gains in sparsity come at the cost of deteriorated reconstruction accuracy, which moves with $\lambda$.
 
-On the other hand, there is a distinct boomerang-shaped distribution relationship between Hoyer sparsity and entropy, although it's probably not specific to latent embeddings.
+On the other hand, there is a distinct boomerang-shaped joint distribution relationship between Hoyer sparsity and entropy, although it's probably just a natural relationship between both metrics rather than a cue about embedding reconstruction in particular.
 
 <figure id="fig-dictionary-joint-diagnostics" class="figure-grid">
 	<div class="figure-grid-images" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
@@ -491,7 +491,26 @@ On the other hand, there is a distinct boomerang-shaped distribution relationshi
 	</figcaption>
 </figure>
 
+But what about the advertised fraction of variance unexplained? Arguably, in reality, assignments obtained by means of a sparse LASSO problem requires to choose a value for $\lambda$ and it's hard to make sense of it intuitively. Moreover, $\lambda$ controls sparsity only indirectly: nothing guarantees how many atoms a given code will actually use. 
 
+So let's look at the codes from the exact MIQP formulation instead, where the budget $s$ caps the number of active concepts directly. <a data-figure-ref="fig-fvu-by-concept-budget"></a> shows the per-sample unexplained energy $\|\mathbf{x} - \mathbf{D}\mathbf{h}\|_2^2 / \|\mathbf{x}\|_2^2$ for budgets of at most 1, 2 and 5 concepts, respectively. Since the latents are assumed centered, aggregating it over the samples gives the fraction of variance unexplained.
+
+<figure id="fig-fvu-by-concept-budget" class="figure-grid">
+	<div class="figure-grid-images" style="grid-template-columns: minmax(0, 1fr);">
+		<img
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794220752/fvu_by_concept_budget_tstzid.svg"}
+			alt="Histograms of per-sample unexplained energy for concept budgets of 1, 2 and 5"
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+	</div>
+	<figcaption>
+		<span class="label"></span>
+		Per-sample unexplained energy of MIQP reconstructions for small concept budgets
+	</figcaption>
+</figure>
+
+A single concept typically explains already about a third of the variance, on average. Allowing two brings that to almost 40%, and five to roughly 50%. The returns diminish quickly: each additional concept explains less than the one before, and even with five, half of the signal remains unexplained.
 
 ## References
 
