@@ -297,15 +297,15 @@ $$
 = \frac{\sqrt{n} - \frac{\|\mathbf{d}\|_1}{\|\mathbf{d}\|_2}}{\sqrt{n} - 1}
 $$
 
-#### Residues
+#### Residuals
 
-We can obviously evaluate the residues of a reconstructed latent to its reference given some constraints on the codes $\mathbf{D} \mathbf{h}(\mathbf{x})$:
+We can obviously evaluate the residuals of a reconstructed latent to its reference given some constraints on the codes $\mathbf{D} \mathbf{h}(\mathbf{x})$:
 $$
-\text{Residue}(\mathbf{x}) = \| \mathbf{x} - \hat{\mathbf{x}} \|
+\text{Residual}(\mathbf{x}) = \| \mathbf{x} - \hat{\mathbf{x}} \|
 $$
 where $\mathbf{h}$ is the (approximate) reconstruction codes from the iterative procedure. The exact norm flavor is intentionally unspecified, it can be scaled $L_2$ (MSE), RMSE or even $L_\infty$ depending on the focus.
 
-The residues can be aggregated into a single normalized quantity in $[0,1]$ called the *fraction of variance unexplained*, which is just the complement of what a PCA does:
+The residuals can be aggregated into a single normalized quantity in $[0,1]$ called the *fraction of variance unexplained*, which is just the complement of what a PCA does:
 
 $$
 \text{FVU} = \frac{\sum_i \|\mathbf{x}_i - \mathbf{D}\mathbf{h}_i\|_2^2}{\sum_i \|\mathbf{x}_i - \bar{\mathbf{x}}\|^2_2} \in [0, 1]
@@ -451,7 +451,7 @@ Over a second phase I evaluated how ImageNet latents decompose over the learned 
 			style="aspect-ratio: auto;"
 		/>
 		<img
-			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794218402/residue_norms_lb9usy.svg"}
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794220658/residual_norms_slpwxv.svg"}
 			alt="Histogram of RMS reconstruction error"
 			loading="lazy"
 			style="aspect-ratio: auto;"
@@ -472,8 +472,8 @@ On the other hand, there is a distinct boomerang-shaped distribution relationshi
 <figure id="fig-dictionary-joint-diagnostics" class="figure-grid">
 	<div class="figure-grid-images" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
 		<img
-			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794218408/residue_norms_vs_code_sparsity_f5lhko.svg"}
-			alt="Two-dimensional histogram of residue norms versus Hoyer sparsity"
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794220694/residual_norms_vs_code_sparsity_yeci5y.svg"}
+			alt="Two-dimensional histogram of residual norms versus Hoyer sparsity"
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
@@ -486,7 +486,7 @@ On the other hand, there is a distinct boomerang-shaped distribution relationshi
 	</div>
 	<figcaption>
 		<span class="label"></span>
-		Joint diagnostics for the same sampled codes: reconstruction residue versus
+		Joint diagnostics for the same sampled codes: reconstruction residual versus
 		Hoyer sparsity, and normalized entropy versus Hoyer sparsity
 	</figcaption>
 </figure>
