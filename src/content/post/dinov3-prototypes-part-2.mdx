@@ -390,7 +390,7 @@ It is clear that the atoms settled on meaningful visual cues of the dataset. Som
 #### Concept vectors stats
 
 Now on to numerical KPIs.
-The positive-value histogram (<a data-figure-ref="fig-dictionary-concept-value-distribution"></a>) summarizes the frequency distribution of strictly positive entries across all concept vectors. The distribution appears clean and typically close to a Gaussian, with no obvious sign of an anomaly, as the whole range $[10^{-4}, 1.0]$ is populated.
+The positive-value histogram (<a data-figure-ref="fig-dictionary-concept-value-distribution"></a>) summarizes the frequency distribution of strictly positive entries across all concept vectors. The distribution appears unimodal and clean and typically close to a Gaussian, with no obvious sign of an anomaly or split in separate groups of similar concepts.
 
 The cosine-similarity distribution (<a data-figure-ref="fig-dictionary-concept-diagnostics"></a>) is a lot more interesting; it is useful to ensure the dictionary has not collapsed into repeated atoms. 
 
@@ -434,51 +434,52 @@ The cosine-similarity distribution (<a data-figure-ref="fig-dictionary-concept-d
 
 #### Coding vectors stats
 
-Over a second phase I evaluated how ImageNet latents decompose over the learned dictionary by solving the non-negative LASSO coding step. <a data-figure-ref="fig-dictionary-code-distributions"></a> reports the three summaries: normalized code entropy, Hoyer sparsity, and reconstruction residue norms for reconstructions for $\lambda = 0.5$. These plots depict the three chosen sparsity metrics aggregated over a pool of image samples from the ImageNet dataset. All three are unimodal distributions, which is a bit reassuring, in the sense that the contrary would probably raise questions about the stability of the iterative procedure. The residue norms typically lie in the range of a few units. To put that into perspective, we have to remember that it means the error spreads over the 384 latent dimensions of the model (`facebook/dinov3-vits16-pretrain-lvd1689m`), and compare it against the typical value range of the latents dimensions.
-
+Over a second phase I evaluated how ImageNet latents decompose over the learned dictionary by solving the non-negative LASSO coding. <a data-figure-ref="fig-dictionary-code-distributions"></a> displays the three chosen statistics: normalized code entropy, Hoyer sparsity, and RMS of reconstruction error for different values of $\lambda$, each aggregated over a pool of random thumbnails sampled the same way as the training dataset. As expected, larger values of the sparsity weight lead to, well, more sparse latents, and that phenomenon manifests itself in all three metrics.
 
 <figure id="fig-dictionary-code-distributions" class="figure-grid figure-grid-three">
 	<div class="figure-grid-images">
 		<img
-			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781615395/code_entropy_ewnu4j.svg"}
-			alt="Histogram of normalized entropy values for non-negative sparse codes."
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794218364/code_entropy_sex9ti.svg"}
+			alt="Histogram of normalized entropy values"
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
 		<img
-			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781615395/code_sparsity_lci3ea.svg"}
-			alt="Histogram of Hoyer sparsity values for non-negative sparse codes."
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794218376/code_sparsity_ammslf.svg"}
+			alt="Histogram of Hoyer sparsity values"
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
 		<img
-			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781617049/residue_norms_flosuj.svg"}
-			alt="Histogram of Euclidean norms of the reconstruction residues of dictionary decompositions."
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794218402/residue_norms_lb9usy.svg"}
+			alt="Histogram of RMS reconstruction error"
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
 	</div>
 	<figcaption>
 		<span class="label"></span>
-		Distribution of coding statistics on sampled ImageNet latents: normalized
-		entropy, Hoyer sparsity, and $L_2$ reconstruction residue
+		Distribution of assignment statistics on sampled ImageNet latents: normalized
+		entropy, Hoyer sparsity, and RMS of reconstruction error
 	</figcaption>
 </figure>
 
 
-<a data-figure-ref="fig-dictionary-joint-diagnostics"></a> combines the same per-sample statistics into two-dimensional histograms for two combinations of the three possible metrics pairs. To my surprise, there was no clear correlation between the Hoyer sparsity measure and the quality of reconstruction as per the residual norms, although it does seem llike there is a Pareto front beyond which further gains in sparsity come at the cost of deteriorated reconstruction accuracy. Meanwhile, there is a strong correlation between the Hoyer and entropy metrics, so let's focus on Hoyer sparsity henceforth. The same behaviors were observed with other neighboring values of $\lambda$.
+<a data-figure-ref="fig-dictionary-joint-diagnostics"></a> combines the same per-sample statistics into two-dimensional histograms for two combinations of the three possible metrics pairs. To my surprise, there was no clear correlation between Hoyer sparsity and reconstruction RMS for a given $\lambda$, although it does seem like there is a Pareto frontier beyond which further gains in sparsity come at the cost of deteriorated reconstruction accuracy, which moves with $\lambda$.
+
+On the other hand, there is a distinct boomerang-shaped distribution relationship between Hoyer sparsity and entropy, although it's probably not specific to latent embeddings.
 
 <figure id="fig-dictionary-joint-diagnostics" class="figure-grid">
 	<div class="figure-grid-images" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
 		<img
-			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781615066/residue_norms_vs_code_sparsity_fmhngn.svg"}
-			alt="Two-dimensional histogram of residue norms against Hoyer sparsity."
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794218408/residue_norms_vs_code_sparsity_f5lhko.svg"}
+			alt="Two-dimensional histogram of residue norms versus Hoyer sparsity"
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
 		<img
-			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781615066/code_entropy_vs_code_sparsity_bztujj.svg"}
-			alt="Two-dimensional histogram of normalized entropy against Hoyer sparsity."
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794218371/code_entropy_vs_code_sparsity_kajzcx.svg"}
+			alt="Two-dimensional histogram of normalized entropy versus Hoyer sparsity"
 			loading="lazy"
 			style="aspect-ratio: auto;"
 		/>
@@ -486,7 +487,7 @@ Over a second phase I evaluated how ImageNet latents decompose over the learned 
 	<figcaption>
 		<span class="label"></span>
 		Joint diagnostics for the same sampled codes: reconstruction residue versus
-		Hoyer sparsity, and normalized entropy versus Hoyer sparsity for $\lambda = 0.5$
+		Hoyer sparsity, and normalized entropy versus Hoyer sparsity
 	</figcaption>
 </figure>
 
