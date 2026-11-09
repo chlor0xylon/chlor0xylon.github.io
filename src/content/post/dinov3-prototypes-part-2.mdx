@@ -490,32 +490,6 @@ Over a second phase I evaluated how ImageNet latents decompose over the learned 
 	</figcaption>
 </figure>
 
-#### Effect of regularization on sparsity
-
-As a sanity check it can be interesting to observe how the regularization hyperparameter $\lambda$ affects the sparsity of the codes. As expected, increasing the sparse $L_1$ regularization weights improves sparsity at the cost of the residue norm (<a data-figure-ref="fig-stats-for-lambdas"></a>).
-
-
-
-<figure id="fig-stats-for-lambdas" class="figure-grid">
-	<div class="figure-grid-images" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
-		<img
-			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781617851/code_sparsity_all_lambdas_vcsm1y.svg"}
-			alt="Code sparsity for a range of regularization weights."
-			loading="lazy"
-			style="aspect-ratio: auto;"
-		/>
-		<img
-			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781617852/residue_norms_all_lambdas_mhubyy.svg"}
-			alt="Reconstruction residues for a range of regularization weights."
-			loading="lazy"
-			style="aspect-ratio: auto;"
-		/>
-	</div>
-	<figcaption>
-		<span class="label"></span>
-		Hoyer sparsity and reconstruction residue Euclidean norms for a few values of the sparsity regularization term weight
-	</figcaption>
-</figure>
 
 
 ## References
