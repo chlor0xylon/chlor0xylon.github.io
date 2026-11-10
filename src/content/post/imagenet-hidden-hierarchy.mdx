@@ -239,10 +239,6 @@ Fortunately, cosine similarities tend to convey more semantic significance. Of c
 
 As I said, I want to embed the points on a periodic manifold, more specifically, a simple 3D sphere, instead of relying on handy [Nvidia's GPU-accelerated manifold implementations](https://docs.nvidia.com/cuml/latest/api/cuml.manifold/) like UMAP, which only produce embeddings in the 2D plane. My intuition is that the procedure should allow the points to reach an equilibrium by crowding in a finite, periodic space and to self-organize so as to make similar points group together, and dissimilar points repulse away from each other. A bit like laying a network of springs and joints on the sphere and letting it stabilize.
 
-So, we start off with 
-
-
-
 
 
 In order to proceed, I imagined the following.
@@ -351,7 +347,7 @@ The conceptual projected gradient loop reads:
 
 ```python
 affinities: EdgeAffinities
-p_dist = affinities.vals / affinities.vals.sum()
+p_dist = affinities.values / affinities.values.sum()
 
 embeddings_params = torch.nn.Parameter(torch.randn(N_vec, 3))
 optimizer = torch.optim.Adam([embeddings_params], lr=lr)
