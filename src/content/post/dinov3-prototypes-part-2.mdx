@@ -148,7 +148,7 @@ So, looking into the procedure reveals that the optimization performs a step in 
 
 In an extended journal version of the paper [@JMLRv11mairal10a], the authors also tackle regularization variants, notably the non-negative matrix factorization problem (NMF for short) taken from another referenced line of research[^note-nmf], as part of the broader framework of different constraint sets for the dictionary and the codes.
 
-[^note-nmf]: That's where we can learn, among other things, that non-negative matrix factorization for sparse coding seems to date back as early as 2001.
+[^note-nmf]: In it, one can read, among other things, that non-negative matrix factorization seems to have been experimented with for sparse coding since as early as 2001.
 
 They mention the alternative constraint set
 
@@ -214,9 +214,7 @@ Also, instead of simply summing the statistics in matrices $A$ and $B$, which co
 
 #### Dictionary update step
 
-The dictionary update step is pretty much about following the instructions from the above algorithm to the letter, with the additional projection to enforce non-negative values for the new dictionary columns. I kept the original column-wise $L_2$ unit ball constraint for stability of the dictionary atoms[^note-proj-l2-lasso-fista], and obviously, I added the projection onto the set of positively-valued vectors.
-
-[^note-proj-l2-lasso-fista]: Without it, the concept vectors would explode and their norms would increase indefinitely in my tests.
+The dictionary update step is pretty much about following the instructions from the above algorithm to the letter, with the additional projection to enforce non-negative values for the new dictionary columns. I kept the original column-wise $L_2$ unit ball constraint for stability of the dictionary atoms, and obviously, I added the projection onto the set of positively-valued vectors.
 
 
 At a later stage prototyping and benchmarking my code on the GPU, I also had Claude suggest using a vectorized Jacobi update scaling by $A$'s largest eigenvalue, instead of the proposed blocking Gauss-Seidel `for` loop.
