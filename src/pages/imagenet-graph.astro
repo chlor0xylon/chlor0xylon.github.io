@@ -1,0 +1,117 @@
+---
+import { getEntry, render } from "astro:content";
+import PageLayout from "@/layouts/Base.astro";
+import { withBase } from "@/utils/path";
+
+const entry = await getEntry("page", "imagenet-graph");
+if (!entry) throw new Error("Missing src/content/page/imagenet-graph.mdx");
+const { Content } = await render(entry);
+
+const dataUrl = withBase("/imagenet-graph.json");
+---
+
+<PageLayout meta={{ title: entry.data.title, description: entry.data.description }}>
+	<section aria-labelledby="graph-title">
+		<h1 id="graph-title">{entry.data.title}</h1>
+		<Content />
+		<input id="graph-search" type="search" list="graph-labels" placeholder="Find a node…" />
+		<datalist id="graph-labels"></datalist>
+		<div id="graph" data-src={dataUrl} role="img" aria-label="Interactive ImageNet hierarchy graph"></div>
+	</section>
+</PageLayout>
+
+<style>
+	#graph {
+		width: 100%;
+		height: 70vh;
+		margin-top: 0.75rem;
+		border: 1px solid hsl(var(--theme-text) / 0.2);
+		border-radius: 4px;
+	}
+	#graph-search {
+		width: 100%;
+		max-width: 24rem;
+		padding: 0.25rem 0.5rem;
+		font: inherit;
+		color: inherit;
+		background: transparent;
+		border: 1px solid hsl(var(--theme-text) / 0.3);
+		border-radius: 4px;
+	}
+</style>
+
+<script>
+	import Graph from "graphology";
+	import Sigma from "sigma";
+	import { drawDiscNodeHover } from "sigma/rendering";
+
+	type Payload = {
+		nodes: [number, string, number, number, string, boolean][];
+		edges: [number, number][];
+	};
+
+	const container = document.getElementById("graph") as HTMLElement;
+	const search = document.getElementById("graph-search") as HTMLInputElement;
+	const labels = document.getElementById("graph-labels") as HTMLDataListElement;
+
+	// Canvas can't parse the template's `--theme-text` triplet directly, so let the browser resolve it
+	// to a plain `rgb(...)` color.
+	function readTextColor(): string {
+		const probe = document.createElement("span");
+		probe.style.color = "hsl(var(--theme-text))";
+		document.body.append(probe);
+		const color = getComputedStyle(probe).color;
+		probe.remove();
+		return color;
+	}
+
+	async function main() {
+	const { nodes, edges }: Payload = await (await fetch(container.dataset.src as string)).json();
+
+	const graph = new Graph({ type: "directed" });
+	const byLabel = new Map<string, string>();
+	for (const [id, label, x, y, color, isClass] of nodes) {
+		graph.addNode(String(id), { label, isClass, x, y, color, size: isClass ? 5 : 3 });
+		byLabel.set(label, String(id));
+		labels.append(new Option(label));
+	}
+	for (const [source, target] of edges) {
+		graph.addEdge(String(source), String(target), { color: "#9998", size: 1 });
+	}
+
+	let hovered: string | null = null;
+	const renderer = new Sigma(graph, container, {
+		labelColor: { color: readTextColor() },
+		labelRenderedSizeThreshold: 8,
+		// Sigma always draws the hover box in white, so force a dark label on it.
+		defaultDrawNodeHover: (context, data, settings) =>
+			drawDiscNodeHover(context, data, { ...settings, labelColor: { color: "#000" } }),
+		// Only terminal nodes (the ImageNet classes) keep a permanent label; the others show it on hover.
+		nodeReducer: (node, data) =>
+			node === hovered || data.isClass ? data : { ...data, label: null },
+	});
+
+	// Follow the light/dark toggle (it sets `data-theme` on <html>).
+	new MutationObserver(() => {
+		renderer.setSetting("labelColor", { color: readTextColor() });
+	}).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+	renderer.on("enterNode", ({ node }) => {
+		hovered = node;
+		renderer.refresh();
+	});
+	renderer.on("leaveNode", () => {
+		hovered = null;
+		renderer.refresh();
+	});
+
+	search.addEventListener("change", () => {
+		const id = byLabel.get(search.value);
+		if (!id) return;
+		const { x, y } = renderer.getNodeDisplayData(id) as { x: number; y: number };
+		renderer.getCamera().animate({ x, y, ratio: 0.05 }, { duration: 600 });
+	});
+	}
+
+	main();
+</script>

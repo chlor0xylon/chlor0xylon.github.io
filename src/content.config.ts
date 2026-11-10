@@ -36,7 +36,7 @@ const post = defineCollection({
 });
 
 const page = defineCollection({
-	loader: glob({ pattern: "**/*.md", base: "./src/content/page" }),
+	loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/page" }),
 	schema: z.object({
 		title: z.string().max(120),
 		description: z.string().max(160).optional(),

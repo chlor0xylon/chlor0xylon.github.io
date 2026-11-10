@@ -13,9 +13,9 @@ ImageNet-1K is a substantial dataset of deep computer vision. It paved the way f
 
 So, ImageNet-1K [@imagenet1k2012] contains 1.4 million images split into 1000 categories. These categories also happen to belong to a much larger set organized into a hierarchy called [WordNet](https://wordnet.princeton.edu/), which is a 2005 project compiling a lexical database modelling the semantic relationships between 82000+ English words, expressions, and textual concepts [@imagenet2009].
 
-The 1000 ImageNet classes are diverse but a lot of them are in fact variants or specialized versions of broader common species, objects, or concepts. A full list can be found [here](https://deeplearning.cms.waikato.ac.nz/user-guide/class-maps/IMAGENET/). For example, there are dozens of different dog species. Any two entities of the WordNet hierarchy related by a subset-ordering relation are linked in the graph by a directed edge going from a concept to its parent. Thus, expectedly, the whole WordNet takes the form of a **direct, acyclic graph** (DAG) whose single sink node is named "entity", and is comprised of 74401 nodes and 75850 edges.
+The 1000 ImageNet classes are diverse but a lot of them are in fact variants or specialized versions of broader common species, objects, or concepts. A full list can be found [here](https://deeplearning.cms.waikato.ac.nz/user-guide/class-maps/IMAGENET/). For example, there are dozens of different dog species. Any two entities of the WordNet hierarchy related by a subset-ordering relation are linked in the graph by a directed edge going from a concept to its parent. Thus, expectedly, the whole WordNet takes the form of a **directed acyclic graph** (DAG) whose single sink node is named "entity", and is comprised of 74401 nodes and 75850 edges.
 
-Looking at partial graph representations of the WordNet graph induced by the nodes that are present in ImageNet classes reveals a much smaller underlying structure comprised of 1860 nodes and 1937 remaining edges. To visualize it, I assembled the DAG from the node and edge text dumps available on seemingly long-forgotten GitHub repositories. In the coming figures, I inverted arrows to point to descendents instead of ancestors in order to convey the more intuitive idea "is a subset of" as opposed to "is a superset of". Moreover I pruned nodes that did not have any leaves that are part of ImageNet's one thousand classes. There is no point rendering the whole subgraph in this post, as the figure would not fit anyway, but producing a whole PDF of it is possible. <a data-figure-ref="fig-entity-to-dog"></a> and <a data-figure-ref="fig-root-depth-4"></a> show such visual excerpts of the graph: all paths leading to metaclass "dog" on one hand and all reachable metaclass nodes from the root within 4 steps (final ImageNet class leaves were stripped).
+Looking at partial graph representations of the WordNet graph induced by the nodes that are present in ImageNet classes reveals a much smaller underlying structure comprised of 1860 nodes and 1937 remaining edges. To visualize it, I assembled the DAG from the node and edge text dumps available on seemingly long-forgotten GitHub repositories. In the coming figures, I inverted arrows to point to descendants instead of ancestors in order to convey the more intuitive idea "is a subset of" as opposed to "is a superset of". Moreover I pruned nodes that did not have any leaves that are part of ImageNet's one thousand classes. There is no point rendering the whole subgraph in this post, as the figure would not fit anyway, but producing a whole PDF of it is possible. <a data-figure-ref="fig-entity-to-dog"></a> and <a data-figure-ref="fig-root-depth-4"></a> show such visual excerpts of the graph: all paths leading to metaclass "dog" on one hand and all reachable metaclass nodes from the root within 4 steps (final ImageNet class leaves were stripped).
 
 <figure id="fig-entity-to-dog" class="figure-wide" style="width: min(480px, 100%); margin-inline: auto;">
 	<img
@@ -48,11 +48,11 @@ Looking at partial graph representations of the WordNet graph induced by the nod
 
 ## Condensing the WordNet structure onto ImageNet categories
 
-Graph-based data enable all kings of interesting analysis potentials. Graphs condense information in a discrete structure different from continuous spaces, like regular real vectors. But graph data can incidentally be converted to vectors via [spectral analysis](https://en.wikipedia.org/wiki/Spectral_graph_theory), to produce equivalent embeddings that can, in turn, be projected to lower a dimensionality space and be shown in usual dot plots, for example. Or, such embeddings could also be converted to visual cues like color attributes on the noeds (but not necessarily a graph coloring). This is what I will be doing below.
+Graph-based data enable all kinds of interesting analysis potentials. Graphs condense information in a discrete structure different from continuous spaces, like regular real vectors. But graph data can incidentally be converted to vectors via [spectral analysis](https://en.wikipedia.org/wiki/Spectral_graph_theory), to produce equivalent embeddings that can, in turn, be projected to a lower-dimensional space and be shown in usual dot plots, for example. Or, such embeddings could also be converted to visual cues like color attributes on the nodes (but not necessarily a graph coloring). This is what I will be doing below.
 
 
 ### Designing a comparison kernel for leaf nodes
-In order to proceed with that idea, I first contracted transitory nodes (nodes with exactly one ancestor and one decendant) from the whole WordNet DAG. Although these may encode existing category subdivisions, they actually add noise to the graph structure for computations like distance between nodes and spectral analysis without serving a true branching purpose. So, I contracted them. That leaves us with only 1416 nodes (416 of which are intermediary metaclasses) and 1489 edges.
+In order to proceed with that idea, I first contracted transitory nodes (nodes with exactly one ancestor and one descendant) from the whole WordNet DAG. Although these may encode existing category subdivisions, they actually add noise to the graph structure for computations like distance between nodes and spectral analysis without serving a true branching purpose. So, I contracted them. That leaves us with only 1416 nodes (416 of which are intermediary metaclasses) and 1489 edges.
 
 Secondly, since we're more interested in the final 1000 WordNet categories that are ImageNet classes--in order to perform downstream computer vision-based analysis with that graph prior at hand--, embeddings of the remaining intermediary metaclasses are useless to compute.
 
@@ -65,7 +65,7 @@ $$
 
 where $\text{Distance}(u, v)$ is effectively the sum of distances from the LCA to each of the two leaves: $d_{\text{LCA} \rightarrow u} + d_{\text{LCA} \rightarrow v}$.
 
-The fully formed matrix of similarities for every pair of leaves emulates the representation of a complete graph with weighted edges and nodes looping onto themselves (the original DAG is fully connected, so every pair of leaves has a LCA).
+The fully formed matrix of similarities for every pair of leaves emulates the representation of a complete graph with weighted edges and nodes looping onto themselves (the original DAG is fully connected, so every pair of leaves has an LCA).
 The resulting matrix of similarity $S \in \mathbb{R}^{1000 \times 1000}$ is symmetric with positive entries and can be reused at will for computing embeddings.
 
 
@@ -76,7 +76,7 @@ So I computed embeddings in 3D for the artificial subgraph made up from the affi
 
 ### Results
 
-The resulting colormaps are interesting: with three spectral embedding dimensions and thus three color components, a few predictable groups appear. The aforementioned prominent meta-classes end up with almost the same color. For example, canines appear in bright yellow and orange shades. Fruits and vegetables get brown. Inert objects range across a wide blue and green palette whereas a lot of animals receive in pink and fushia colors. Refer to  <a data-figure-ref="fig-complete-graph-with-colormap"></a>.
+The resulting colormaps are interesting: with three spectral embedding dimensions and thus three color components, a few predictable groups appear. The aforementioned prominent meta-classes end up with almost the same color. For example, canines appear in bright yellow and orange shades. Fruits and vegetables get brown. Inert objects range across a wide blue and green palette whereas a lot of animals receive pink and fuchsia colors. Refer to  <a data-figure-ref="fig-complete-graph-with-colormap"></a>.
 
 
 <figure id="fig-complete-graph-with-colormap" class="figure-wide">
@@ -92,8 +92,10 @@ The resulting colormaps are interesting: with three spectral embedding dimension
 	</figcaption>
 </figure>
 
+If you want to explore the whole graph, there is an [interactive version](/imagenet-graph/) where you can pan, zoom and search for any category.
 
-Another remarkable result of the spectral embeddings based on the previous speculated similarity metric is that they are able to successfully summarize coarser, unexpected aspects already contained in the WordNet. With one spectral embedding dimension instead of three,  shown here with a red-blue colormap, a clear boundary materializes and seems to consistently separate living entities from inert entities, with mainly food items lying on ambiguous neutral ground (<a data-figure-ref="fig-bicolor-hierarchy"></a>). This, in my opinion, is surprising because the top-level splits from the original DAG (<a data-figure-ref="fig-root-depth-4"></a>) do not explicitly encode or suggest the "alive" characteristic until depth 4 with "organism, being", and yet that property resurfaces from the finer, deeper subdivisions of the DAG as a main spectral direction.
+
+Another surprising result of the spectral embeddings based on the previously speculated similarity metric is that they are able to successfully summarize coarser, unexpected aspects already contained in WordNet. With one spectral embedding dimension instead of three, a clear boundary materializes and seems to consistently separate living entities from inert entities, with mainly food items lying on ambiguous neutral ground (see the representation with a red-blue colormap in <a data-figure-ref="fig-bicolor-hierarchy"></a>). This, in my opinion, is remarkable because the top-level splits from the original DAG (<a data-figure-ref="fig-root-depth-4"></a>) do not explicitly encode or suggest the "alive" characteristic until depth 4 with "organism, being", and yet that property resurfaces from the finer, deeper subdivisions of the DAG as a main spectral direction.
 
 <figure id="fig-bicolor-hierarchy" class="figure-wide" style="width: min(420px, 100%); margin-inline: auto;">
 	<img
@@ -110,20 +112,72 @@ Another remarkable result of the spectral embeddings based on the previous specu
 
 ## The DINOv3 hierarchy
 
-In contrast with the previously presented discrete hierarchy built upon textual elements, the DINOv3 vision model family of neural networks is trained on the LVD-1689M dataset [@simeoni2025dinov3] to produce continuous latent representations of images. The models in that family were trained to produce generic image embeddings in dense high-dimensional spaces whose dimensions range from 384 to 4096 dimensions depending on the backbone and model size. Those embeddings can naturally be used for downstream tasks, although I'm not interested in doing that. Rather, I'm interested in testing whether or not these raw embeddings independently reproduce the WordNet hierarchy. 
+### Model family
+In contrast with the previously presented discrete hierarchy built upon textual elements, let me introduce the DINOv3 vision model family of neural networks. It is a family of open-weight neural image encoders trained on the LVD-1689M dataset [@simeoni2025dinov3] to produce useful latent representations on generic images. They yield dense high-dimensional spaces whose latent dimension $d$ ranges from 384 to 4096 depending on the backbone and model variant. More precisely, every Transformer-based model cuts the image into 16-by-16-pixel patches and produces one token per patch in the chosen dimension, as well as four register tokens and one CLS token. The ConvNeXt-backbone variants output a single vector of dimension ranging from 768 to 1536. All details come from the model cards [DINOv3 ViT Small](https://huggingface.co/facebook/dinov3-vits16-pretrain-lvd1689m), [DINOv3 ConvNeXt Base](https://huggingface.co/facebook/dinov3-convnext-base-pretrain-lvd1689m) on HuggingFace. Those embeddings can naturally be used for downstream tasks, although I'm not interested in doing that. Rather, I'm interested in testing whether or not these raw embeddings independently reproduce the WordNet hierarchy. 
+
+Just below I plotted colored representations of the so-called patch tokens in overlay of an example insect photo. On the third image you can inspect the heatmap of patch tokens the model considered the closest to the CLS token. The CLS token is one of five side tokens that do not correspond to any part of the input image passed in the network. The four others are called registers, a denomination that comes from the 2024 paper @darcet2024visionTransformersNeedRegisters, "Vision Transformers Need Registers". These tokens are part of the mix and are supposed to act as "registers" to store intermediate contextualized information about the image as a whole in order to avoid the model hijacking image patches for storing particular cues. Architecturally, these tokens don't get positional encodings to tell them apart geometrically in the 2D space from the model's perspective, but only the CLS token gets taken into account in the DINO loss (alongside patch tokens), so it's the one that aggregates image semantics with the most fidelity. Of course, the ConvNeXt-backed models don't have those, but in the remainder of this page I may refer to the CLS token interchangeably for the CLS token of ViT-backed encoders or the single vector output of ConvNeXt-backed encoders.
 
 
-### Assessing the match
-The fact that the categories of the ImageNet dataset are part of a larger knowledge graph with known metaclass dependencies makes it particularly interesting to use as a prior for the image data. **So, it stands as an interesting question to me whether the ImageNet class hierarchy we unveiled earlier translates to the unsupervised embeddings of that dataset through a completely independent model.** It is about testing whether language hiararchies are consistent with visual hierarchies obtained by means of an unsupervised, emergent learning strategy[^note-emergence].
+### Outputs' significance and visualization
+Overall, the CLS token acts as a condensed representation of the whole image, whereas the patch tokens only sum up the contents of, well, the concerned token, contextualized within the whole image. In <a data-figure-ref="fig-overlay-patches"></a>, I performed a PCA decomposition on all the patch tokens and colored them in RGB coding from the first three components. Additionally, I plotted the heatmap of cosine similarity to the CLS token. The result shows that embeddings faithfully mirror designated semantic regions of the insect's photo. These visualizations have already been featured by Meta on the DINOv3 project page: one of the significant values of DINOv3 is the model's latent stability and continual consistency in similar views of the same scene, for example in videos.
+
+<figure id="fig-overlay-patches" class="figure-wide" style="width: min(550px, 100%); margin-inline: auto;">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794307306/patch_tokens_overview_maps_nkfjdx.webp"}
+		alt="Dragonfly photo next to its patch tokens colored by PCA-to-RGB mapping and by cosine similarity to the CLS token"
+        loading="lazy"
+        style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Patch tokens colored according to their latent vectors on a dragonfly photo. Middle image: colormap based on the first three PCA to RGB values conversion of patches; Rightmost image: colormap based on the cosine similarity to the CLS token. 
+	</figcaption>
+</figure>
+
+By the way, one can try assigning the tokens to a few groups from their sole latents. The method is not unequivocal, though, and this can be done several different ways. <a data-figure-ref="fig-segmented-patches"></a> is a showcase of three segmentation methods.
+
+<figure id="fig-segmented-patches" class="figure-wide" style="width: min(550px, 100%); margin-inline: auto;">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794315183/patch_tokens_segmentation_maps_vnn3fm.webp"}
+		alt="Patch tokens of a dragonfly photo segmented by three methods: max-intra-group similarity relaxation, Shi-Malik normalized cut and spectral clustering"
+        loading="lazy"
+        style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Segmentations of the dragonfly photo patch tokens from their latent vectors. Left: max-intra-group similarity relaxation; middle: Shi-Malik normalized cut; right: Scikit-Learn spectral clustering.
+	</figcaption>
+</figure>
 
 
-[^note-emergence]: In the first DINO paper, the authors ecplicitly described that their learning student-teacher networks featured emergent properties by learning embeddings with no labels at all, driven only by crops and partial views.
+- The leftmost heatmap is computed from a max-intra-group similarity clustering. It goes as follows. First, define $\tilde{S} = S - m\,\mathbf{1}\mathbf{1}^\top$ where $m$ is the median of all pairwise cosine similarities $\{S_{ij}\}_{i < j}$. Then, solve the following relaxed problem:
+$$
+\begin{aligned}
+\max_{x \in [0,1]^N} \quad & x^\top \tilde{S}\, x \;+\; (\mathbf{1} - x)^\top \tilde{S}\, (\mathbf{1} - x)
+\end{aligned}
+$$
+
+The assignments to either group are then set by $g_i = \mathbb{1}\left[x_i > \tfrac{1}{2}\right]$. I imagined this method myself.
+
+- The middle heatmap is made from the Shi-Malik normalized cut. This method and its implementation were proposed by an LLM.
+- Finally, the rightmost spectral clustering is Scikit-Learn's `SpectralClustering`.
+
+
+
+As you can see, the main principal components seem to reflect the most prominent semantic groups seen in this particular canonical example. In other words, the main subjects. And the CLS token also roughly aligns with the segmentations most of the time.
+
+
+### Testing the hierarchy against the embeddings
+The fact that the categories of the ImageNet dataset are part of a larger knowledge graph with metaclass dependencies known in advance makes it particularly interesting to use as a prior for image data. **So, it stands as a particularly interesting question to me whether the ImageNet class hierarchy we unveiled earlier translates to the unsupervised embeddings of that dataset through a completely independent model.** It is about testing whether language hierarchies are consistent with visual hierarchies obtained by means of an unsupervised, emergent learning strategy[^note-emergence].
+
+
+[^note-emergence]: In the first DINO paper, the authors explicitly described that their learning student-teacher networks featured emergent properties by learning embeddings with no labels at all, driven only by crops and partial views.
 
 #### With a planar dimensionality reduction technique
 
-To test the above hypothesis, I ran a 2D UMAP dimensionality reduction on the CLS tokens of 250000 unaltered random ImageNet samples (about a fifth of the total dataset size) through DINOv3 ConvNeXt Tiny variant (see <a data-figure-ref="fig-umap-imagenet"></a>), and I colored the points depending in their label with the RGB colormap derived from the aforementioned similarity spectral embedding.
+To test the above hypothesis, I ran a 2D UMAP dimensionality reduction on the CLS tokens of 250000 unaltered random ImageNet samples (about a fifth of the total dataset size) through the DINOv3 ConvNeXt Tiny variant, and I colored the points depending on their label with the RGB colormap derived from the aforementioned similarity spectral embedding. If the image CLS embeddings obey the same prior provided by WordNet, the dots on the projection should observe local coloring consistency.
 
-The conclusion is already clear: at least on this very model, at least to some extent, the CLS token embeddings _does_ reflect the language-built prior structure provided by WordNet. Pretty neat, isn't it?
+The result? Figure <a data-figure-ref="fig-umap-imagenet"></a> says it all. The picture is simple: similar classes land close together, just as WordNet predicts. So the CLS token embeddings _do_ mirror the language-related prior structure provided by WordNet. Pretty neat, isn't it?
 
 <figure id="fig-umap-imagenet" class="figure-wide" style="width: min(480px, 100%); margin-inline: auto;">
 	<img
@@ -139,9 +193,214 @@ The conclusion is already clear: at least on this very model, at least to some e
 </figure>
 
 
+#### With a manual embedding procedure
+Ok, UMAP was straightforward and easy but planar dimensionality reduction techniques have always bugged me for reducing embeddings from a neural network, because the produced embeddings are mainly crowded in the vicinity of a hypersphere themselves. So it seems unfair to forcibly flatten them in $\mathbb{R}^2$, which is not the same geometry. This is why algorithms like t-SNE and UMAP often "wrap" representations around and tear apart similar points to opposite ends of the figure in order to project points, even though they may be closer than suggested in the original space. It does not seem to have been particularly the case in the above UMAP, but I wanted to project those points onto a globe $\mathcal{S}^2$ instead.
+
+The rationale for this idea is to preserve the geometry of embeddings, which concentrate on a thin shell around a hypersphere, probably because of the model's final LayerNorm. Plotting the $L_2$ norms of ImageNet-1K image CLS tokens shows that they lie in a narrow interval of high values, and no vector ends up close to the origin in $\mathbb{R}^{d}$. Projecting onto a 3D globe therefore seems more natural than flattening onto a Euclidean plane, to keep the spherical nature of the embeddings. Doing it properly means projecting in terms of angle, rather than distance.
+
+In high dimension, the Euclidean distance becomes a nearly meaningless metric because points tend to be very far from each other due to the sheer number of dimensions adding up to the total. This phenomenon is sometimes referred to as the *curse of dimensionality*, or at least it's one of the phenomena that the phrase evokes.
+
+Fortunately, cosine similarities tend to convey more semantic significance. Of course, angle separation and distance are related by the identity $\|x - y\|^2 = \|x\|^2 + \|y\|^2 - 2 \cos (\theta)\|x\| \|y\|$ so both concepts are not entirely uncoupled. But it is a well-known fact that in a $d$-dimensional space, there can fit as many as $2^{\Theta (\epsilon^2 d)}$ unit vectors with all pairwise inner products $\le \epsilon$. Almost all statistical learning courses introduce a formulation of that fact one way or another. <a data-figure-ref="fig-pairwise-theoretical-cosine"></a> is a plot of the probability density function for the random variable measuring the cosine similarity between two points drawn at random on the surface of a hypersphere in dimension $d=768$ (the embedding dimension of the ConvNeXt architecture). For reference, this random variable is $C = 2B - 1$ where $B \sim \mathcal{B}(\frac{d-1}{2}, \frac{d-1}{2})$ (the beta law). It is incredibly narrow for large values of $d$. So, comparing cosine distances of well-calibrated neural networks (networks whose marginal output mean vector is near 0) makes any value beyond a high percentile very significant. Computing the value for the 99.5th percentile of the theoretical distribution `scipy.stats.beta(383.5, 383.5, loc=-1, scale=2).ppf(0.995)` yields $0.0928$, so any pair of embeddings below $-0.0928$ or above $0.0928$ belong to the happy few significant in one tail of the distribution. 
+
+
+
+<figure id="fig-pairwise-theoretical-cosine" class="figure-wide" style="width: min(480px, 100%); margin-inline: auto;">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1793296298/theoretical_cosine_density_dwqprh.svg"}
+		alt="Probability density function of theoretical pairwise cosine similarities between pairs of points drawn at random on the unit hypersphere of $\mathbb{R}^{768}$"
+        loading="lazy"
+        style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Probability density function of theoretical pairwise cosine similarities between pairs of points drawn at random on $\mathcal{S}^{767} \subset \mathbb{R}^{768}$
+	</figcaption>
+</figure>
+
+
+<a data-figure-ref="fig-pairwise-imagenet-cosine"></a> shows the experimental distribution of pairwise cosine values averaging over random pairs of ImageNet embeddings produced by the smallest DINOv3 ConvNeXt backbone (vectors live in $\mathbb{R}^{768}$). Despite the log scale, it is considerably skewed toward positive values and the tails are heavier than the theoretical random cosine distribution. This goes to show that this dataset is quite self-similar when seen through DINOv3 ConvNeXt.
+
+
+
+<figure id="fig-pairwise-imagenet-cosine" class="figure-wide" style="width: min(480px, 100%); margin-inline: auto;">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1793285865/latent_cosine_histogram_aaveia.svg"}
+		alt="Distribution of pairwise cosine similarities between ImageNet image embeddings from DINOv3 ConvNeXt backbone"
+        loading="lazy"
+        style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Distribution of pairwise cosine similarities between ImageNet image embeddings from DINOv3 ConvNeXt backbone
+	</figcaption>
+</figure>
+
+
+
+As I said, I want to embed the points on a periodic manifold, more specifically, a simple 3D sphere, instead of relying on handy [Nvidia's GPU-accelerated manifold implementations](https://docs.nvidia.com/cuml/latest/api/cuml.manifold/) like UMAP, which only produce embeddings in the 2D plane. My intuition is that the procedure should allow the points to reach an equilibrium by crowding in a finite, periodic space and to self-organize so as to make similar points group together, and dissimilar points repulse away from each other. A bit like laying a network of springs and joints on the sphere and letting it stabilize.
+
+
+
+In order to proceed, I imagined the following.
+- Define a non-negative comparison kernel in the original space
+- Define a non-negative comparison kernel in the target space
+- Train the embeddings in the target space to maximize agreement between the two pairwise similarity matrices
+
+At first I wasn't exactly sure about how to implement the third task, and what it would mean to maximize agreement. After a bit of research, I found that the most idiomatic way was to derive a probability distribution over the edges of the complete graph of similarity measures from the kernel, do that for both spaces and minimize the KL divergence between both distributions while training the target embeddings.
+
+
+It turns out that such a procedure is, as I understood it, roughly what algorithms like UMAP or t-SNE run. Dimensionality is our enemy since the number of pairs grows quadratically with the number of elements. The sample shown in Figure <a data-figure-ref="fig-umap-imagenet"></a> above contains $N=250000$ points. That's over 62 billion entries in the comparison matrix, which sadly, does not fit in a consumer grade GPU.
+
+To circumvent this annoying limitation, there are several ideas worth exploiting. First, the reference vectors can be used to eliminate irrelevant pairs whose cosine similarity is too low, by only considering a sparse subset of the edges for the $N$ points considered. In other words, performing a $k$-NN search which yields a sparse graph $(V,E)$ with $|V| = N$ (the total number of points) and $|E| = O(N)$. Fortunately, people far smarter than me have already put a great deal of effort implementing fast algorithms to do that, including GPU-accelerated versions such as [Nvidia's CuVS Neighbors](https://docs.nvidia.com/cuvs/api-reference/python-api-neighbors), which yields a `cuvs.neighbors.all_neighbors.KnnResult` that we can convert to the following form:
+
+```python
+@dataclass
+class SparseDistanceMatrix:
+    """Sparse representation of (N, N) Cupy partial pairwise distance matrix."""
+    rows: cupy.ndarray  # (E,)
+    cols: cupy.ndarray  # (E,)
+    vals: cupy.ndarray  # (E,)
+```
+
+#### Kernel in the original space
+So, according to the figures above, the primary comparison kernel in the model's **normed** embeddings $\{x_i\}_{1 \le i \le N} \subset \mathbb{R}^{768}$ space should reward meaningful cosine similarities. So I defined the affinity on an edge $e = (i, j)$ as follows:
+
+$$
+\alpha_e =
+\begin{cases}
+\exp\left(\langle x_i, x_j \rangle\right) \ge 0 & \text{if } (i,j) \in E, \\
+0 & \text{otherwise.}
+\end{cases}
+$$
+
+Affinities are only computed on edges of the sparse graph from the $k$-NN reduction indices of the sparse matrix of nearest neighbors. In practice, they are stored in a sparse Torch tensor. The artificial probability distribution $P$ results from it by normalizing so all edge weights sum to 1:
+$$
+p_e = \frac{\alpha_e}{Y}
+$$
+with  $Y = \sum_{e} \alpha_{e}$.
+
+From this stage on, computations are performed with PyTorch, which supports zero-copy acquisition of Cupy arrays on the GPU. After that, we get the following data structure for our equivalent edge affinities sparse 2D Tensor:
+
+```python
+@dataclass
+class EdgeAffinities:
+    """Sparse representation of (N, N) Torch partial pairwise kernel values matrix."""
+    rows: Tensor  # (E,) source point of each edge
+    cols: Tensor  # (E,) neighbour point of each edge
+    vals: Tensor  # (E,) affinity of each edge
+```
+
+#### Kernel in the target space
+
+Let us now define the secondary kernel $\kappa$ for the target embeddings in $\mathcal{S}^2 \subset \mathbb{R}^3$. In this target space, that secondary comparison kernel $\kappa$ has to make it possible to compute $Z = \sum_e \kappa_e$ over *all* $N(N-1)$ *ordered* pairs without ever materializing the full matrix of pairwise comparisons $[\kappa_{i,j}]_{1 \le i,j \le N}$ in the VRAM, in order to compute
+$$
+q_e = \frac{\kappa_e}{Z}
+$$
+
+
+
+The final objective is $\mathcal{L} = KL(P\|Q)$.
+
+Why do we need to sum over all comparisons for $\kappa$ anyway? This escaped my understanding at first. After digging a bit, I got the following: expanding the KL divergence yields
+$$
+\mathcal{L} = \sum_e p_e \log \frac{p_e}{q_e} = - H(P) - \sum_e p_e \log q_e
+$$
+
+The non-constant term can be further expanded to $\log Z - \sum_e p_e \log \kappa_e$. Removing terms inside $Z$ removes repulsion terms between each embedded datapoint on the sphere, since increasing any $\kappa_e$ increases the loss. So, the full $\log Z$ encourages points to spread over the whole surface of the sphere. A subset of these repulsive effects might supposedly result in a suboptimal solution.
+
+Now, to make $Z$ easy to compute, any affine-bilinear kernel like $(x,y) \mapsto 1 + \langle x, y\rangle$ fits the bill, for example:
+
+$$
+\kappa_e = 1 + \langle x_i, x_j \rangle \ge 0, \quad \forall (i,j)
+$$
+
+because then in the target space
+$$
+\sum_{1 \le i, j \le N} 1 + \langle x_i, x_j\rangle = N^2 +  \left\| \sum_{i=1}^N x_i \right\|^2
+$$
+
+consequently, summing over all pairs $i \ne j$ (each diagonal term equals 2)
+$$
+Z = \sum_{i \ne j} 1 + \langle x_i, x_j\rangle = N(N-2) + \left\| \sum_{i=1}^N x_i \right\|^2
+$$
+
+which is doable in $O(N)$ steps, since it only requires the reduction $\sum_{i=1}^N x_i$.
+
+
+In the Torch implementation, this kernel reads:
+
+```python
+def kernel(
+    points: Tensor, edge_rows: Tensor, edge_cols: Tensor
+) -> tuple[Tensor, Tensor]:
+    """Kernel 1 + cos >= 0: on the edges (E,)."""
+    N_vec: int = points.shape[0]
+    edge_kernel: Tensor = 1.0 + (points[edge_rows] * points[edge_cols]).sum(-1)  # (E,)
+    total_weight: Tensor = N_vec * (N_vec - 2) + points.sum(dim=0).square().sum()
+    return edge_kernel, total_weight
+```
+
+#### Training loop
+
+Once the above is resolved, the training process is straightforward to derive.
+The conceptual projected gradient loop reads:
+
+```python
+affinities: EdgeAffinities
+p_dist = affinities.values / affinities.values.sum()
+
+embeddings_params = torch.nn.Parameter(torch.randn(N_vec, 3))
+optimizer = torch.optim.Adam([embeddings_params], lr=lr)
+
+for step in range(steps):
+	optimizer.zero_grad()
+	normalized = torch.nn.functional.normalize(embeddings_params, dim=1)
+	edge_kernel, total_weight = kernel(normalized, affinities.rows, affinities.cols)
+	q_dist = edge_kernel / total_weight
+	loss = -(p_dist * q_dist.clamp_min(1e-12).log()).sum()
+	loss.backward()
+	optimizer.step()
+
+	with torch.no_grad():
+		embeddings_params.copy_(torch.nn.functional.normalize(embeddings_params, dim=1))
+```
+and results in a single array of $\mathbb{R}^{N \times 3}$ after the procedure, once the embeddings are stabilized.
+
+
+#### Results
+So I ran the procedure described above with 150000 datapoints, sourcing the sparse graph from observing $k=25$ closest neighbors for each point, and I trained the projection with the aforementioned objective. The training showed a very fast and effective convergence that rapidly hit a floor.
+<a data-figure-ref="fig-spherical-aitoff"></a> shows the resulting spherical embeddings flattened with an Aitoff projection, colored with the same WordNet-derived colormap as before. <a data-figure-ref="fig-spherical-globe-views"></a> shows the same 3D spherical embeddings as a series of globe views.
+
+<figure id="fig-spherical-aitoff" class="figure-wide">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1793362033/spherical_projection_aitoff_czcg8j.webp"}
+		alt="Aitoff projection of the spherical embeddings of ImageNet samples, colored by class using the WordNet-derived colormap"
+		loading="lazy"
+		style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Aitoff projection of the spherical embeddings of 150000 ImageNet samples
+	</figcaption>
+</figure>
+
+<figure id="fig-spherical-globe-views" class="figure-wide">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1793362021/spherical_globe_views_isakay.webp"}
+		alt="Series of globe views of the 3D spherical embeddings of ImageNet samples, colored by class using the WordNet-derived colormap"
+		loading="lazy"
+		style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Globe views of the same 3D spherical embeddings of 150000 ImageNet samples
+	</figcaption>
+</figure>
+
+Overall, the spherical projection looks quite close to the one obtained with UMAP in <a data-figure-ref="fig-umap-imagenet"></a>. The visible clusters of similar colors are consistent with the WordNet structure, and it seems that the manual optimization with custom-chosen kernels results in the same filament-like structure as in the UMAP projection. It's indicative that the ImageNet dataset exists in a somewhat limited subspace of the ConvNeXt semantic space trained with the DINOv3 loss. We can see a large Atlantic ocean of unpopulated, white space. Provided the complete repulsion terms have been retained as explained above, this too hints at some strong self-similarity in the dataset (heralded by the shift towards positive cosine similarities in <a data-figure-ref="fig-pairwise-imagenet-cosine"></a>).
 
 ## Conclusion
-This was a fun experiment bridging together research data and models that are more than 20 years apart. I had heard about the Platonic Representation Hypothesis [@huh2024platonicrepresentationhypothesis] suggesting that all deep learning models converge to representations that share a common structure. This small-scale experiment supports a claim that may not be very groundbreaking, but it confirms that modern vision models have captured representations that roughly follow the same preconceptions as humans put on language, according to plausible metrics. I might want to try and extend the testing with more elaborate language embeddings like Word2Vec [@word2vec] or even LLMs one day.
+This was a fun experiment bridging together research data and models that are more than 20 years apart. This small-scale experiment supports a claim that may not be very groundbreaking, but it confirms that modern vision models have captured representations that roughly follow the same preconceptions as humans put on language 20 years ago when the WordNet hierarchy was produced. I might want to try and extend the experiment with more elaborate language embeddings like Word2Vec in its time [@word2vec], or even LLMs one day to test the Platonic Representation Hypothesis [@huh2024platonicrepresentationhypothesis].
 
 ## References
 
