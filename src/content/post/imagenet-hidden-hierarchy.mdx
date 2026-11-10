@@ -70,7 +70,7 @@ The resulting matrix of similarity $S \in \mathbb{R}^{1000 \times 1000}$ is symm
 
 
 ### Computing spectral embeddings
-Spectral embeddings, usually leverage a normalized version of the [Laplacian matrix](https://en.wikipedia.org/wiki/Laplacian_matrix) $L=D-A$ of the graph where $D$ is the diagonal matrix of degrees of nodes, and $A$ is the adjacency matrix of the graph. As a side note about numerical computations, extracting eigenelements of a 1000 by 1000 matrix is definitely getting into the "not trivial anymore" territory of numerical linear algebra (because of numerical stability), but it remains completely tractable with modern libraries, especially as we don't need the whole spectrum. At first, I set out to compute eigenvectors corresponding to the largest eigenvalues using Scipy's `scipy.sparse.linalg.eigsh` on the manually preprocessed Laplacian but I ended up using SkLearn's `sklearn.manifold.SpectralEmbedding` with the `affinity="precomputed"` flag as an easier API reference.
+Spectral embeddings, usually leverage a normalized version of the [Laplacian matrix](https://en.wikipedia.org/wiki/Laplacian_matrix) $L=D-A$ of the graph where $D$ is the diagonal matrix of degrees of nodes, and $A$ is the adjacency matrix of the graph. As a side note about numerical computations, extracting eigenelements of a 1000 by 1000 matrix is definitely getting into the "not trivial anymore" territory of numerical linear algebra (because of numerical stability), but it remains completely tractable with modern libraries, especially as we don't need the whole spectrum. At first, I set out to compute eigenvectors corresponding to the largest eigenvalues using Scipy's `scipy.sparse.linalg.eigsh` on the manually preprocessed Laplacian but I ended up using Scikit-Learn's `sklearn.manifold.SpectralEmbedding` with the `affinity="precomputed"` flag as an easier API reference.
 
 So I computed embeddings in 3D for the artificial subgraph made up from the affinity metric on ImageNet's 1000 classes, which amounts to creating three attribution metrics and yielding three numbers for every node, which can be then normalized and converted to RGB colors.
 
@@ -119,7 +119,7 @@ Just below I plotted colored representations of the so-called patch tokens in ov
 
 
 ### Outputs' significance and visualization
-Overall, the CLS token acts as a condensed representation of the whole image, whereas the patch tokens only sum up the contents of, well, the concerned token, contextualized within the whole image. In <a data-figure-ref="fig-overlay-patches"></a>, I performed a PCA decomposition on all the patch tokens and colored them in RGB coding from the first three components. Additionally, I plotted the heatmap of cosine similarity to the CLS token. The result shows that embeddings faithfully mirror designated semantic regions of the insect's photo. These visualizations have already been featured by Meta on the DINOv3 project page: one of the significant values of DINOv3 is the model's latent stability and continual consistency in similar views of the same scene, for example in videos.
+Overall, the CLS token acts as a condensed representation of the whole image, whereas the patch tokens only sum up the contents of, well, the concerned token, contextualized within the whole image. In <a data-figure-ref="fig-overlay-patches"></a>, I performed a PCA decomposition on all the patch tokens and colored them in RGB coding from the first three components. Additionally, I plotted the heatmap of cosine similarity to the CLS token. The result shows that embeddings faithfully mirror designated semantic regions of the insect's photo. These visualizations have already been featured by Meta on the DINOv3 project page: one of the significant values of DINOv3 is the model's latent stability and continual consistency in similar views of the same scene, for example in videos. This works remarkably well because of how these encoders were trained in the first place: the training phase used a teacher-student setup wherein the student was encouraged to retrieve the CLS embeddings of the teacher's global view of an image while only given access to local views of the same image. Thus, the excellent "situational awareness" and stability of patch token embeddings which combine the gist and essential information of every part of an image in the final model.
 
 <figure id="fig-overlay-patches" class="figure-wide" style="width: min(550px, 100%); margin-inline: auto;">
 	<img
@@ -150,21 +150,21 @@ By the way, one can try assigning the tokens to a few groups from their sole lat
 </figure>
 
 
-- The leftmost heatmap is computed from a max-intra-group similarity clustering. It goes as follows. First, define $\tilde{S} = S - m\,\mathbf{1}\mathbf{1}^\top$ where $m$ is the median of all pairwise cosine similarities $\{S_{ij}\}_{i < j}$. Then, solve the following relaxed problem:
+- The leftmost heatmap is computed from a max-intra-group similarity clustering. It goes as follows. First, define $\tilde{S} = S - m\,\mathbf{1}\mathbf{1}^\top$ where $m$ is the median of all pairwise cosine similarities $\{S_{ij}\}_{i < j}$. Then, solve the following relaxed combinatorial assignment problem:
 $$
 \begin{aligned}
 \max_{x \in [0,1]^N} \quad & x^\top \tilde{S}\, x \;+\; (\mathbf{1} - x)^\top \tilde{S}\, (\mathbf{1} - x)
 \end{aligned}
 $$
 
-The assignments to either group are then set by $g_i = \mathbb{1}\left[x_i > \tfrac{1}{2}\right]$. I imagined this method myself.
+The assignments to either group are then set by $g_i = \mathbb{1}\left[x_i > \tfrac{1}{2}\right]$. I imagined this method myself after poking around a bit testing different correction factors for $S$.
 
-- The middle heatmap is made from the Shi-Malik normalized cut. This method and its implementation were proposed by an LLM.
+- The middle heatmap is made from the Shi-Malik normalized cut. This method and its implementation were proposed by an LLM. In many instances, the partition remained very close to the intra-group similarity cut (in the image above, it only differs by 4 tokens).
 - Finally, the rightmost spectral clustering is Scikit-Learn's `SpectralClustering`.
 
 
 
-As you can see, the main principal components seem to reflect the most prominent semantic groups seen in this particular canonical example. In other words, the main subjects. And the CLS token also roughly aligns with the segmentations most of the time.
+As you can see, the main principal components seem to reflect the most prominent semantic groups seen in this particular canonical example. In other words, the main subjects. And the CLS token also roughly aligns with the segmentations most of the time. Anyway, this was all a digression to get a sense of how embeddings can be used and compared. Now, on to the real experiment I'm after.
 
 
 ### Testing the hierarchy against the embeddings
@@ -200,7 +200,7 @@ The rationale for this idea is to preserve the geometry of embeddings, which con
 
 In high dimension, the Euclidean distance becomes a nearly meaningless metric because points tend to be very far from each other due to the sheer number of dimensions adding up to the total. This phenomenon is sometimes referred to as the *curse of dimensionality*, or at least it's one of the phenomena that the phrase evokes.
 
-Fortunately, cosine similarities tend to convey more semantic significance. Of course, angle separation and distance are related by the identity $\|x - y\|^2 = \|x\|^2 + \|y\|^2 - 2 \cos (\theta)\|x\| \|y\|$ so both concepts are not entirely uncoupled. But it is a well-known fact that in a $d$-dimensional space, there can fit as many as $2^{\Theta (\epsilon^2 d)}$ unit vectors with all pairwise inner products $\le \epsilon$. Almost all statistical learning courses introduce a formulation of that fact one way or another. <a data-figure-ref="fig-pairwise-theoretical-cosine"></a> is a plot of the probability density function for the random variable measuring the cosine similarity between two points drawn at random on the surface of a hypersphere in dimension $d=768$ (the embedding dimension of the ConvNeXt architecture). For reference, this random variable is $C = 2B - 1$ where $B \sim \mathcal{B}(\frac{d-1}{2}, \frac{d-1}{2})$ (the beta law). It is incredibly narrow for large values of $d$. So, comparing cosine distances of well-calibrated neural networks (networks whose marginal output mean vector is near 0) makes any value beyond a high percentile very significant. Computing the value for the 99.5th percentile of the theoretical distribution `scipy.stats.beta(383.5, 383.5, loc=-1, scale=2).ppf(0.995)` yields $0.0928$, so any pair of embeddings below $-0.0928$ or above $0.0928$ belong to the happy few significant in one tail of the distribution. 
+Fortunately, cosine similarities tend to convey more semantic significance. Of course, angle separation and distance are related by the identity $\|x - y\|^2 = \|x\|^2 + \|y\|^2 - 2 \cos (\theta)\|x\| \|y\|$ so both concepts are not entirely uncoupled. <a data-figure-ref="fig-pairwise-theoretical-cosine"></a> is a plot of the probability density function for the random variable measuring the cosine similarity between two points drawn at random on the surface of a hypersphere in dimension $d=768$ (the embedding dimension of the ConvNeXt architecture). For reference, this random variable is $C = 2B - 1$ where $B \sim \mathcal{B}(\frac{d-1}{2}, \frac{d-1}{2})$ (the beta law). It is incredibly narrow for large values of $d$. So, comparing cosine distances of well-calibrated neural networks (networks whose marginal output mean vector is near 0) makes any value beyond a high percentile very significant. Computing the value for the 99.5th percentile of the theoretical distribution `scipy.stats.beta(383.5, 383.5, loc=-1, scale=2).ppf(0.995)` yields $0.0928$, so any pair of embeddings below $-0.0928$ or above $0.0928$ belong to the happy few significant in one tail of the distribution. 
 
 
 
@@ -218,7 +218,7 @@ Fortunately, cosine similarities tend to convey more semantic significance. Of c
 </figure>
 
 
-<a data-figure-ref="fig-pairwise-imagenet-cosine"></a> shows the experimental distribution of pairwise cosine values averaging over random pairs of ImageNet embeddings produced by the smallest DINOv3 ConvNeXt backbone (vectors live in $\mathbb{R}^{768}$). Despite the log scale, it is considerably skewed toward positive values and the tails are heavier than the theoretical random cosine distribution. This goes to show that this dataset is quite self-similar when seen through DINOv3 ConvNeXt.
+<a data-figure-ref="fig-pairwise-imagenet-cosine"></a> shows the experimental distribution of pairwise cosine values averaging over random pairs of ImageNet embeddings produced by the smallest DINOv3 ConvNeXt backbone (vectors live in $\mathbb{R}^{768}$). Despite the log scale, it is considerably skewed toward positive values and the tails are heavier than the theoretical random cosine distribution. This goes to show that this dataset is quite self-similar when seen through DINOv3 ConvNeXt, and we can make use of that faint signal to calibrate lower-dimensional embeddings on it.
 
 
 

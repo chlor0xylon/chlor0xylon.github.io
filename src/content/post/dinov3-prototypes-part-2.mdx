@@ -1,0 +1,551 @@
+---
+title: "Peering into DINOv3 (part 2)"
+toc: true
+publishDate: 2026-11-01
+description: "Dictionary learning at scale on DINOv3 latents"
+tags: [machine learning, interpretability, computer vision]
+---
+
+This is the second part of a series on reproducing recent advancements in computer vision interpretability. In the [first part](/posts/dinov3-prototypes-part-1/), I introduced the history of feature visualization. Here, I attempt to reproduce a dictionary learning approach on the DINOv3 model.
+
+## Dictionary learning: an introduction
+
+Before visualizing concepts as images, we need to identify semantically representative directions in the model's latent space to gain a better understanding of how visuals are encoded. This can be achieved thanks to a prominent method in ML interpretability research called _dictionary learning_.
+
+Broadly speaking, dictionary learning seeks to discover a set of building blocks to express complex data as a sparse combination of these patterns--sometimes referred to as _atoms_--that together form the _dictionary_. An efficient dictionary should provide compact, meaningful representations that are useful for interpretability purposes, denoising, or feature extraction for example. Unlike PCA or SVD, dictionary learning approaches usually attempt to make the decomposition _sparse_. In that sense, it is close in spirit to data compression. Because of that, dictionary learning is also known as _sparse coding_.
+
+:::note
+Data compression works by seeking a representation basis to encode the data in the most compact way possible. For example, the JPEG standard breaks down each $8 \times 8$ block of pixels into a sum of cosine-based waveforms. It turns out that real-world image signals are usually better explained by smooth variations resembling a sparse combination of cosine waves, and this better prior allows a lower-rank representation to match human perceptual vision with fewer resources. Sparsity is a desirable property when doing coding, either for storage saving purposes, or for the sake of interpretability.
+:::
+
+
+### Formal definition
+I will rely on @holistic2023fel, a paper that reviews concept extraction attempts in the literature, compares them and identifies their commonalities. One of the latest methods presented was coined CRAFT, standing for _Concept Recursive Activation FacTorization for Explainability_ and was taken from the preceding paper @craft2023fel, which adds a non-negativity constraint to the learned priors. In the paper, it is claimed indeed that the positivity of the decomposition 
+- "encourages sparsity"
+- "allows missing data to be imputed"
+- "enhances the interpretability of the decomposition"
+
+:::note
+The first claim is obvious because negative entries will force the concept vectors to keep many null entries to be able to encode zero entries, the closest approximation of any negative value projected onto the half-line $\mathbb{R}_{\ge 0}$. Regarding the second claim, the authors develop an attribution method for visualizing the concept activations in images and rely on preceding research to support their statement, but here I'm only interested in the part about dictionary learning, and I don't know or care about it for now. Regarding the third one, my understanding of the approach is that only positive activations are considered meaningful because they represent strongly-typed features, whereas negative activations do not carry significant information similar to how negative logit values would compress into irrelevancy and produce near-zero probabilities that are overshadowed by positive logits.
+:::
+
+The setup goes like this: let $\mathbf{X} \in \mathbb{R}^{n\times p}$ be a set of $n$ captured activations in dimension $p$ from the latents from a vision model taken from a provided collection of images. Let $r$ be a positive integer, denoted as the rank of the decomposition. The positive dictionary learning approach consists of solving the following problem:
+
+$$
+\arg\min_{\mathbf{U}\in \mathbb{R}^{n\times r}, \, \mathbf{W}\in \mathbb{R}^{p\times r}} \|\mathbf{X} - \mathbf{UW}^\top \|_F^2 \quad \text{s.t.} \quad \mathbf{W}, \mathbf{U} \ge 0
+$$
+
+where $\mathbf{W}$ is the _dictionary of concepts_ onto which the dataset is projected and $\mathbf{U}$ is the dataset decomposition, i.e. the assignments of each data point to each of the $r$ concepts. For dictionary learning to be meaningful, $r$ and $n$ must be chosen such that $r < n$.
+
+Note that $\mathbf{U}$ and $\mathbf{W}$ are required to belong to the positive orthant of matrices with **non-negative entries**. That constraint is a deliberate modeling choice. Note that the solution space is convex, but the search is made arduous because positivity prevents the use of off-the-shelf linear algebra results. This formulated problem is known as the **Non-Negative Least Squares problem** (NNLS), and I first encountered it during my Master's Thesis in the context of beamforming in transmission-related problems.
+
+
+### Naïve solving procedure
+Solving the above mathematical problem can be approached in at least a few different manners. In Fel's PhD thesis [@fel2025sparksexplainabilityrecentadvancements], section C.1.3 of the manuscript alongside the implementation details of CRAFT, they explain that they used a method called alternating direction method of multipliers (ADMM for short), which I also encountered during my Master's Thesis, because it arises a lot in the literature about applied mathematical optimization problems with cumbersome constraints such as non-negativity. There is no point outlining ADMM in this post, as it is better explained in numerous other papers, articles and posts freely available, and I won't use it anyway.
+
+
+
+### Toward a more holistic approach
+@holistic2023fel published an implementation of the CRAFT method resulting in an interactive website called the [Lens Project](https://serre-lab.github.io/Lens/) that lets one navigate and visualize the concepts. They only retain a few major concepts per class, which sums to quite a large pool, but they did not actually compute them across the whole dataset at once, as far as I understand. Rather, the dictionary is computed on a per-class basis and is low-rank from the start to only retain a handful of concepts per class (they take 10). In a later stage, their attribution method yields the contribution scores to each class.
+
+
+On one hand, this significantly lowers the numerical complexity requirements since it cuts by a factor of 1000 the effective dataset size (remember that ImageNet has a thousand classes). The resulting concepts are then aggregated together from all classes and compared with each other. On the other hand, this approach explicitly relies on the data being labelled, and it may considerably waste energy by recomputing shared concepts present across the different classes of the dataset.
+
+And this is the crux of the matter: I wanted to try a more holistic--and perhaps more ambitious--approach, to make a dictionary with all concepts computed at once on the whole dataset, regardless of there being labels available or not. The clear drawback of the paper's leveraged ADMM algorithm is that it requires storing the complete explained dataset, i.e. the attributions (a.k.a. codes) in memory during the solving procedure. To make matters worse, the ADMM algorithm requires duplicating the variables to account for the separation of optimization objective and constraint enforcement.
+
+This may be feasible on each individual label slice of approximately 1,200 images, even on a beefy laptop because it's separable, but ADMM does not scale particularly well beyond that. If we were to extend it to the full 1.2-million-image dataset $X$, storing as many latents over 384 dimensions in FP32 numbers already consumes about 2GB in memory. The codes array $U$ would be of the same order of magnitude, yet smaller (since $r < n$). Probably manageable even on most modern laptops, or on an 8GB GPU, but we're on the edge: any $\times 4$ scaling on the dataset would probably become a dealbreaker on consumer hardware.
+
+My point is that we need a more tractable algorithm, even if it means sacrificing convergence speed or even exactness. We need to *stream the dataset and dispose of the codes*. That in itself is a novelty to the experiment.
+
+## Dictionary learning: chosen implementation
+
+
+### Online solving procedure
+
+#### Decomposability of dictionary learning
+In hindsight, all we are interested in is the final dictionary $\mathbf{W}$ solution, _not_ the full transient decompositions $\mathbf{U}$ of the dataset, which can be recomputed at will once $\mathbf{W}$ is learned and frozen. The problem is separable in terms of the training data, thanks to the following equality:
+
+$$
+\|\mathbf{X} - \mathbf{UW}^\top \|_F^2 = \sum_{i=1}^{n} \| \mathbf{X}_{[i,:]} - \mathbf{U}_{[i,:]} \mathbf{W}\|_2^2
+$$
+which goes to show that $\mathbf{W}$ could be conceptually updated by only considering a subset of the dataset elements at a time indexed in $\llbracket 1, n \rrbracket$, akin to how neural networks update their weights by considering an objective computed on small views of the training data at a time.
+
+
+#### Online Non-Negative Matrix Factorization
+So I began looking for an algorithm meeting that criterion. To my knowledge it hasn't been attempted on this scale in computer vision research on SOTA models latents.
+
+It turns out that this problem is addressed in the literature. I found a paper about exactly that [@onlinelearning2009] exposing a procedure for online dictionary learning. By the way, Julien Mairal is also a credited author in all three DINO papers. Small world. They address the following problem:
+
+$$
+\arg\min_{\mathbf{D} \in \mathbb{R}^{m\times k}, \alpha \in \mathbb{R}^{k\times n}} \|\mathbf{X} - \mathbf{D} \alpha \|_F^2 + \lambda \|\alpha\|_{1,1} \quad \text{s.t.} \quad \mathbf{D} \in \mathcal{C}
+$$
+where $\mathcal{C}$ is the convex set of matrices whose column vectors belong to the unit ball for the $L_2$ Euclidean norm: $\mathcal{C} = \{\mathbf{D}\in \mathbb{R}^{m\times k}, \forall j \in \llbracket 1, k \rrbracket, \mathbf{d}_j^\top \mathbf{d}_j \le 1\}$.
+
+:::note
+From this point on, I'll momentarily mix and cite both papers' formulas, depending on which one is the most relevant for each paragraph (also because I was too lazy to choose one over the other and I wanted to remain close to the source material). When quoting @onlinelearning2009 (its objective and its algorithm), I'll keep its notation, with data points and codes stored as columns. Everywhere else, I'll stick to the conventions introduced earlier, with data points stored as rows. The only symbol the two share is the code vector of a single data point $\mathbf{h}$, because a single vector looks the same in both conventions (namely it is a column of $\alpha$ on one side and a row of $\mathbf{U}$ on the other).
+
+I'm sorry for this mess. Notations are a hassle and papers love disagreeing and shuffling things around. Also, memory contiguity is a programming constraint thrown into the mix.
+
+For the sake of clarity I laid out the equivalences so you don't have to:
+
+| Meaning | @onlinelearning2009 | @holistic2023fel |
+| --- | --- | --- |
+| Rank (or dictionary size) | $k$ | $r$ |
+| Data dimensionality | $m$ | $p$ |
+| Dataset size | $n$ | $n$ |
+| Dictionary (learned weights of interest) | $\mathbf{D} \in \mathbb{R}^{m \times k}$ | $\mathbf{W} \in \mathbb{R}^{p \times r}$ |
+| Assignments (or codes) | $\alpha \in \mathbb{R}^{k \times n}$ | $\mathbf{U}^\top \in \mathbb{R}^{r \times n}$ |
+| Single code vector | $\mathbf{h} \in \mathbb{R}^{k}$ (column of $\alpha$) | $\mathbf{h} = \mathbf{U}_{[i,:]} \in \mathbb{R}^{r}$ |
+| Data matrix | $\mathbf{X} \in \mathbb{R}^{m \times n}$ | $\mathbf{X} \in \mathbb{R}^{n \times p}$ |
+:::
+
+The two main differences with our objective are the search space and the regularization term. To begin with, they use the unit ball for the $\|\cdot\|_{2,\infty}$ column-wise norm in lieu of the orthant of pointwise non-negative elements, and they regularize the assignments $\alpha$ with the $L_1$ norm to favor sparse solutions. Regularizing the weights also avoids degeneracy in the solutions due to the degree of freedom of rescaling reciprocally $\alpha$ and $\mathbf{W}$.
+
+They come up with an algorithm with proven convergence. The said algorithm is reproduced below:
+
+
+```algorithm
+Algorithm: Online Dictionary Learning [@JMLRv11mairal10a]
+Require $\mathbf{x} \in \mathbb{R}^m \sim p(\mathbf{x})$, $\lambda \in \mathbb{R}$, $\mathbf{D}_0 \in \mathbb{R}^{m \times k}$, $T$
+$\mathbf{A}_0 \in \mathbb{R}^{k \times k} \gets \mathbf{0}$, $\mathbf{B}_0 \in \mathbb{R}^{m \times k} \gets \mathbf{0}$
+For $t = 1$ to $T$
+  Draw $\mathbf{x}_t$ from $p(\mathbf{x})$
+  State Sparse coding: compute $\mathbf{h}_t$ such that
+    $$
+    \mathbf{h}_t \triangleq \arg\min_{\mathbf{h} \in \mathbb{R}^k} \frac{1}{2}\|\mathbf{x}_t - \mathbf{D}_{t-1}\mathbf{h}\|_2^2 + \lambda \|\mathbf{h}\|_1
+    $$
+  $\mathbf{A}_t \gets \mathbf{A}_{t-1} + \mathbf{h}_t \mathbf{h}_t^T$
+  $\mathbf{B}_t \gets \mathbf{B}_{t-1} + \mathbf{x}_t \mathbf{h}_t^T$
+  State Update dictionary $\mathbf{D}_t$ with $\mathbf{D}_{t-1}$ as a warm restart
+    $$
+    \mathbf{D}_t \triangleq \arg\min_{\mathbf{D} \in \mathcal{C}} \frac{1}{t}\sum_{i=1}^t \left(\frac{1}{2}\|\mathbf{x}_i - \mathbf{D}\mathbf{h}_i\|_2^2 + \lambda \|\mathbf{h}_i\|_1\right) \\
+	= \arg\min_{\mathbf{D} \in \mathcal{C}} \frac{1}{t} \left( \frac{1}{2} \mathrm{Tr}(\mathbf{D}^\top \mathbf{DA}_t) - \mathrm{Tr}(\mathbf{D}^\top\mathbf{B}_t) \right)
+    $$
+EndFor
+Return $\mathbf{D}_T$
+```
+
+```algorithm
+Algorithm: Dictionary Update [@JMLRv11mairal10a]
+Require $\mathbf{D} = [\mathbf{d}_1,\dots,\mathbf{d}_k]\in \mathbb{R}^{m\times k}$ (input dictionary)
+$\mathbf{A} = [\mathbf{a}_1,\dots,\mathbf{a}_k]\in \mathbb{R}^{k\times k}$
+$\mathbf{B} = [\mathbf{b}_1,\dots,\mathbf{b}_k]\in \mathbb{R}^{m\times k}$
+Repeat
+  For $j = 1$ to $k$
+    State Update the $j$-th column:
+      $\mathbf{u}_j \leftarrow \big(\mathbf{b}_j - \mathbf{D}\mathbf{a}_j\big) / \mathbf{A}[j,j] + \mathbf{d}_j$
+      $\mathbf{d}_j \leftarrow \mathbf{u}_j / \max\big(\left\|\mathbf{u}_j\right\|_2, 1\big)$
+  EndFor
+Until convergence
+Return $\mathbf{D}$ (updated dictionary)
+```
+
+So, looking into the procedure reveals that the optimization performs a step in two stages given a batch:
+
+- first, compute the codes, or assignments, of the elements in the batch
+- then aggregate statistics about the codes into two buffers and update the dictionary state
+
+
+In an extended journal version of the paper [@JMLRv11mairal10a], the authors also tackle regularization variants, notably the non-negative matrix factorization problem (NMF for short) taken from another referenced line of research[^note-nmf], as part of the broader framework of different constraint sets for the dictionary and the codes.
+
+[^note-nmf]: In it, one can read, among other things, that non-negative matrix factorization seems to have been experimented with for sparse coding since as early as 2001.
+
+They mention the alternative constraint set
+
+$$
+\mathcal{C}^\prime = \{\mathbf{D}\in \mathbb{R}^{m\times k}, \forall j \in \llbracket 1, k \rrbracket, \mathbf{d}_j^\top \mathbf{d}_j \le 1 \text{ and } \mathbf{d}_j \ge 0\}
+$$
+
+that applies to $\mathbf{D}$, as well as the eventuality of also constraining $\alpha \ge 0$ independently. More importantly, they mention the simplest problem featuring the same objective solely with positivity constraints on $\mathbf{D}$ and $\alpha$ (no norm constraints on the atoms $\mathbf{d}_j$), thus amounting to solve $\arg\min_{\mathbf{D}, \alpha} \|\mathbf{X} - \mathbf{D} \alpha \|_F^2 + \lambda \|\alpha\|_{1,1}$ such that $\mathbf{D}, \alpha \ge 0$. One comment about this particular variant is interesting: 
+ 
+ > "When $\lambda = 0$, this formulation is equivalent to NMF. The only difference with the dictionary learning
+problem is that non-negativity constraints are imposed on $\mathbf{D}$ and the vectors $\alpha_i$. A simple modification of our algorithm (...) allows us to handle these constraints, while guaranteeing to find a stationary point of the optimization problem."
+
+Wonderful. This is exactly the setup we're looking for. The implications here affect both steps of the overall procedure, namely the initial sparse coding solve step (by additionally constraining $\mathbf{h}$ to remain non-negative), and the projections in the dictionary update routine.
+
+
+The paper describes a framework where the dictionary can be learned by only streaming one dataset element at a time, but the algorithm trivially generalizes to batch sizes above 1. 
+
+
+
+### Dictionary learning hot path
+The numerical computations of the dictionary learning rely heavily on vectorized operations and linear algebra but no differentiation is involved, so they are a straightforward fit for [JAX](https://docs.jax.dev/en/latest/) which provides first-class compilation for all sorts of hardware, including CUDA, of course. This is especially handy for this kind of iterative algorithms to solve linear algebra problems. Before this project I was familiar with PyTorch but I had never used JAX so it was a good incentive to try and learn.
+
+In my code, I kept the original notations with $\mathbf{W} \in \mathbb{R}^{p \times r}$ and $\mathbf{U} \in \mathbb{R}^{n \times r}$. However, since $\mathbf{U}$ is conceptually reserved for the full dataset codes, and is never materialized in memory, I named its batched counterpart $\mathbf{H} \in \mathbb{R}^{b\times r}$ where $b$ is the batch size where obviously $b < n$. At any step, we draw $\mathbf{X} \in \mathbb{R}^{b\times p}$ and apply the above update step with two stages.
+
+Conceptually the main training loop looks like this:
+
+```python
+# import jax.numpy as jnp
+
+def train_step(
+    W: jnp.ndarray,   # (DATA_DIM, DICT_SIZE)
+    A: jnp.ndarray,   # (DICT_SIZE, DICT_SIZE)
+    B: jnp.ndarray,   # (DATA_DIM, DICT_SIZE)
+    X: jnp.ndarray,   # (BATCH_SIZE, DATA_DIM)
+    H0: jnp.ndarray,  # (BATCH_SIZE, DICT_SIZE)
+    T: int,           # global step counter
+    lam: float,       # regularization weight
+) -> tuple[jnp.ndarray, ...]:
+    H = nonnegative_lasso_fista(W=W, X=X, lam=lam, H0=H0)
+    W, A, B = update_dictionary(W=W, H=H, X=X, A=A, B=B, T=T)
+    return W, A, B
+```
+
+Overall, I parametrized a lot more than meets the eye in this example snippet, to make it possible to change a few hyperparameters:
+
+- maximum allowed radius of a concept vector
+- non-negativity constraint on the concept atoms (synced to incoming latent's negative entries clamping)
+- maximum number of passes and tolerance threshold for the FISTA to solve the LASSO
+- number of dictionary update steps 
+
+#### Non-negative LASSO sparse coding step
+The modified sparse positive coding step to compute
+
+$$
+\mathbf{h}_t = \arg\min_{\mathbf{h} \in \mathbb{R}^k} \frac{1}{2}\|\mathbf{x}_t - \mathbf{D}_{t-1}\mathbf{h}\|_2^2 + \lambda \|\mathbf{h}\|_1
+$$
+at every step is a procedure in and of itself. In principle, one could simply call a generic convex optimization solver for this kind of problem, but such solvers almost all run on the CPU. Calling a generic solver at every step is a poor fit for this setting, for two obvious reasons. First, as I said, the solver would execute on the CPU, while the dictionary update and the statistics aggregation run on the CUDA device with JAX. Every iteration would therefore pay a slow PCIe transfer in both directions. Second, the interoperability of generic QP solvers with JAX is nonexistent. Just assembling the constraint matrix and the objective term would mean copying large buffers, which is expensive in memory. Together, these costs would make it hard to sustain several exact dictionary-update iterations per second.
+
+So, we're better off using an iterative, approximate algorithm to solve the non-negative LASSO step. With the help of an LLM, I found a respectable algorithm that lends itself well to the NN-LASSO problem, called Fast Iterative Shrinkage-Thresholding Algorithm (FISTA) [@teboulle09fista]. To be honest, I wasn't particularly interested in the details of this minor technicality in the broader scheme of dictionary learning, so I gladly let Codex do the research and work out the JAX function for it. The FISTA procedure is an algorithm that projects a partial solution onto a convex set after every gradient step. The bundle of a gradient step followed by convex projection is called a "proximal operator". A relevant practicality to be aware of is that it involves an iterative procedure of its own, so it needs tuning, and a stopping criterion. A caveat is that the norm of the proximal gradient steps does not usually decrease monotonically, so setting a threshold on the step size is not the best of stopping criteria. However, because this iterative procedure is itself an intermediate result to the overall output of the dictionary learning problem, and because transient dictionary states constantly warm up the solution to the next batch and step, it barely matters anyway.
+
+Also, instead of simply summing the statistics in matrices $A$ and $B$, which could blow up numerical accuracy with large numbers, I accumulated them using the online average update formula to avoid overflow. The update of every $j$-th column in the subsequent `for` loop is invariant to rescaling $A$ and $B$ by a common factor so it's fine.
+
+
+#### Dictionary update step
+
+The dictionary update step is pretty much about following the instructions from the above algorithm to the letter, with the additional projection to enforce non-negative values for the new dictionary columns. I kept the original column-wise $L_2$ unit ball constraint for stability of the dictionary atoms, and obviously, I added the projection onto the set of positively-valued vectors.
+
+
+At a later stage prototyping and benchmarking my code on the GPU, I also had Claude suggest using a vectorized Jacobi update scaling by $A$'s largest eigenvalue, instead of the proposed blocking Gauss-Seidel `for` loop.
+
+
+
+
+## Protocol
+
+Let's outline practical milestones about the dictionary learning process.
+
+
+### Sourcing training samples
+
+The first stage is about persisting image embeddings from *cropped images* of the dataset. I discarded images whose width or height was less than 128 pixels. Then I built a dataset composed of CLS token latent vectors of a vision encoder variant in the DINOv3 family from random crops sized $128 \times 128$ pixels taken from images in ImageNet-1K, randomly flipped (see <a data-figure-ref="fig-imagenet-random-crops"></a>). Other augmentations could be of interest (like geometry or colorimetry alterations) to capture more elaborate concepts about the model's internal representations, but I did not go with that idea yet. I ran several passes on the dataset with different seeds, to obtain different views of every image in the dataset.
+
+<figure id="fig-imagenet-random-crops" class="figure-narrow">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794140585/dinov3vits_crops128_seed42_tjijfw.webp"}
+		alt="Random crops of ImageNet-1K"
+		loading="lazy"
+		style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Some random 128-by-128 crops of ImageNet-1K
+	</figcaption>
+</figure>
+
+
+My goal is to train the dictionary on the latents obtained from ***local views*** of images that encapsulate slightly more visual context than prior work use in the literature.
+
+For reference, the dataset contains many images of small resolution by modern image standards, because it was sourced from a web crawl in the 2010's. In @craft2023fel, the authors use 64-by-64 pixel patches, but recall that they extracted concepts one class at a time. I choose to instead use 128-by-128 pixel crops. This size is somewhat arbitrary, but looks like a sound middle ground to extract more generalized semantics all the while extending to a more diverse field of view that would neither come close to the total image in the majority of cases (see <a data-figure-ref="fig-imagenet-crops-area-ratio-svg"></a>), nor rule out too large a fraction of the dataset (see <a data-figure-ref="fig-imagenet-density"></a>).
+
+
+
+
+<figure id="fig-imagenet-crops-area-ratio-svg" class="figure-narrow">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781609403/imagenet-crops-area-ratio_qrsbsl.svg"}
+		alt="Crops area over total image area ratio"
+		loading="lazy"
+		style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Distribution of 128-by-128-square-crop to total-image-resolution area ratio across ImageNet-1K
+	</figcaption>
+</figure>
+
+
+
+<figure id="fig-imagenet-density" class="figure">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781612897/imagenet-dimensions-density_ug1tit.png"}
+		alt="Density plots of ImageNet image widths and heights, in linear and logarithmic scale, with accumulation along common aspect ratios and a hot spot at 500 by 500 pixels"
+		loading="lazy"
+		style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Density plots of ImageNet's image dimensions distribution in linear scale and logarithmic scale. Images expectedly accumulate along frequent aspect ratios, and the majority of images concentrate in the 400-500-ish range in height and width. An interesting artefact is visible for square images of size exactly 500 by 500 pixels.
+	</figcaption>
+</figure>
+
+
+### Decisive design choices
+
+#### Training
+Apart from solving hyperparameters under the hood of the solving procedure (which can be abstracted away from the declarative problem statement's point of view), only a few hyperparameters will decisively affect the dictionary:
+- the semantics of the sourced inputs, as stated above
+- the size of the learned dictionary $r$
+- the sparsity weight $\lambda$
+
+#### Inference
+
+Likewise, after concepts are frozen and we use the concepts to reconstruct some latents, actually deciding what procedure to retain to compute the codes from a vector is subject to discussion. There are two possibilities:
+- solve the relaxed sparse LASSO problem again, which requires setting the sparsity weight $\lambda \in \mathbb{R}_+$: it's the LASSO problem that has already been written numerous times above:
+$$
+\arg\min_{\mathbf{h} \in \mathbb{R}^k_+} \frac{1}{2}\|\mathbf{x} - \mathbf{D}\mathbf{h}\|_2^2 + \lambda \|\mathbf{h}\|_1
+$$
+- solve a combinatorial sparse MIQP least squares problem, which requires setting the atom sparsity budget $s \in \mathbb{N}$:
+$$
+\arg\min_{\mathbf{h} \in \mathbb{R}^k_+} \frac{1}{2}\|\mathbf{x} - \mathbf{D}\mathbf{h}\|_2^2 \quad \text{ s.t. } \quad \|\mathbf{h}\|_0 \le s
+$$
+(the constraint counts the number of non-zero elements in $\mathbf{h}$)
+
+
+
+
+
+### Quality evaluation
+The third stage is about probing the produced dictionary with relevant metrics to test whether it is *meaningful* and *descriptive* enough, that is, whether the dictionary conveys a sense of *completeness* to describe the data.
+
+#### Hoyer sparsity
+
+At the scale of an individual concept, the _Hoyer sparsity measure_ [@nmf2004hoyer] for the corresponding latent vector $\mathbf{d}$ in dimension $p$ is defined as follows:
+$$
+\mathrm{Hoyer}(\mathbf{d})
+= \frac{\sqrt{p} - \frac{\|\mathbf{d}\|_1}{\|\mathbf{d}\|_2}}{\sqrt{p} - 1}
+$$
+
+#### Residuals
+
+We can evaluate the residual between a latent $\mathbf{x}$ and its reconstruction $\hat{\mathbf{x}} = \mathbf{D}\mathbf{h}(\mathbf{x})$:
+$$
+\text{Residual}(\mathbf{x}) = \| \mathbf{x} - \hat{\mathbf{x}} \|
+$$
+where $\mathbf{h}$ is the (approximate) reconstruction codes from the iterative procedure. The exact norm flavor is intentionally unspecified, it can be scaled $L_2$ (MSE), RMSE or even $L_\infty$ depending on the focus.
+
+The residuals can be aggregated into a single normalized quantity in $[0,1]$ called the *fraction of variance unexplained*, which is just the complement of what a PCA does:
+
+$$
+\text{FVU} = \frac{\sum_i \|\mathbf{x}_i - \mathbf{D}\mathbf{h}_i\|_2^2}{\sum_i \|\mathbf{x}_i - \bar{\mathbf{x}}\|^2_2} \in [0, 1]
+$$
+
+For the sake of simplicity, since the last layers of DINOv3 models are `LayerNorm`, I'll consider that the space of all possible image latents is whitened and that their mean vector $\bar{\mathbf{x}}$ is zero (even though that of a specific dataset might not exactly be centered).
+
+#### Entropy
+Finally, given reconstruction codes $\mathbf{h} \ge 0$, we may reinterpret it as a probability distribution over concepts atoms. So I came up with a normalized entropy score that acts like a soft measurement of dispersion for the codes:
+$$
+\text{let} \quad p = \frac{1}{\|\mathbf{h}\|_1}\mathbf{h} \quad \text{so that} \quad \tilde{H}(\mathbf{h}) = \frac{1}{\log k}H(p)
+$$
+where $H$ is Shannon's entropy.
+
+
+### Results
+
+#### Hyperparameters
+
+Below is a summary of the most important hyperparameters, split between those governing the dictionary learning itself and those describing how the image data is sourced.
+
+**Dictionary learning**
+
+| Hyperparameter | Designation | Value |
+| --- | --- | --- |
+| Batch size | $b$ | 1024 |
+| Epochs | | 2 |
+| Rank (dictionary size) | $r$ | $256$ |
+| Sparsity weight | $\lambda$ | $0.0$ |
+| Concept non-negativity | boolean | True |
+| FISTA solve maximum iteration number | | $50$ |
+| FISTA solve stationarity tolerance | $\tau$ | $10^{-2}$ |
+| Dictionary update steps per batch | | $5$ |
+
+**Image data sourcing**
+
+| Hyperparameter | Designation | Value |
+| --- | --- | --- |
+| Model HuggingFace identifier | | `facebook/dinov3-vits16-pretrain-lvd1689m` |
+| Crop size of training thumbnails | | $128 \times 128$ |
+| Data dimensionality | $p$ | $384$ |
+| Dataset size | $n$ | $1.7 \times 10^6$ |
+
+In @onlinelearning2009, it is specified that in practice, only a handful of dictionary update steps are needed for the convergence to happen properly (they mention 3 updates needed for experimental success). Following that idea, I set the loop to run a fixed number of times.
+
+
+Likewise, the FISTA loop to solve the sparse coding assignments in the first stage of a training step stops once the proximal gradient step barely moves the assignments anymore. The chosen criterion proxy is the ratio of Frobenius norms of the current proximal gradient norm to the initial proximal gradient norm in the batch step. As I stated earlier, it's not perfect, but it's a good enough heuristic for tracking convergence.
+
+And yes, this is not a typo: I did set $\lambda$ to 0 for demonstration purposes in this example. I found experimentally that it helps produce orthogonal concepts.
+
+Remember that the whole point of a sparse decomposition is hypothesizing that the data lies in some lower-dimensional linear manifold of the latent space. That led me to consider 256 atoms in the dictionary, about a quarter of the 1000 classes of ImageNet-1K. Since ImageNet-1K is very self-similar when seen through DINOv3 (see the distribution of pairwise cosine similarities figure from a [previous post](/posts/imagenet-hidden-hierarchy/#fig-pairwise-imagenet-cosine); it's computed on the ConvNeXt backbone version, but the argument holds for the ViT's: ImageNet-1K is not very diverse in the end), that seemed reasonable.
+
+#### Concept map
+
+First, did it work at all? A few sanity checks on the dictionary are worthwhile. A mere nearest-vector search (cosine-alignment distance) is enough to check this:
+
+<figure id="fig-top-k-thumbnail-best-aligned" class="figure-grid figure-grid-two">
+	<div class="figure-grid-images">
+		<img
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794213633/concepts_page_14_bpvxtb.jpg"}
+			alt="Best thumbnail matches for a few concepts"
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+		<img
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794213301/concepts_page_31_cakjeb.jpg"}
+			alt="Best thumbnail matches for a few concepts"
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+		<img
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794213341/concepts_page_42_jsbmsp.jpg"}
+			alt="Best thumbnail matches for a few concepts"
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+		<img
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794213425/concepts_page_55_xmqcwr.jpg"}
+			alt="Best thumbnail matches for a few concepts"
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+	</div>
+	<figcaption>
+		<span class="label"></span>
+		Top-5 nearest neighbor thumbnails search (cosine distance) for a few concepts  
+	</figcaption>
+</figure>
+
+Undeniably, the atoms settled on meaningful visual cues of the dataset. Some appear obviously narrow, like colorful or speckled bird parts, while some others seem to have captured more abstract semantics, like concept 216, which encompasses the idea of tangled meshes or messy filamentary structures in objects as varied as grass tufts, porcupines or metallic nets. Although polysemantic concepts like 216 are not the majority, the mere fact that some exist is very good news and demonstrates at least a little bit of generalization capability for that specific dictionary.
+
+#### Concept vectors stats
+
+Now on to numerical KPIs.
+The positive-value histogram (<a data-figure-ref="fig-dictionary-concept-value-distribution"></a>) summarizes the frequency distribution of strictly positive entries across all concept vectors. The distribution appears unimodal and clean and typically close to a Gaussian, with no obvious sign of an anomaly or split into separate groups of similar concepts.
+
+The cosine-similarity distribution (<a data-figure-ref="fig-dictionary-concept-diagnostics"></a>) is a lot more interesting; it is useful to ensure the dictionary has not collapsed into repeated atoms. 
+
+
+<figure id="fig-dictionary-concept-value-distribution" class="figure-grid">
+	<div class="figure-grid-images" style="grid-template-columns: minmax(0, 1fr);">
+		<img
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781616893/concept_value_distribution_vmovmj.svg"}
+			alt="Concept components distribution of values across all learned concepts"
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+	</div>
+	<figcaption>
+		<span class="label"></span>
+		Distribution of concept component values across all learned concepts.
+	</figcaption>
+</figure>
+
+<figure id="fig-dictionary-concept-diagnostics" class="figure-grid figure-grid-two">
+	<div class="figure-grid-images">
+		<img
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781616508/concepts_cosine_similarities_cpsto5.svg"}
+			alt="Pairwise cosine similarity matrix between learned concept vectors"
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+		<img
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794173797/concepts_cosine_similarities_histogram_nypx3v.svg"}
+			alt="Pairwise cosine similarity distribution over pairs of learned concepts "
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+	</div>
+	<figcaption>
+		<span class="label"></span>
+		Dictionary diagnostics: concept-to-concept cosine similarity matrix and distribution of pairwise cosine similarities
+	</figcaption>
+</figure>
+
+
+#### Coding vectors stats
+
+In a second phase I evaluated how ImageNet latents decompose over the learned dictionary by solving the non-negative LASSO coding. <a data-figure-ref="fig-dictionary-code-distributions"></a> displays the three chosen statistics: normalized code entropy, Hoyer sparsity, and RMS of reconstruction error for different values of $\lambda$, each aggregated over a pool of random thumbnails sampled the same way as the training dataset. As expected, larger values of the sparsity weight lead to, well, sparser codes, and that phenomenon manifests itself in all three metrics.
+
+<figure id="fig-dictionary-code-distributions" class="figure-grid figure-grid-two">
+	<div class="figure-grid-images">
+		<img
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794218364/code_entropy_sex9ti.svg"}
+			alt="Histogram of normalized entropy values"
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+		<img
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794218376/code_sparsity_ammslf.svg"}
+			alt="Histogram of Hoyer sparsity values"
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+		<img
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794220658/residual_norms_slpwxv.svg"}
+			alt="Histogram of RMS reconstruction error"
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+	</div>
+	<figcaption>
+		<span class="label"></span>
+		Distribution of assignment statistics on sampled ImageNet latents: normalized
+		entropy, Hoyer sparsity, and RMS of reconstruction error
+	</figcaption>
+</figure>
+
+
+<a data-figure-ref="fig-dictionary-joint-diagnostics"></a> combines the same per-sample statistics into two-dimensional histograms for two of the three possible metric pairs. To my surprise, there was no clear correlation between Hoyer sparsity and reconstruction RMS for a given $\lambda$, although it does seem like there is a Pareto frontier beyond which further gains in sparsity come at the cost of deteriorated reconstruction accuracy, which moves with $\lambda$.
+
+On the other hand, there is a distinct boomerang-shaped joint distribution relationship between Hoyer sparsity and entropy, although it's probably just a natural relationship between both metrics rather than a cue about embedding reconstruction in particular.
+
+<figure id="fig-dictionary-joint-diagnostics" class="figure-grid">
+	<div class="figure-grid-images" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+		<img
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794220694/residual_norms_vs_code_sparsity_yeci5y.svg"}
+			alt="Two-dimensional histogram of residual norms versus Hoyer sparsity"
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+		<img
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794218371/code_entropy_vs_code_sparsity_kajzcx.svg"}
+			alt="Two-dimensional histogram of normalized entropy versus Hoyer sparsity"
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+	</div>
+	<figcaption>
+		<span class="label"></span>
+		Joint diagnostics for the same sampled codes: reconstruction residual versus
+		Hoyer sparsity, and normalized entropy versus Hoyer sparsity
+	</figcaption>
+</figure>
+
+But what about the advertised fraction of variance unexplained? Arguably, in reality, assignments obtained by means of a sparse LASSO problem require choosing a value for $\lambda$ and it's hard to make sense of it intuitively. Moreover, $\lambda$ controls sparsity only indirectly: nothing guarantees how many atoms a given code will actually use. 
+
+So let's look at the codes from the exact MIQP formulation instead, where the budget $s$ caps the number of active concepts directly. <a data-figure-ref="fig-fvu-by-concept-budget"></a> shows the per-sample unexplained energy $\|\mathbf{x} - \mathbf{D}\mathbf{h}\|_2^2 / \|\mathbf{x}\|_2^2$ for budgets of at most 1, 2 and 5 concepts, respectively. Since the latents are assumed centered, aggregating it over the samples gives the fraction of variance unexplained, that is, the amount of signal energy that escapes the coding using dictionary atoms.
+
+<figure id="fig-fvu-by-concept-budget" class="figure-grid">
+	<div class="figure-grid-images" style="grid-template-columns: minmax(0, 1fr);">
+		<img
+			src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794220752/fvu_by_concept_budget_tstzid.svg"}
+			alt="Histograms of per-sample unexplained energy for concept budgets of 1, 2 and 5"
+			loading="lazy"
+			style="aspect-ratio: auto;"
+		/>
+	</div>
+	<figcaption>
+		<span class="label"></span>
+		Per-sample unexplained energy of MIQP reconstructions for small concept budgets
+	</figcaption>
+</figure>
+
+A single concept typically already explains about a third of the variance, on average. Allowing two brings that to almost 40%, and five to roughly 50%. So the returns tend to diminish quickly: each additional concept explains less than the one before, and even with five, half of the signal remains unaccounted for. 
+
+## Final thoughts
+
+In reality, 256 atoms is way too few elements to work with. They may capture massively recurring concepts and suffice to roughly reconstruct any given embedding in the positive orthant, but they also conceal rarer, near-orthogonal directions that may also exist. Prior research available in the literature usually showcases dictionary sizes ranging from a few thousand to a few ten thousand atoms. It is a well-known fact that in a $d$-dimensional space, there can fit as many as $2^{\Theta (\epsilon^2 d)}$ unit vectors with all pairwise inner products $\le \epsilon$. Almost all statistical learning courses introduce a formulation of that fact one way or another. So packing many more concepts independently is not really an issue. But the proof of concept for online dictionary learning is achieved. In the coming posts, I'll try to scale this experiment up and move on to visualizing the learned concepts.
+
+## References
+
+[^ref]
