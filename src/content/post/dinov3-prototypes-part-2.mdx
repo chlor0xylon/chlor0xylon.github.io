@@ -493,7 +493,7 @@ On the other hand, there is a distinct boomerang-shaped joint distribution relat
 
 But what about the advertised fraction of variance unexplained? Arguably, in reality, assignments obtained by means of a sparse LASSO problem requires to choose a value for $\lambda$ and it's hard to make sense of it intuitively. Moreover, $\lambda$ controls sparsity only indirectly: nothing guarantees how many atoms a given code will actually use. 
 
-So let's look at the codes from the exact MIQP formulation instead, where the budget $s$ caps the number of active concepts directly. <a data-figure-ref="fig-fvu-by-concept-budget"></a> shows the per-sample unexplained energy $\|\mathbf{x} - \mathbf{D}\mathbf{h}\|_2^2 / \|\mathbf{x}\|_2^2$ for budgets of at most 1, 2 and 5 concepts, respectively. Since the latents are assumed centered, aggregating it over the samples gives the fraction of variance unexplained.
+So let's look at the codes from the exact MIQP formulation instead, where the budget $s$ caps the number of active concepts directly. <a data-figure-ref="fig-fvu-by-concept-budget"></a> shows the per-sample unexplained energy $\|\mathbf{x} - \mathbf{D}\mathbf{h}\|_2^2 / \|\mathbf{x}\|_2^2$ for budgets of at most 1, 2 and 5 concepts, respectively. Since the latents are assumed centered, aggregating it over the samples gives the fraction of variance unexplained, that is, the amount of signal energy that escapes the coding using dictionary atoms.
 
 <figure id="fig-fvu-by-concept-budget" class="figure-grid">
 	<div class="figure-grid-images" style="grid-template-columns: minmax(0, 1fr);">
@@ -510,7 +510,7 @@ So let's look at the codes from the exact MIQP formulation instead, where the bu
 	</figcaption>
 </figure>
 
-A single concept typically explains already about a third of the variance, on average. Allowing two brings that to almost 40%, and five to roughly 50%. So the returns tend to diminish quickly: each additional concept explains less than the one before, and even with five, half of the signal remains unexplained.
+A single concept typically explains already about a third of the variance, on average. Allowing two brings that to almost 40%, and five to roughly 50%. So the returns tend to diminish quickly: each additional concept explains less than the one before, and even with five, half of the signal remains unaccounted for.
 
 ## References
 
