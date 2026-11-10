@@ -112,11 +112,63 @@ Another surprising result of the spectral embeddings based on the previous specu
 
 ## The DINOv3 hierarchy
 
-In contrast with the previously presented discrete hierarchy built upon textual elements, the DINOv3 vision model family of neural networks is trained on the LVD-1689M dataset [@simeoni2025dinov3] to produce continuous latent representations of images. The models in that family were trained to produce generic image embeddings in dense high-dimensional spaces whose latent dimension $d$ range from 384 to 4096 depending on the backbone and model variant. More precisely, every Transformers-based model produces a grid of 16-by-16 patch tokens in the chosen dimension, as well as four register tokens and one CLS token. The ConvNeXt-backbone variants output a single vector of dimension ranging from 768 to 1536. All details come from the model cards [DINOv3 Vit Small](https://huggingface.co/facebook/dinov3-vits16-pretrain-lvd1689m), [DINOv3 ConvNexT Base](https://huggingface.co/facebook/dinov3-convnext-base-pretrain-lvd1689m) on HuggingFace. Those embeddings can naturally be used for downstream tasks, although I'm not interested in doing that. Rather, I'm interested in testing whether or not these raw embeddings independently reproduce the WordNet hierarchy. 
+### Model family
+In contrast with the previously presented discrete hierarchy built upon textual elements, let me introduce the DINOv3 vision model family of neural networks. It is a family of open-weight neural image encoders trained on the LVD-1689M dataset [@simeoni2025dinov3] to produce useful latent representations on generic images. They yield dense high-dimensional spaces whose latent dimension $d$ range from 384 to 4096 depending on the backbone and model variant. More precisely, every Transformers-based model produces a grid of 16-by-16 patch tokens in the chosen dimension, as well as four register tokens and one CLS token. The ConvNeXt-backbone variants output a single vector of dimension ranging from 768 to 1536. All details come from the model cards [DINOv3 Vit Small](https://huggingface.co/facebook/dinov3-vits16-pretrain-lvd1689m), [DINOv3 ConvNexT Base](https://huggingface.co/facebook/dinov3-convnext-base-pretrain-lvd1689m) on HuggingFace. Those embeddings can naturally be used for downstream tasks, although I'm not interested in doing that. Rather, I'm interested in testing whether or not these raw embeddings independently reproduce the WordNet hierarchy. 
+
+Just below I plotted colored representations of the so-called patch tokens in overlay of an example insect photo. On the third image you can inspect the heatmap of patch tokens the model considered the closest to the CLS token. The CLS token is one in five side tokens that do not correspond to any part of the input image passed in the network. That denomination comes from the 2024 paper @darcet2024visionTransformersNeedRegisters, "Vision Transformers Need Registers". These tokens are part of the mix and are supposed to act as "registers" to store intermediate contextualized information about the image as a whole in order to avoid the model hijacking image patches for storing particular cues. Architecturally, these tokens don't get positional encodings to tell them apart geometrically in the 2D space from the model's perspective, but only the CLS token gets taken into account in the DINO loss (alongside patch tokens), so it's the one that aggregates image semantics with the most fidelity. Of course, the ConvNeXt-backed models don't have those, but in the remaining of this page I may refer to the CLS token interchangeably for the CLS token of ViT-backed encoders or the single vector output of ConvNeXt-backed encoders.
+
+
+### Outputs' significance and visualization
+Overall, the CLS token acts as a condensed representation of the whole image, whereas the patch tokens only sum up the contents of, well, the concerned token, contextualized within the whole image. In <a data-figure-ref="fig-overlay-patches"></a>, I performed a PCA decomposition on all the patch tokens and colored them in RGB coding from the first three components. Additionally, I plotted the heatmap of cosine similarity to the CLS token. The result shows that embeddings faithfully mirror designated semantic regions of the insect's photo. These visualizations have already been featured by Meta on the DINOv3 project page: one of the significant value of DINOv3 is the model's latent stability and continual consistency in similar views of the same scene, for example in videos.
+
+<figure id="fig-overlay-patches" class="figure-wide" style="width: min(550px, 100%); margin-inline: auto;">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794307306/patch_tokens_overview_maps_nkfjdx.webp"}
+		alt="Sample of ImageNet categories ordered along a single spectral embedding axis, colored on a blue-to-red scale"
+        loading="lazy"
+        style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Patch tokens colored according to their latent vectors on a dragonfly photo. Middle image: colormap based on the first three PCA to RGB values conversion of patches; Rightmost image: colormap based on the cosine similarity to the CLS token. 
+	</figcaption>
+</figure>
+
+By the way, one can try assigning the tokens to a few groups from their sole latents. The method is not unequivocal, though, and this can be done several different ways. <a data-figure-ref="fig-segmented-patches"></a> is a showcase of three segmentation methods.
+
+<figure id="fig-segmented-patches" class="figure-wide" style="width: min(550px, 100%); margin-inline: auto;">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1794315183/patch_tokens_segmentation_maps_vnn3fm.webp"}
+		alt="Sample of ImageNet categories ordered along a single spectral embedding axis, colored on a blue-to-red scale"
+        loading="lazy"
+        style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Patch tokens colored according to their latent vectors on a dragonfly photo. Middle image: colormap based on the first three PCA to RGB values conversion of patches; Rightmost image: colormap based on the cosine similarity to the CLS token. 
+	</figcaption>
+</figure>
+
+
+- The leftmost heatmap is computed from a max-intra-group similarity clustering. It goes as follows. First, define $\tilde{S} = S - m\,\mathbf{1}\mathbf{1}^\top$ where $m$ is the median of all pairwise cosine similarities $\{S_{ij}\}_{i < j}$. Then, solve the following relaxed problem:
+$$
+\begin{aligned}
+\max_{x \in [0,1]^N} \quad & x^\top \tilde{S}\, x \;+\; (\mathbf{1} - x)^\top \tilde{S}\, (\mathbf{1} - x)
+\end{aligned}
+$$
+
+The assignments to either group are then set by $g_i = \mathbb{1}\left[x_i > \tfrac{1}{2}\right]$. I imagined this method myself.
+
+- The middle heatmap is made from the Shi-Malik normalized cut. This method and its implementation was proposed by an LLM.
+- Finally, the rightmost spectral clustering is Scikit-Learn's `SpectralClustering`.
+
+
+
+As you can see, the main principal component seem to reflect the most prominent semantic groups seen in this particular canonical example. In other words, the main subjects. And the CLS token also roughly aligns with the segmentations most of the time.
 
 
 ### Testing the hierarchy against the embeddings
-The fact that the categories of the ImageNet dataset are part of a larger knowledge graph with metaclass dependencies known in advance makes it particularly interesting to use as a prior for image data. **So, it stands as an interesting question to me whether the ImageNet class hierarchy we unveiled earlier translates to the unsupervised embeddings of that dataset through a completely independent model.** It is about testing whether language hiararchies are consistent with visual hierarchies obtained by means of an unsupervised, emergent learning strategy[^note-emergence].
+The fact that the categories of the ImageNet dataset are part of a larger knowledge graph with metaclass dependencies known in advance makes it particularly interesting to use as a prior for image data. **So, it stands as a particularly interesting question to me whether the ImageNet class hierarchy we unveiled earlier translates to the unsupervised embeddings of that dataset through a completely independent model.** It is about testing whether language hiararchies are consistent with visual hierarchies obtained by means of an unsupervised, emergent learning strategy[^note-emergence].
 
 
 [^note-emergence]: In the first DINO paper, the authors ecplicitly described that their learning student-teacher networks featured emergent properties by learning embeddings with no labels at all, driven only by crops and partial views.
