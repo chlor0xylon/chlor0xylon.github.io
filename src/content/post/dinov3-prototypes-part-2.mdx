@@ -247,7 +247,11 @@ The first stage is about persisting image embeddings from *cropped images* of th
 </figure>
 
 
-My idea is to train the dictionary on the latents obtained from ***local views*** of images that encapsulate limited visual context that is slightly larger than prior attempts from the literature, and then to benchmark the dictionary on latents from complete images. The 128 pixels size is somewhat arbitrary. For reference, the dataset contains many images of small resolution by modern image standards (see <a data-figure-ref="fig-imagenet-density"></a>), because it was sourced from a web crawl in the 2010's. In @craft2023fel, 64-by-64-pixel patches are used, but recall that they extracted concepts one class at a time, so bumping it up to 128 seems like a sound middle ground to extract more generalized semantics all the while extending to a more diverse field of view that would not come close to the total image in the majority of cases (see <a data-figure-ref="fig-imagenet-crops-area-ratio-svg"></a>).
+My goal is to train the dictionary on the latents obtained from ***local views*** of images that encapsulate slightly more visual context than prior work use in the literature.
+
+For reference, the dataset contains many images of small resolution by modern image standards, because it was sourced from a web crawl in the 2010's. In @craft2023fel, the authors use 64-by-64 pixel patches, but recall that they extracted concepts one class at a time. I choose to instead use 128-by-128 pixel crops. This size is somewhat arbitrary, but looks like a sound middle ground to extract more generalized semantics all the while extending to a more diverse field of view that would neither come close to the total image in the majority of cases (see <a data-figure-ref="fig-imagenet-crops-area-ratio-svg"></a>), nor rule out too large a fraction of the dataset (see <a data-figure-ref="fig-imagenet-density"></a>).
+
+
 
 
 <figure id="fig-imagenet-crops-area-ratio-svg" class="figure-narrow">
@@ -259,10 +263,24 @@ My idea is to train the dictionary on the latents obtained from ***local views**
 	/>
 	<figcaption>
 		<span class="label"></span>
-		Distribution of 128-by-128-square-crop to total-image-resolution ratio for the ImageNet dataset
+		Distribution of 128-by-128-square-crop to total-image-resolution area ratio across ImageNet-1K
 	</figcaption>
 </figure>
 
+
+
+<figure id="fig-imagenet-density" class="figure">
+	<img
+		src={"https://res.cloudinary.com/dogzrw06b/image/upload/v1781612897/imagenet-dimensions-density_ug1tit.png"}
+		alt="Density plots of ImageNet image widths and heights, in linear and logarithmic scale, with accumulation along common aspect ratios and a hot spot at 500 by 500 pixels"
+		loading="lazy"
+		style="aspect-ratio: auto;"
+	/>
+	<figcaption>
+		<span class="label"></span>
+		Density plots of ImageNet's image dimensions distribution in linear scale and logarithmic scale. Images expectedly accumulate along frequent aspect ratios, and the majority of images concentrate in the 400-500-ish range in height and width. An interesting artefact is visible for square images of size exactly 500 by 500 pixels.
+	</figcaption>
+</figure>
 
 
 ### Decisive design choices
