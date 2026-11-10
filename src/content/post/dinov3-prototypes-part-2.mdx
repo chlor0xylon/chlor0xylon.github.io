@@ -231,7 +231,7 @@ Let's outline practical milestones about the dictionary learning process.
 
 ### Sourcing training samples
 
-The first stage is about persisting image embeddings from *cropped images* of the dataset. I discarded images whose width or height was less than 128 pixels. Then I built a dataset composed of CLS token latent vectors of a vision encoder variant in the DINOv3 family from random crops sized $128 \times 128$ pixels taken from images in ImageNet-1K, randomly flipped. Other augmentations could be of interest (like geometry or colorimetry alterations) to capture more elaborate concepts about the model's internal representations, but I did not go with that idea yet. I ran several passes on the dataset with different seeds, to obtain different views of every image in the dataset.
+The first stage is about persisting image embeddings from *cropped images* of the dataset. I discarded images whose width or height was less than 128 pixels. Then I built a dataset composed of CLS token latent vectors of a vision encoder variant in the DINOv3 family from random crops sized $128 \times 128$ pixels taken from images in ImageNet-1K, randomly flipped (see <a data-figure-ref="fig-imagenet-random-crops"></a>). Other augmentations could be of interest (like geometry or colorimetry alterations) to capture more elaborate concepts about the model's internal representations, but I did not go with that idea yet. I ran several passes on the dataset with different seeds, to obtain different views of every image in the dataset.
 
 <figure id="fig-imagenet-random-crops" class="figure-narrow">
 	<img
