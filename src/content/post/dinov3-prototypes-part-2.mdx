@@ -291,7 +291,7 @@ The third stage is about probing the produced dictionary with relevant metrics t
 
 #### Hoyer sparsity
 
-At the scale of an individual concept level, the _Hoyer sparsity measure_ [@nmf2004hoyer] for the corresponding latent vector $\mathbf{d}$ in dimension $n$ is defined as follows:
+At the scale of an individual concept, the _Hoyer sparsity measure_ [@nmf2004hoyer] for the corresponding latent vector $\mathbf{d}$ in dimension $n$ is defined as follows:
 $$
 \mathrm{Hoyer}(\mathbf{d})
 = \frac{\sqrt{n} - \frac{\|\mathbf{d}\|_1}{\|\mathbf{d}\|_2}}{\sqrt{n} - 1}
@@ -339,7 +339,7 @@ where $H$ is Shannon's entropy.
 | Data dimensionality | $p$ | $384$ |
 | Dataset size | $n$ | $1.7 \times 10^6$ |
 
-In @onlinelearning2009, it is specified that in practice, less than a handful of dictionary update steps are needed for the convergence to happen properly (they mention 3 updates needed for experimental success). Following that idea, I set the loop to run a fixed number of times.
+In @onlinelearning2009, it is specified that in practice, only a handful of dictionary update steps are needed for the convergence to happen properly (they mention 3 updates needed for experimental success). Following that idea, I set the loop to run a fixed number of times.
 
 
 Likewise, the FISTA loop to solve the sparse coding assignments in the first stage of a training step stops once the proximal gradient step barely moves the assignments anymore. The chosen criterion proxy is the ratio of Frobenius norms of the current proximal gradient norm to the initial proximal gradient norm in the batch step. As I stated earlier, it's not perfect, but it's a good enough heuristic for measuring tracking convergence.
