@@ -263,7 +263,7 @@ class SparseDistanceMatrix:
 ```
 
 #### Kernel in the original space
-So, according to the figures above, the primary comparison kernel in the model's **normed** embeddings $\{x_i\}_{1 \le i \le N} \subset \mathbb{R}^{768}$ space should reward meaningful cosine similarities. So I defined the affinity on an edge $e = (i, j)$ as follows:
+In accordance with the previous observations, the primary comparison kernel in the model's **normed** embeddings $\{x_i\}_{1 \le i \le N} \subset \mathbb{R}^{768}$ should reward meaningful cosine similarities. So I defined the affinity on an edge $e = (i, j)$ as follows:
 
 $$
 \alpha_e =
@@ -292,39 +292,28 @@ class EdgeAffinities:
 
 #### Kernel in the target space
 
-Let us now define the secondary kernel $\kappa$ for the target embeddings in $\mathcal{S}^2 \subset \mathbb{R}^3$. In this target space, that secondary comparison kernel $\kappa$ has to make it possible to compute $Z = \sum_e \kappa_e$ over *all* $N(N-1)$ *ordered* pairs without ever materializing the full matrix of pairwise comparisons $[\kappa_{i,j}]_{1 \le i,j \le N}$ in the VRAM, in order to compute
+In the the target space $\mathcal{S}^2 \subset \mathbb{R}^3$, the chosen kernel $\kappa$ needs to make it possible to compute $Z = \sum_e \kappa_e$ over *all* $N(N-1)$ *ordered* pairs without ever materializing the full matrix of pairwise comparisons $[\kappa_{i,j}]_{1 \le i,j \le N}$ in the VRAM, in order to compute
 $$
 q_e = \frac{\kappa_e}{Z}
 $$
 
-
-
-The final objective is $\mathcal{L} = KL(P\|Q)$.
-
-Why do we need to sum over all comparisons for $\kappa$ anyway? This escaped my understanding at first. After digging a bit, I got the following: expanding the KL divergence yields
-$$
-\mathcal{L} = \sum_e p_e \log \frac{p_e}{q_e} = - H(P) - \sum_e p_e \log q_e
-$$
-
-The non-constant term can be further expanded to $\log Z - \sum_e p_e \log \kappa_e$. Removing terms inside $Z$ removes repulsion terms between each embedded datapoint on the sphere, since increasing any $\kappa_e$ increases the loss. So, the full $\log Z$ encourages points to spread over the whole surface of the sphere. A subset of these repulsive effects might supposedly result in a suboptimal solution.
-
-Now, to make $Z$ easy to compute, any affine-bilinear kernel like $(x,y) \mapsto 1 + \langle x, y\rangle$ fits the bill, for example:
+To get such a tractable $Z$, any affine-bilinear kernel like $(x,y) \mapsto 1 + \langle x, y\rangle$ fits the bill, for example:
 
 $$
 \kappa_e = 1 + \langle x_i, x_j \rangle \ge 0, \quad \forall (i,j)
 $$
 
-because then in the target space
+because then in the target space, we have
 $$
 \sum_{1 \le i, j \le N} 1 + \langle x_i, x_j\rangle = N^2 +  \left\| \sum_{i=1}^N x_i \right\|^2
 $$
 
-consequently, summing over all pairs $i \ne j$ (each diagonal term equals 2)
+Consequently, summing over all pairs $i \ne j$ (each diagonal term equals 2) yields
 $$
 Z = \sum_{i \ne j} 1 + \langle x_i, x_j\rangle = N(N-2) + \left\| \sum_{i=1}^N x_i \right\|^2
 $$
 
-which is doable in $O(N)$ steps, since it only requires the reduction $\sum_{i=1}^N x_i$.
+which is indeed doable in $O(N)$ steps, since it only requires the reduction $\sum_{i=1}^N x_i$.
 
 
 In the Torch implementation, this kernel reads:
@@ -339,6 +328,19 @@ def kernel(
     total_weight: Tensor = N_vec * (N_vec - 2) + points.sum(dim=0).square().sum()
     return edge_kernel, total_weight
 ```
+
+#### Final objective
+
+The final objective is the Kullback-Leibler divergence $\mathcal{L} = KL(P\|Q)$. This loss encourages the learned derived probability distribution to match that of the reference, i.e. to describe broadly the same bigger picture about the pairwise relationships in the dataset.
+
+But then, why do we need to sum over all comparisons for $\kappa$ in the target space anyway? Since the nearest neighbors search performed in the raw space thresholded and discarded most similarities in the reference distribution, why even take the mirrored pairs into account in the learned distribution? That escaped my understanding at first. After digging a bit, I found the following reason: expand the KL divergence to get
+$$
+\mathcal{L} = \sum_e p_e \log \frac{p_e}{q_e} = - H(P) - \sum_e p_e \log q_e
+$$
+
+The non-constant term can be further expanded to $\log Z - \sum_e p_e \log \kappa_e$. Removing terms inside $Z$ removes repulsion terms between each embedded datapoint on the sphere, since increasing any $\kappa_e$ increases the loss. **So, the full $\log Z$ encourages points to spread over the whole surface of the sphere.** A subset of these repulsive effects may result in a suboptimal solution, like too condensed points on the sphere. The full set of terms in $Z$ acts as a regularizer.
+
+
 
 #### Training loop
 
