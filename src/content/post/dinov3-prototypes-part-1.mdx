@@ -58,7 +58,7 @@ For example, $s$ can denote:
 
 In this setup, the optimized variable is the input to the frozen network, a.k.a. the data, as opposed to the training phase where the data was fixed, and drawn from a dataset, and the network's weights were the optimized variables. The point is then to use optimization techniques to synthesize input images that maximally activate specific neurons or layers.
 
-For any neural network of more than, say, at least a few layers and a handful of input variables, solving exactly such a mathematical problem is not remotely tractable due to the deep and non-linear nature of neural networks. Thus, only approximated solutions can be obtained. To compute one, we can resort to iterative gradient ascent, backpropagating up the network to the inputs, leveraging the the network's mapping function $f$ being differentiable. One single step of the gradient ascent process goes like this:
+For any neural network of more than, say, at least a few layers and a handful of input variables, solving exactly such a mathematical problem is not remotely tractable due to the deep and non-linear nature of neural networks. Thus, only approximated solutions can be obtained. To compute one, we can resort to iterative gradient ascent, backpropagating up the network to the inputs, leveraging the network's mapping function $f$ being differentiable. One single step of the gradient ascent process goes like this:
 
 $$
 \mathbf{x}^{(t+1)} \gets \mathbf{x}^{(t)} + \alpha \nabla_{\mathbf{x}} (s \circ f)(\mathbf{x}^{(t)})
