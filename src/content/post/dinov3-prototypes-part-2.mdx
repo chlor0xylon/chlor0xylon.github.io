@@ -150,7 +150,7 @@ In an extended journal version of the paper [@JMLRv11mairal10a], the authors als
 
 [^note-nmf]: In it, one can read, among other things, that non-negative matrix factorization seems to have been experimented with for sparse coding since as early as 2001.
 
-They mention the alternative constraint set
+They mention the following alternate constraint set
 
 $$
 \mathcal{C}^\prime = \{\mathbf{D}\in \mathbb{R}^{m\times k}, \forall j \in \llbracket 1, k \rrbracket, \mathbf{d}_j^\top \mathbf{d}_j \le 1 \text{ and } \mathbf{d}_j \ge 0\}
@@ -422,7 +422,7 @@ Undeniably, the atoms settled on meaningful visual cues of the dataset. Some app
 Now on to numerical KPIs.
 The positive-value histogram (<a data-figure-ref="fig-dictionary-concept-value-distribution"></a>) summarizes the frequency distribution of strictly positive entries across all concept vectors. The distribution appears unimodal and clean and typically close to a Gaussian, with no obvious sign of an anomaly or split into separate groups of similar concepts.
 
-The cosine-similarity distribution (<a data-figure-ref="fig-dictionary-concept-diagnostics"></a>) is a lot more interesting; it is useful to ensure the dictionary has not collapsed into repeated atoms. 
+The cosine-similarity distribution (<a data-figure-ref="fig-dictionary-concept-diagnostics"></a>) diagnostic helps ensure the dictionary has not collapsed into repeated atoms. 
 
 
 <figure id="fig-dictionary-concept-value-distribution" class="figure-grid">
